@@ -1180,8 +1180,9 @@ export function PathsPanel({
   // and that some key gives.
   const shiftUsed =
     state.layout.typingRules?.shift === undefined && shiftOffered.length > 1 ? null : undefined;
-  // Left alone, a layout with a repeat key types a doubled letter the cheaper of the two ways, so no
-  // way is the one in use; once the rule is declared, the first that is on and that some key gives.
+  // Left alone, a layout with a repeat key types a doubled letter by the repeat key where its layer
+  // is reached directly, else by tapping twice, so no way is the one in use; once the rule is
+  // declared, the first that is on and that some key gives.
   const doubledUsed =
     state.layout.typingRules?.doubledLetters === undefined &&
     doubledRows.some((r) => r.id === 'repeatKey' && r.enabled)

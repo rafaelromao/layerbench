@@ -1457,7 +1457,7 @@ describe('two taps on two fingers, against one finger tapping a key twice', () =
       expect(repeats(t)).toBe(1);
     });
 
-    it('is ignored where its layer comes only by way of a third, and the letter is tapped again', () => {
+    it('is ignored where its layer comes only by way of a third, as it was, and the letter is tapped again', () => {
       const t = trace(behind(false), 'll');
       expect(t).toMatchObject({ out: 'll', keys: TAPPED });
       expect(repeats(t)).toBe(0);
@@ -1466,6 +1466,26 @@ describe('two taps on two fingers, against one finger tapping a key twice', () =
     it('is ignored there too where the layout declares the repeat key first', () => {
       const declared = behind(false, { typingRules: { doubledLetters: [{ way: 'repeatKey' }] } });
       expect(trace(declared, 'll').keys).toEqual(TAPPED);
+    });
+
+    it('is ignored where its layer has a key of its own on another layer and a condition as well', () => {
+      const f = fusion();
+      const both: Layout = {
+        ...f,
+        layers: [
+          {
+            ...f.layers[0],
+            bindings: { ...f.layers[0].bindings, R0: { kind: 'mo', layer: 'third' } },
+          },
+          { id: 'second', bindings: { RHI: { kind: 'mo', layer: 'extras' } } },
+          { id: 'third', bindings: {} },
+          { id: 'extras', bindings: { RHI: { kind: 'key_repeat' } } },
+        ],
+        conditionalLayers: [{ if: ['second', 'third'], then: 'extras' }],
+        typingRules: { doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }] },
+      };
+      // Extras comes by `second`, or as `second` and `third` are held together: neither is direct.
+      expect(trace(both, 'll').keys).toEqual(TAPPED);
     });
 
     it('is ignored where its layer comes on only as two others are held together', () => {
@@ -1484,6 +1504,47 @@ describe('two taps on two fingers, against one finger tapping a key twice', () =
         conditionalLayers: [{ if: ['second', 'third'], then: 'extras' }],
       };
       expect(trace(both, 'll').keys).toEqual(TAPPED);
+    });
+  });
+
+  describe('where there is no Repeat key to use, or it is off, a letter on a second layer changes nothing', () => {
+    /** `l` is on the base layer and, under the held thumb, on a home key of `second` as well. */
+    const copy = (extra: Partial<Layout> = {}, repeat = false): Layout => {
+      const f = fusion();
+      return {
+        ...f,
+        layers: [
+          f.layers[0],
+          {
+            id: 'second',
+            bindings: { RHM: kp('l'), ...(repeat ? { RHI: { kind: 'key_repeat' as const } } : {}) },
+          },
+        ],
+        ...extra,
+      };
+    };
+
+    it('taps the key again where the layout has no Repeat key', () => {
+      expect(trace(copy(), 'll').keys).toEqual(TAPPED);
+    });
+
+    it('taps the key again where the layout taps twice, or the options do, or the rule has the Repeat off', () => {
+      const taps = copy({ repeatPolicy: { doubledLetters: 'tapTwice' } }, true);
+      expect(trace(taps, 'll').keys).toEqual(TAPPED);
+      expect(trace(copy({}, true), 'll', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAPPED);
+      const off = copy(
+        {
+          typingRules: {
+            doubledLetters: [{ way: 'repeatKey', enabled: false }, { way: 'tapTwice' }],
+          },
+        },
+        true,
+      );
+      expect(trace(off, 'll').keys).toEqual(TAPPED);
+    });
+
+    it('uses the Repeat key rather than the copy of the letter where there is one', () => {
+      expect(trace(copy({}, true), 'll').keys).toEqual(REPEATED);
     });
   });
 

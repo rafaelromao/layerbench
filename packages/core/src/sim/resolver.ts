@@ -58,11 +58,11 @@ export interface SimulateOptions {
 const WORD_LIMIT = 128;
 
 /**
- * How many presses more than its own a character typed again by tapping the key that just typed it
- * counts for when ways of typing it are compared: three in all, so two taps on two fingers are
- * better than one finger tapping the same key twice, as a Repeat key, on a layer or not, is against
- * typing a letter again. A key that types something else the second time, an adaptive key, is not
- * tapped again in this sense.
+ * How many presses more than its own a character typed again on the key that just typed it counts
+ * for, where a Repeat key is a way to type it: three in all, so two taps on two fingers, as a layer
+ * key and Repeat, are better than one finger tapping the same key twice. It is the key pressed
+ * twice in a row that is tapped again: a press between the two, a layer's or a Shift's, is none, and
+ * a key that types something else the second time, an adaptive key, is not tapped again either.
  */
 const REPEATED_TAP_EXTRA = 2;
 
@@ -540,7 +540,7 @@ export class Simulator {
       for (const p of holdsBefore) this.plannerHolds.add(p);
     }
     // The machine turns a conditional layer off however else it came on: its condition may still.
-    return this.activateWhen(target, events, depth);
+    return !this.directOnly && this.activateWhen(target, events, depth);
   }
 
   /**
@@ -1368,7 +1368,20 @@ export class Simulator {
       this.plannerHolds.clear();
       for (const pos of held) this.plannerHolds.add(pos);
     };
-    const again = this.repeatsLast(token);
+    // A key tapped again weighs more only where a Repeat key is a way that works: with none, or with
+    // repeat use off, the letter is typed as it was.
+    let weigh = false;
+    if (this.repeatsLast(token)) {
+      for (const p of cands) {
+        if (!this.repeatSet.has(p)) continue;
+        const worked = this.tryProducer(p, token) !== null;
+        restore(start, holds);
+        if (worked) {
+          weigh = true;
+          break;
+        }
+      }
+    }
     let best: {
       events: KeyEvent[];
       presses: number;
@@ -1388,7 +1401,7 @@ export class Simulator {
           let before = this.wordKeys.length > 0 ? this.wordKeys[this.wordKeys.length - 1] : -1;
           for (const e of events) {
             if (e.kind === 'hold_release') continue;
-            presses += again && e.pos === before ? 1 + REPEATED_TAP_EXTRA : 1;
+            presses += weigh && e.pos === before ? 1 + REPEATED_TAP_EXTRA : 1;
             before = e.pos;
           }
           const held = this.plannerHolds.size;

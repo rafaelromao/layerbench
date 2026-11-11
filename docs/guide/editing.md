@@ -473,12 +473,15 @@ keeps the page where it is, at either end too:
   order that some key gives, and a doubled letter the first way that works. A Repeat on a layer is
   two presses, the layer key and Repeat: left alone it is used for a doubled letter even though
   tapping the letter again is one press, since one finger tapping a key twice counts as three and
-  two taps on two fingers are better. It is a Repeat reached in one or two presses that wins;
-  where it takes three, the effort decides. With **Repeat key** first it is used for every doubled
-  letter. Either way a Repeat is used only where its layer is reached directly: by a key on a layer
-  that is already on, a hold, a one-shot or a toggle. A Repeat behind a third layer, or on a layer
-  that comes on only as two others are held together, is no way to type, and the letter is tapped
-  again. A character with a path of its own keeps it for its doubled letter. One way always stays on: the last that some key
+  two taps on two fingers are better. That is the same key pressed twice in a row: a Shift or a
+  layer key between the two taps is no repeated tap, and the Repeat key is not pressed twice in a
+  row, so a third letter of three is tapped again. Where the Repeat takes three presses the layer
+  keys left held and then the effort decide. With **Repeat key** first it is used for every
+  doubled letter. Either way a Repeat is used only where its layer is reached directly: by a key
+  on a layer that is already on, a hold, a one-shot or a toggle. A Repeat behind a third layer, or
+  on a layer that comes on only as two others are held together, is no way to type, and the
+  letter is tapped again. Where the layout has no Repeat key, or doubled letters are set to tap
+  twice, nothing changes. A character with a path of its own keeps it for its doubled letter. One way always stays on: the last that some key
   gives.
 - **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
   and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:

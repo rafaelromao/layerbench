@@ -376,10 +376,11 @@ export function scoreExact(sample: Sample, d: Design): Score {
 
 /**
  * The search loop's scorer: Effort, SFB pairs and one-shot taps from the sample's tables, updated
- * by the difference a swap makes. It follows the exact pass except in one corner: a double whose
- * repeat press the simulator declines for the skipgram it would make with the press two back is
- * still counted as a repeat press here. The search re-scores its results with the exact pass, and
- * every kept design with the engine.
+ * by the difference a swap makes. It follows the exact pass closely, not exactly: the third letter
+ * of three, which the exact pass taps again rather than press the repeat key twice in a row, is
+ * counted as a repeat press here, as the second is, and on random designs the two SFBs can differ by
+ * about 0.02. The search re-scores its results with the exact pass, and every kept design with the
+ * engine.
  */
 export class FastScorer {
   readonly S: number;
@@ -458,8 +459,7 @@ export class FastScorer {
     this.last[s] = sl.key.pos;
     // A symbol on `alpha2` costs its key and the one-shot tap before it.
     this.cost[s] = this.keyCost[sl.key.pos] + (sl.layer === 1 ? this.oslCost : 0);
-    this.rep[s] =
-      this.repPos >= 0 && (sl.layer === 1 || this.sfbOf(sl.key.pos, this.repPos) === 0) ? 1 : 0;
+    this.rep[s] = this.repPos >= 0 ? 1 : 0;
   }
 
   private effortOf(s: number): number {
@@ -476,7 +476,7 @@ export class FastScorer {
   /** SFB pairs the symbol takes part in, in either role, doubles typed with the repeat key included. */
   private pairsOf(s: number): number {
     const { S, first, last, rep } = this;
-    const { bigram, doubleBefore } = this.sample;
+    const { bigram, doubleBefore, doubles } = this.sample;
     const ls = last[s];
     const fs = first[s];
     let out = 0;
@@ -491,6 +491,8 @@ export class FastScorer {
     if (this.repPos >= 0) {
       const rp = this.repPos;
       if (rep[s]) {
+        // The pair inside the double: the symbol's key and the repeat key, not the key again.
+        out += doubles[s] * (this.sfbOf(ls, rp) - this.sfbOf(ls, fs));
         for (let y = 0; y < S; y++) {
           const c = doubleBefore[s * S + y];
           if (c) out += c * (this.sfbOf(rp, first[y]) - this.sfbOf(ls, first[y]));
