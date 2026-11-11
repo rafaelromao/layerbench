@@ -659,6 +659,41 @@ const LACKS: Record<string, Record<string, string[][]>> = {
   'ben-vallack-piano': ACCENTLESS,
 };
 
+/** The ids of the layouts written in code. */
+const WRITTEN = [...BEFORE.keys()].filter((id): id is string => id !== undefined);
+
+/** The ids of the layouts the Library has, written in code or added as documents. */
+const LIBRARY: ReadonlySet<string> = new Set(BUNDLED_LAYOUTS.map((l) => l.id as string));
+
+/**
+ * What is wrong with `UNTYPED` and `TYPES`, given the ids of the layouts written in code and those
+ * the Library has: a layout written in code in neither, a layout in both, or one the Library has
+ * not. They say what a definition leaves out, which is the definition's to pin. A layout a change
+ * made a document, which a request does for any layout written in code (`library-edit/plan.ts`), is
+ * no longer one: its file is what a reviewer reads, and an edit that types one key more is the
+ * edit the app offers, so nothing of it is pinned any more, and its entries are left alone.
+ */
+function tableProblems(
+  written: readonly string[],
+  library: ReadonlySet<string>,
+  tables: { UNTYPED: Record<string, string>; TYPES: Record<string, string> } = { UNTYPED, TYPES },
+): string[] {
+  const problems: string[] = [];
+  const named = new Set([...Object.keys(tables.UNTYPED), ...Object.keys(tables.TYPES)]);
+  for (const id of named) {
+    if (!library.has(id)) problems.push(`${id} is named, and the Library has no such layout`);
+    else if (id in tables.UNTYPED && id in tables.TYPES) {
+      problems.push(`${id} is named in both UNTYPED and TYPES`);
+    }
+  }
+  for (const id of written) {
+    if (!named.has(id)) {
+      problems.push(`${id} is written in code, and named in neither UNTYPED nor TYPES`);
+    }
+  }
+  return problems;
+}
+
 describe('which bundled layouts have the default layers', () => {
   it('is none: every bundled layout is its author’s design', () => {
     expect(
@@ -669,8 +704,27 @@ describe('which bundled layouts have the default layers', () => {
   });
 
   it('names every layout written in code in exactly one of UNTYPED and TYPES', () => {
-    const written = [...BEFORE.keys()].sort();
-    expect([...Object.keys(UNTYPED), ...Object.keys(TYPES)].sort()).toEqual(written);
+    expect(tableProblems(WRITTEN, LIBRARY)).toEqual([]);
+  });
+
+  it('still does when a change has made any one of them a document', () => {
+    for (const changed of WRITTEN) {
+      const written = WRITTEN.filter((id) => id !== changed);
+      expect(tableProblems(written, LIBRARY), changed).toEqual([]);
+    }
+  });
+
+  it('says what is wrong, as the test names it', () => {
+    expect(tableProblems(['nowhere'], LIBRARY)).toEqual([
+      'nowhere is written in code, and named in neither UNTYPED nor TYPES',
+    ]);
+    expect(tableProblems([], new Set())).toHaveLength(
+      Object.keys(UNTYPED).length + Object.keys(TYPES).length,
+    );
+    const both = { UNTYPED: { qwerty: '' }, TYPES: { qwerty: '' } };
+    expect(tableProblems(['qwerty'], LIBRARY, both)).toEqual([
+      'qwerty is named in both UNTYPED and TYPES',
+    ]);
   });
 });
 
@@ -694,12 +748,17 @@ describe("every bundled layout is its author's design, with what its layers leav
           expect(JSON.stringify([layout.layers, layout.combos])).not.toMatch(/"(extras|accents)"/);
         });
 
-        if (original)
-          it("is its definition as it builds it, with its author's home row mods and nothing more", () => {
-            const def = [...CLASSIC_DEFS, ...SMALL_DEFS].find((d) => d.id === layout.id);
-            const built = def?.homeRowMods ? withHomeRowMods(original, def.homeRowMods) : original;
-            expect(layout).toEqual({ ...built, languages: [...(def?.languages ?? ['en'])] });
-          });
+        // What a layout leaves out is pinned for one written in code, where its definition decides
+        // it. One a change made a document is its file, read there by whoever reviews the change:
+        // an edit that types a key more is the edit the app offers, and no break. The languages it
+        // states must be ones it types all the same (`lang/performance.test.ts`).
+        if (!original) return;
+
+        it("is its definition as it builds it, with its author's home row mods and nothing more", () => {
+          const def = [...CLASSIC_DEFS, ...SMALL_DEFS].find((d) => d.id === layout.id);
+          const built = def?.homeRowMods ? withHomeRowMods(original, def.homeRowMods) : original;
+          expect(layout).toEqual({ ...built, languages: [...(def?.languages ?? ['en'])] });
+        });
 
         it(
           types === undefined

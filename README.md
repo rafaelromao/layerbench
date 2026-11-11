@@ -115,7 +115,10 @@ change**, and the sign-in Worker opens, as the GitHub App, a pull request into m
 `library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
 becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
 `pnpm goldens`, and pushes the result as the App, so CI checks what would be merged; CI fails while
-a request is still on a branch. What is pushed to the branch after that is left as it is. The
+a request is still on a branch. What is pushed to the branch after that is left as it is. Where a
+layout is written, in code or as a document, fails no test; a test that names what a layout's keys
+are, as `layouts.test.ts` does of Romak's, fails for a change that moves one of them, and deleting a
+layout leaves the tests that name it by its id: the branch takes those out. The
 workflow needs the repository variable `LAYERBENCH_APP_ID` and the secret
 `LAYERBENCH_APP_PRIVATE_KEY`, the App's id and private key.
 
