@@ -19,10 +19,10 @@ import { type Sample, SPACE } from './tables.js';
  * - an `alpha2` symbol is a one-shot tap on its thumb, then its key: the tap stands between the
  *   symbol and the key before it, so that pair is never an SFB, while the tap is an SFB with a key
  *   on its own thumb pressed just before it;
- * - a doubled symbol is the repeat key when that is fewer presses, else whichever of the repeat key
- *   and the key itself makes fewer SFBs with the previous press, then fewer SFSs with the press
- *   before that, then costs less, the repeat key on a full tie; a space ends a double, a skipped
- *   character does not;
+ * - a doubled symbol is the repeat key when that is fewer presses, tapping the key that just typed
+ *   the symbol again counting as three, else whichever of the repeat key and the key itself makes
+ *   fewer SFBs with the previous press, then fewer SFSs with the press before that, then costs
+ *   less, the repeat key on a full tie; a space ends a double, a skipped character does not;
  * - Effort is the Effort rule's grid (cyanophage's, a thumb at `THUMB_EFFORT`) summed over presses,
  *   one-shot and repeat taps included, times 577, over characters typed plus spaces; SFB is
  *   same-finger pairs on different keys over characters typed plus words, a word being a run of
@@ -326,8 +326,11 @@ export function scoreExact(sample: Sample, d: Design): Score {
     chars++;
     run++;
     if (repPos >= 0 && lastSym === t) {
-      let useRep = alpha2[t] === 1;
-      if (!useRep) {
+      // Presses of each way, the key that just typed the symbol tapped again counting as three.
+      const plainWeight = alpha2[t] === 1 ? 2 : prev === last[t] ? 3 : 1;
+      const repWeight = prev === repPos ? 3 : 1;
+      let useRep = repWeight < plainWeight;
+      if (repWeight === plainWeight) {
         // The simulator chooses on cyanophage's grid, where the repeat thumb costs nothing.
         const p = last[t];
         const sfbPlain = sfb(prev, p);

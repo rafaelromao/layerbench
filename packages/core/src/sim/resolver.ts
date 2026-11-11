@@ -57,6 +57,15 @@ export interface SimulateOptions {
 /** A run of presses with no space in it enters the tables in pieces of at most this many. */
 const WORD_LIMIT = 128;
 
+/**
+ * How many presses more than its own a character typed again by tapping the key that just typed it
+ * counts for when ways of typing it are compared: three in all, so two taps on two fingers are
+ * better than one finger tapping the same key twice, as a Repeat key, on a layer or not, is against
+ * typing a letter again. A key that types something else the second time, an adaptive key, is not
+ * tapped again in this sense.
+ */
+const REPEATED_TAP_EXTRA = 2;
+
 /** How many times a way of typing a symbol is tried, each time with other modifiers held. */
 const MOD_TRIES = 8;
 
@@ -196,6 +205,13 @@ export class Simulator {
   private readonly shiftsFound: number[] = [];
   private shiftAt = 0;
   private readonly fold: boolean;
+  /** The Repeat keys' producers, which are used only where their layer is reached directly. */
+  private readonly repeatSet: ReadonlySet<Producer>;
+  /**
+   * Set while a Repeat key's way is tried: `activate` then reaches its layer only by a key on a
+   * layer already on, never by way of another layer.
+   */
+  private directOnly = false;
   private readonly repeatPolicy: 'repeat_key' | 'tap_twice';
   /**
    * The ways a doubled letter is typed that the layout declared, those on, in the order they are
@@ -256,6 +272,7 @@ export class Simulator {
     );
     this.shiftCombos = compiled.combos.filter((c) => namesShift(c.binding));
     this.index = options.producerIndex ?? enumerateProducers(compiled, options.caseMode);
+    this.repeatSet = new Set(repeatProducers(this.index));
     this.repeatPolicy =
       options.repeatPolicy ??
       (compiled.layout.repeatPolicy?.doubledLetters === 'tapTwice' ? 'tap_twice' : 'repeat_key');
@@ -324,15 +341,20 @@ export class Simulator {
    * tapping the key again.
    */
   private candidatesFor(token: string): Producer[][] {
-    const last = this.machine.state.lastSymbol;
-    const lastCmp = last === null ? null : this.fold ? last.toLowerCase() : last;
-    const doubled = lastCmp !== null && lastCmp === token;
+    const doubled = this.repeatsLast(token);
     const [symbol, ordinary] = this.ordinaryFor(token);
     const repeats = doubled ? repeatProducers(this.index) : [];
     const ways = this.doubledWays;
     const handSet = (this.userPaths.get(symbol)?.length ?? 0) > 0;
     const tiers = this.tiersFor(symbol, ordinary, repeats, doubled, ways);
     return handSet ? tiers : tiers.flatMap(combosFirst);
+  }
+
+  /** Whether the token is the symbol just typed: a doubled letter. */
+  private repeatsLast(token: string): boolean {
+    const last = this.machine.state.lastSymbol;
+    if (last === null) return false;
+    return (this.fold ? last.toLowerCase() : last) === token;
   }
 
   private tiersFor(
@@ -417,7 +439,8 @@ export class Simulator {
     const m = this.machine;
     if (m.isLayerActive(target)) return true;
     const list = this.activators.get(target);
-    if (!list) return this.activateWhen(target, events, depth);
+    // A layer that comes on only as others do together is not reached by one key.
+    if (!list) return !this.directOnly && this.activateWhen(target, events, depth);
     const top = m.highestActiveLayer();
     const ranked = [...list].sort((a, b) => {
       const aOk = a.from === undefined || a.from === top ? 0 : 1;
@@ -445,8 +468,10 @@ export class Simulator {
         const keys = cand.combo === undefined ? [cand.pos] : this.compiled.combos[cand.combo].keys;
         ok = this.ensureMods(cand.requiredMods, events, modHolds, new Set(keys));
       }
+      // The key that brings the layer on is on a layer that is on: a layer reached by way of another
+      // is not reached directly.
       if (ok && !m.isLayerActive(cand.viaLayer))
-        ok = this.activate(cand.viaLayer, events, depth + 1);
+        ok = !this.directOnly && this.activate(cand.viaLayer, events, depth + 1);
       if (ok && cand.combo !== undefined) {
         // A combo's keys pressed together, on a layer it fires on, typing nothing.
         if (!m.comboAvailable(cand.combo)) ok = false;
@@ -859,9 +884,20 @@ export class Simulator {
    * letter on that layer: then the way is tried again with the choice's next modifier. A modifier
    * held on a key the way then presses, as the Shift key that also taps for the capital's layer, is
    * held elsewhere when it is tried again, with the same modifiers. The two retries together are
-   * bounded; a way that needs neither is tried once.
+   * bounded; a way that needs neither is tried once. A Repeat key's way is tried only where its layer
+   * is reached directly (`directOnly`); a Repeat behind a third layer is no way to type.
    */
   private tryProducer(p: Producer, token: string): KeyEvent[] | null {
+    const wasDirect = this.directOnly;
+    this.directOnly = this.repeatSet.has(p);
+    try {
+      return this.tryProducerWithMods(p, token);
+    } finally {
+      this.directOnly = wasDirect;
+    }
+  }
+
+  private tryProducerWithMods(p: Producer, token: string): KeyEvent[] | null {
     this.modStarts.length = 0;
     this.modAvoid.clear();
     for (let tries = 1; ; tries++) {
@@ -1310,7 +1346,8 @@ export class Simulator {
   }
 
   /**
-   * Every way to type the token, each tried from the same state: the fewest presses win; then the
+   * Every way to type the token, each tried from the same state: the fewest presses win, tapping the
+   * key that just typed the same character again counting as three (`REPEATED_TAP_EXTRA`); then the
    * way that leaves fewer layer keys held, since a held key still has to come up, and holding it
    * through what follows can change that (releasing it ends the one-shot shift a sentence armed);
    * then the way that makes the word so far the fewest same-finger bigrams, then skipgrams, then
@@ -1331,6 +1368,7 @@ export class Simulator {
       this.plannerHolds.clear();
       for (const pos of held) this.plannerHolds.add(pos);
     };
+    const again = this.repeatsLast(token);
     let best: {
       events: KeyEvent[];
       presses: number;
@@ -1347,7 +1385,12 @@ export class Simulator {
         const events = this.tryProducer(p, token);
         if (events) {
           let presses = 0;
-          for (const e of events) if (e.kind !== 'hold_release') presses++;
+          let before = this.wordKeys.length > 0 ? this.wordKeys[this.wordKeys.length - 1] : -1;
+          for (const e of events) {
+            if (e.kind === 'hold_release') continue;
+            presses += again && e.pos === before ? 1 + REPEATED_TAP_EXTRA : 1;
+            before = e.pos;
+          }
           const held = this.plannerHolds.size;
           let cost: PressCost | null = null;
           let better =

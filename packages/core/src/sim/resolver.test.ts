@@ -1234,8 +1234,7 @@ describe('a Repeat on a one-shot layer', () => {
     t.steps.filter((s) => s.keyKind === 'repeat').length;
 
   it('is a way to type a doubled letter, two presses with the layer key that reaches it', () => {
-    // `z` is on the one-shot layers too: the layer key and Repeat cost what the layer key and `z`
-    // do, and the thumb's Repeat costs no effort, so it is the one taken.
+    // `z` is on the one-shot layers too, for the same two presses: the Repeat is the one taken.
     for (const word of ['zz', 'xx']) {
       const t = trace(gust(), word);
       expect(t.out).toBe(word);
@@ -1254,24 +1253,34 @@ describe('a Repeat on a one-shot layer', () => {
     expect(t.keys.slice(2)).toEqual(['RBM', 'L1']);
   });
 
-  it('loses to tapping a base letter again, one press against two, under the repeat policy', () => {
-    expect(trace(gust(), 'hello')).toMatchObject({
-      out: 'hello',
-      keys: ['RTR', 'R0', 'LTM', 'LTM', 'RTM'],
-      presses: 5,
-    });
+  it('is taken for a letter of the base layer too: two taps on two fingers against one finger tapping twice', () => {
+    const t = trace(gust(), 'hello');
+    expect(t.out).toBe('hello');
+    expect(t.presses).toBe(6);
+    expect(t.keys.slice(0, 3)).toEqual(['RTR', 'R0', 'LTM']);
+    expect(ONE_SHOTS).toContain(t.keys[3]);
+    expect(t.keys[4]).toBe('L1');
+    expect(repeats(t)).toBe(1);
   });
 
-  it('is taken first where the layout declares the repeat key first', () => {
+  it('is taken the same where the layout declares the repeat key first', () => {
     const declared = gust({
       typingRules: { doubledLetters: [{ way: 'repeatKey' }, { way: 'tapTwice' }] },
     });
     const t = trace(declared, 'hello');
-    expect(t.out).toBe('hello');
     expect(t.presses).toBe(6);
-    expect(ONE_SHOTS).toContain(t.keys[3]);
-    expect(t.keys[4]).toBe('L1');
-    expect(repeats(t)).toBe(1);
+    expect(t.keys).toEqual(trace(gust(), 'hello').keys);
+  });
+
+  it('is left for tapping the letter again where the layout says to try that first', () => {
+    const declared = gust({
+      typingRules: { doubledLetters: [{ way: 'tapTwice' }, { way: 'repeatKey' }] },
+    });
+    expect(trace(declared, 'hello')).toMatchObject({
+      out: 'hello',
+      keys: ['RTR', 'R0', 'LTM', 'LTM', 'RTM'],
+      presses: 5,
+    });
   });
 
   it('is no way at all where the layout, or the options, tap twice', () => {
@@ -1303,30 +1312,196 @@ describe('a Repeat on a one-shot layer', () => {
     return (word: string) => trace(layout, word);
   };
 
-  it("considers Magic Gust's Repeats, two presses each, against tapping the letter again", () => {
-    const typed = firstRepeat(false);
-    // `z` on Alpha 2: its one-shot, then the Repeat on the same layer, as the second `z`.
-    const pizza = typed('pizza');
-    expect(pizza).toMatchObject({ out: 'pizza', presses: 7 });
-    expect(pizza.keys.slice(4, 6)).toEqual(['RBM', 'RBR']);
-    expect(repeats(pizza)).toBe(1);
-    // A letter on Alpha 1 is one press again, against two: it is tapped again.
-    const hello = typed('hello');
-    expect(hello).toMatchObject({ out: 'hello', presses: 5 });
-    expect(repeats(hello)).toBe(0);
+  it("takes Magic Gust's Repeat on either one-shot layer, two presses against one finger tapping twice, declared or not", () => {
+    for (const declared of [false, true]) {
+      const typed = firstRepeat(declared);
+      // `l` is on LTI: Alpha 2's Repeat, through RBM.
+      expect(typed('hello')).toMatchObject({
+        out: 'hello',
+        keys: ['RTR', 'R0', 'LTI', 'RBM', 'RBR', 'RHR'],
+        presses: 6,
+      });
+      // After `a` on RHM, Alpha 3's Repeat, through RBR: RBM there would be the middle finger twice.
+      expect(typed('all')).toMatchObject({ out: 'all', keys: ['RHM', 'LTI', 'RBR', 'RBM'] });
+      expect(repeats(typed('all'))).toBe(1);
+      // `z` on Alpha 2: its one-shot, then the Repeat on the same layer, as the second `z`.
+      const pizza = typed('pizza');
+      expect(pizza).toMatchObject({ out: 'pizza', presses: 7 });
+      expect(pizza.keys.slice(4, 6)).toEqual(['RBM', 'RBR']);
+      expect(repeats(pizza)).toBe(1);
+    }
+  });
+});
+
+describe('two taps on two fingers, against one finger tapping a key twice', () => {
+  const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+  const repeats = (t: ReturnType<typeof trace>) =>
+    t.steps.filter((s) => s.keyKind === 'repeat').length;
+  /**
+   * A 3x5+2 board shaped as the owner's Fusion: its letters on the base layer, and its Repeat on a
+   * second layer, which L1, a thumb, holds. The Repeat is a held key and a press, against the
+   * letter once more.
+   */
+  const fusion = (extra: Partial<Layout> = {}, bindings: Record<string, Binding> = {}): Layout => ({
+    format: 'layerbench/layout@1',
+    name: 'Repeat on a held layer',
+    hostLocale: 'symbols',
+    geometry: { preset: '3x5+2' },
+    keys: { space: 'L0' },
+    layers: [
+      {
+        id: 'base',
+        bindings: {
+          L0: kp(' '),
+          L1: { kind: 'mo', layer: 'second' },
+          LHM: kp('l'),
+          RHM: kp('e'),
+          RTM: kp('o'),
+        },
+      },
+      { id: 'second', bindings: { RHI: { kind: 'key_repeat' }, ...bindings } },
+    ],
+    ...extra,
+  });
+  const TAPPED = ['LHM', 'LHM'];
+  const REPEATED = ['LHM', 'L1', 'RHI'];
+
+  it('uses the Repeat key on a held layer for a doubled letter, though it is a press dearer', () => {
+    const t = trace(fusion(), 'll');
+    expect(t).toMatchObject({ out: 'll', keys: REPEATED, presses: 3 });
+    expect(repeats(t)).toBe(1);
+    // A doubled letter, and nothing else of the word.
+    const hello = trace(fusion(), 'hello');
+    expect(repeats(hello)).toBe(1);
   });
 
-  it("takes Magic Gust's Repeat on either one-shot layer where the repeat key is declared first", () => {
-    const typed = firstRepeat(true);
-    // `l` is on LTI: Alpha 2's Repeat, through RBM.
-    expect(typed('hello')).toMatchObject({
-      out: 'hello',
-      keys: ['RTR', 'R0', 'LTI', 'RBM', 'RBR', 'RHR'],
-      presses: 6,
+  it('uses it where the layout declares the repeat key first, as when it declares nothing', () => {
+    const first = fusion({ typingRules: { doubledLetters: [{ way: 'repeatKey' }] } });
+    expect(trace(first, 'll').keys).toEqual(REPEATED);
+  });
+
+  it('does not use it where the layout taps twice, or the options do', () => {
+    const taps = fusion({ repeatPolicy: { doubledLetters: 'tapTwice' } });
+    expect(trace(taps, 'll').keys).toEqual(TAPPED);
+    expect(trace(fusion(), 'll', { repeatPolicy: 'tap_twice' }).keys).toEqual(TAPPED);
+  });
+
+  it('does not use it where the rule has the repeat key off, or taps twice first', () => {
+    const off = fusion({
+      typingRules: { doubledLetters: [{ way: 'repeatKey', enabled: false }, { way: 'tapTwice' }] },
     });
-    // After `a` on RHM, Alpha 3's Repeat, through RBR: RBM there would be the middle finger twice.
-    expect(typed('all')).toMatchObject({ out: 'all', keys: ['RHM', 'LTI', 'RBR', 'RBM'] });
-    expect(repeats(typed('all'))).toBe(1);
+    expect(trace(off, 'll').keys).toEqual(TAPPED);
+    const tapsFirst = fusion({
+      typingRules: { doubledLetters: [{ way: 'tapTwice' }, { way: 'repeatKey' }] },
+    });
+    expect(trace(tapsFirst, 'll').keys).toEqual(TAPPED);
+  });
+
+  it('taps the letter again where the layout has no Repeat key', () => {
+    const none = fusion({}, { RHI: kp('x') });
+    expect(trace(none, 'll')).toMatchObject({ out: 'll', keys: TAPPED });
+  });
+
+  it('keeps the order set by hand for a letter, whatever the repeat key costs', () => {
+    const t = trace(fusion(), 'll', { typingPaths: { l: [{ producer: 'direct:base/LHM' }] } });
+    expect(t.keys).toEqual(TAPPED);
+  });
+
+  it('types a word with no doubled letter as it was, the Repeat never pressed', () => {
+    const t = trace(fusion(), 'lo');
+    expect(t).toMatchObject({ out: 'lo', keys: ['LHM', 'RTM'] });
+    expect(repeats(t)).toBe(0);
+  });
+
+  it('taps the key again for the third letter of three, not the Repeat key twice in a row', () => {
+    const base: Layout = {
+      ...fusion(),
+      layers: [
+        {
+          ...fusion().layers[0],
+          bindings: { ...fusion().layers[0].bindings, L1: { kind: 'key_repeat' } },
+        },
+      ],
+    };
+    // A Repeat on a thumb: pressing it again right after itself is a repeated tap too.
+    expect(trace(base, 'lll').keys).toEqual(['LHM', 'L1', 'LHM']);
+  });
+
+  describe('a Repeat on a layer that is not reached directly', () => {
+    /**
+     * The Repeat is on `third`. Thumb L1 holds `second`, and on `second` the thumb R0 holds `third`;
+     * with `direct`, the base layer has a hold on `third` of its own as well.
+     */
+    const behind = (direct: boolean, extra: Partial<Layout> = {}): Layout => {
+      const f = fusion();
+      return {
+        ...f,
+        layers: [
+          {
+            ...f.layers[0],
+            bindings: {
+              ...f.layers[0].bindings,
+              ...(direct ? { R0: { kind: 'mo' as const, layer: 'third' } } : {}),
+            },
+          },
+          { id: 'second', bindings: { R0: { kind: 'mo' as const, layer: 'third' } } },
+          { id: 'third', bindings: { RHI: { kind: 'key_repeat' as const } } },
+        ],
+        ...extra,
+      };
+    };
+
+    it('is used where a key of the layer the press is made on brings its layer on', () => {
+      const t = trace(behind(true), 'll');
+      expect(t).toMatchObject({ out: 'll', keys: ['LHM', 'R0', 'RHI'] });
+      expect(repeats(t)).toBe(1);
+    });
+
+    it('is ignored where its layer comes only by way of a third, and the letter is tapped again', () => {
+      const t = trace(behind(false), 'll');
+      expect(t).toMatchObject({ out: 'll', keys: TAPPED });
+      expect(repeats(t)).toBe(0);
+    });
+
+    it('is ignored there too where the layout declares the repeat key first', () => {
+      const declared = behind(false, { typingRules: { doubledLetters: [{ way: 'repeatKey' }] } });
+      expect(trace(declared, 'll').keys).toEqual(TAPPED);
+    });
+
+    it('is ignored where its layer comes on only as two others are held together', () => {
+      const f = fusion();
+      const both: Layout = {
+        ...f,
+        layers: [
+          {
+            ...f.layers[0],
+            bindings: { ...f.layers[0].bindings, R0: { kind: 'mo', layer: 'third' } },
+          },
+          { id: 'second', bindings: {} },
+          { id: 'third', bindings: {} },
+          { id: 'extras', bindings: { RHI: { kind: 'key_repeat' } } },
+        ],
+        conditionalLayers: [{ if: ['second', 'third'], then: 'extras' }],
+      };
+      expect(trace(both, 'll').keys).toEqual(TAPPED);
+    });
+  });
+
+  it('still takes one press over two for a character that is not typed again', () => {
+    // `z` is on a bottom row pinky, and on a second layer under a held thumb, on a home key: the
+    // one press is taken. Only a key tapped again for the same character weighs three.
+
+    const two: Layout = {
+      ...fusion(),
+      layers: [
+        {
+          ...fusion().layers[0],
+          bindings: { ...fusion().layers[0].bindings, LBP: kp('z') },
+        },
+        { id: 'second', bindings: { RHM: kp('z') } },
+      ],
+    };
+    expect(trace(two, 'z')).toMatchObject({ out: 'z', keys: ['LBP'] });
   });
 });
 

@@ -1253,8 +1253,8 @@ export function PathsPanel({
               onMove={moveWay('doubledLetters', rules.doubledLetters)}
             />
             <span className="lb-path-hint">
-              A letter twice in a row. Left alone, the cheaper way; set an order, and the first that
-              works.
+              A letter twice in a row. Left alone, the cheaper way, tapping the same key again
+              counting as three presses; set an order, and the first that works.
             </span>
           </div>
         </Slide>
