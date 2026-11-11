@@ -21,7 +21,7 @@ export function ProposedBadge({
       rel="noopener noreferrer"
       title={
         merged
-          ? 'Merged: it joins the Library when the app is updated, a few minutes after the merge; reload then. Its pull request'
+          ? 'Merged: it joins the Library when the app is updated, a quarter of an hour or so after the merge; reload then. Its pull request'
           : 'A change proposed to the Library: its pull request'
       }
     >

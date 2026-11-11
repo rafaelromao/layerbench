@@ -154,7 +154,7 @@ _Avoid_: simulation tables, registry, typing record
 Changes to a bundled or community layout, proposed for everyone by a pull request that names who
 sent them. They are saved meanwhile as a custom layout marked proposed, with the pull request kept
 beside it, under its id: merged and in the app that is open, the Library has the change and the copy
-goes; merged but not in that app yet (its deploy takes minutes), the copy stays, marked merged, and
+goes; merged but not in that app yet (its deploy takes a quarter of an hour or so; a community layout needs none), the copy stays, marked merged, and
 goes when the app is loaded again; closed, the copy stays a custom layout of its own.
 _Avoid_: suggestion, update request, patch
 

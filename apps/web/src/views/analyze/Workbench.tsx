@@ -180,7 +180,11 @@ export function Workbench({
   const customLayouts = useCollection('layouts');
   const storage = useStorage();
   /** The change proposed from this layout, while its pull request is open: tagged in the bar. */
-  const { url: proposalUrl, refresh: refreshProposals } = useProposalUrl(session.storedId);
+  const {
+    url: proposalUrl,
+    merged: proposalMerged,
+    refresh: refreshProposals,
+  } = useProposalUrl(session.storedId);
 
   // ------------------------------------------------------------------ what is analyzed
 
@@ -907,6 +911,7 @@ export function Workbench({
         onSubmit={submitted ? () => void submit() : undefined}
         copiesOnSave={session.storedId === null}
         proposal={proposalUrl ?? undefined}
+        proposalMerged={proposalMerged}
         // A custom layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
         onPick={pick}

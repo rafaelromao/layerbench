@@ -1802,8 +1802,11 @@ describe('changes proposed from this browser', () => {
   async function withProposal(
     state: 'open' | 'merged' | 'closed' | 'landing',
     storage = freshStorage(),
+    kind: 'bundled' | 'community' = 'bundled',
   ) {
-    if (state === 'landing') vi.stubEnv('VITE_BUILD_COMMIT', BUILD);
+    // A community layout's change needs no deploy, so the app is built from a commit to show that
+    // it asks nothing of it; GitHub would say this one is behind the merge.
+    if (state === 'landing' || kind === 'community') vi.stubEnv('VITE_BUILD_COMMIT', BUILD);
     // No bundled layout is listed. The Library draws and scores every layout it lists on the test's
     // thread, and settling a proposal goes through IndexedDB a turn of that thread at a time: with
     // every bundled layout listed too, under coverage on a busy runner, the toast came too late.
@@ -1811,7 +1814,7 @@ describe('changes proposed from this browser', () => {
     useSession.setState({ hiddenBoards: BUNDLED_BOARDS });
     await recordProposal(storage, 'plain', {
       name: 'Plain',
-      target: { kind: 'bundled', id: 'qwerty' },
+      target: { kind, id: 'qwerty' },
       url: PULL,
     });
     const real = globalThis.fetch;
@@ -1858,6 +1861,14 @@ describe('changes proposed from this browser', () => {
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['plain']);
     expect((await storage.list('proposals')).map((e) => e.id)).toEqual(['plain']);
     expect(useToasts.getState().toasts).toEqual([]);
+  });
+
+  it('go with their copy at once, whatever the app was built from, for a community layout', async () => {
+    // Community layouts are files the app reads when the Library opens: nothing is waiting for a deploy.
+    const storage = await withProposal('merged', freshStorage(), 'community');
+    await toastShown(/Your change to Plain was accepted/);
+    await waitFor(async () => expect(await storage.list('layouts')).toEqual([]));
+    expect(await storage.list('proposals')).toEqual([]);
   });
 
   it('go with their copy when it is deleted', async () => {

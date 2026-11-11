@@ -70,18 +70,18 @@ export async function proposalOf(storage: StorageAdapter, id: string): Promise<P
 /**
  * What a proposal's pull request is now; `unknown` when GitHub could not say. `landing` is merged,
  * but the app that is open was built before the merge: the Library's bundled layouts are the app's
- * own, so the change reaches them with the deploy that follows the merge, minutes later (the tests
- * of a push to main run first), and reaches this page when it is loaded again.
+ * own, so the change reaches them with the deploy that follows the merge, a quarter of an hour later
+ * (the tests of a push to main run first), and reaches this page when it is loaded again.
  */
 export type PullState = 'open' | 'merged' | 'landing' | 'closed' | 'unknown';
 
 /**
  * The commit the app that is open was built from, which the deploy sets (`VITE_BUILD_COMMIT`);
- * none for an app built anywhere else, which cannot say.
+ * empty for an app built anywhere else, which cannot say. A value that is no commit is returned as
+ * it is, so that it is not taken for that: `builtWith` cannot compare it, and the copy is kept.
  */
 export function buildCommit(): string {
-  const commit = import.meta.env.VITE_BUILD_COMMIT ?? '';
-  return /^[0-9a-f]{40}$/.test(commit) ? commit : '';
+  return (import.meta.env.VITE_BUILD_COMMIT ?? '').trim().toLowerCase();
 }
 
 const GITHUB = 'https://api.github.com/repos/rafaelromao/layerbench';
@@ -92,7 +92,7 @@ const SHA = /^[0-9a-f]{40}$/;
  * `identical` has it, `behind` or `diverged` does not); null when GitHub could not say.
  */
 async function builtWith(build: string, commit: string): Promise<boolean | null> {
-  if (!SHA.test(commit)) return null;
+  if (!SHA.test(build) || !SHA.test(commit)) return null;
   try {
     // One commit and one file a page: only the verdict is read, not the changes between them.
     const res = await fetch(`${GITHUB}/compare/${commit}...${build}?per_page=1`, {
@@ -109,10 +109,17 @@ async function builtWith(build: string, commit: string): Promise<boolean | null>
 
 /**
  * Read from GitHub, as anyone may for the public repository; any failure is `unknown`. A merged
- * pull request is `merged` for an app built from a commit that has the merge, `landing` for one
- * built before it, and for an app built from no commit, which cannot tell, `merged` at once.
+ * pull request to a bundled layout is `merged` for an app built from a commit that has the merge,
+ * `landing` for one built before it, and for an app built from no commit, which cannot tell,
+ * `merged` at once. One to a community layout is `merged` at once: its file is on the
+ * `layerbench-data` branch, which the app reads each time the Library opens, with no deploy, and
+ * whose commits the app's own are not in the history of.
  */
-export async function readPullState(url: string, build = buildCommit()): Promise<PullState> {
+export async function readPullState(
+  url: string,
+  kind: Proposal['target']['kind'] = 'bundled',
+  build = buildCommit(),
+): Promise<PullState> {
   const api = pullApi(url);
   if (!api) return 'unknown';
   try {
@@ -124,7 +131,7 @@ export async function readPullState(url: string, build = buildCommit()): Promise
       merge_commit_sha?: unknown;
     };
     if (pull.merged === true) {
-      if (!build) return 'merged';
+      if (kind === 'community' || !build) return 'merged';
       const has = await builtWith(build, String(pull.merge_commit_sha));
       return has === null ? 'unknown' : has ? 'merged' : 'landing';
     }
@@ -145,7 +152,7 @@ export async function readPullState(url: string, build = buildCommit()): Promise
  */
 export async function settleProposals(
   storage: StorageAdapter,
-  state: (url: string) => Promise<PullState> = readPullState,
+  state: (url: string, kind: Proposal['target']['kind']) => Promise<PullState> = readPullState,
 ): Promise<{ accepted: string[]; declined: string[]; landing: string[] }> {
   const accepted: string[] = [];
   const declined: string[] = [];
@@ -159,7 +166,7 @@ export async function settleProposals(
       continue;
     }
     if (!proposal.url) continue;
-    const now = await state(proposal.url);
+    const now = await state(proposal.url, proposal.target.kind);
     if (now === 'merged') {
       await storage.delete('layouts', entry.id);
       await storage.delete('proposals', entry.id);
@@ -194,12 +201,12 @@ export async function followProposal(
   from: string,
   to: string,
   send: (proposal: Proposal) => Promise<SubmitOutcome>,
-  state: (url: string) => Promise<PullState> = readPullState,
+  state: (url: string, kind: Proposal['target']['kind']) => Promise<PullState> = readPullState,
 ): Promise<Followed> {
   const proposal = await proposalOf(storage, from);
   if (!proposal) return { kind: 'none' };
   // One not sent yet, or whose send failed, is sent now.
-  const now = proposal.url ? await state(proposal.url) : 'unknown';
+  const now = proposal.url ? await state(proposal.url, proposal.target.kind) : 'unknown';
   if (now === 'merged' || now === 'landing' || now === 'closed') {
     await storage.delete('proposals', from);
     // Merged is merged here, whether or not this app has the change yet: the copy stays either way.

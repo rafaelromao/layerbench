@@ -38,6 +38,7 @@ export function LayoutBar({
   onSubmit,
   copiesOnSave,
   proposal,
+  proposalMerged,
   layoutRef,
   onPick,
   custom,
@@ -72,6 +73,8 @@ export function LayoutBar({
   copiesOnSave: boolean;
   /** The pull request of the change proposed from this custom layout, while it is open. */
   proposal?: string;
+  /** The change is merged, and this app, built before, does not have it yet. */
+  proposalMerged?: boolean;
   /** The layout the link names, for the picker. */
   layoutRef: string;
   onPick: (layoutRef: string) => void;
@@ -103,7 +106,7 @@ export function LayoutBar({
             if (name.trim()) onMeta({ name: name.trim() });
           }}
         />
-        {proposal && <ProposedBadge href={proposal} size="sm" />}
+        {proposal && <ProposedBadge href={proposal} size="sm" merged={proposalMerged} />}
         {dirty && (
           <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
         )}

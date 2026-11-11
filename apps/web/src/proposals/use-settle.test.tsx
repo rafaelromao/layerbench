@@ -65,6 +65,8 @@ describe('settling the proposals when the Library opens', () => {
     await waitFor(() =>
       expect(shown()).toEqual(['Your change to Colemak was accepted; your copy of it is gone']),
     );
+    // The lists are asked again, though it was the first storage that settled.
+    expect(settled).toHaveBeenCalledTimes(1);
   });
   it('waits for storage to be the one documents are kept in, and asks GitHub then', async () => {
     const storage = await holdingColemak();

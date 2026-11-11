@@ -70,6 +70,16 @@ describe('settling the proposals whose pull requests are done', () => {
     expect(await storage.list('proposals')).toEqual([]);
   });
 
+  it('asks about each pull request with the kind of layout it changes', async () => {
+    const storage = await withTwo();
+    const asked: string[] = [];
+    await settleProposals(storage, async (url, kind) => {
+      asked.push(`${url.split('/').pop()} ${kind}`);
+      return 'open';
+    });
+    expect(asked.sort()).toEqual(['100 bundled', '101 community']);
+  });
+
   it('forgets one whose copy was deleted, sent or not, and leaves one not sent yet', async () => {
     const storage = await withTwo();
     await storage.delete('layouts', 'colemak');
@@ -136,35 +146,51 @@ describe('a merged pull request and the app that reads it', () => {
   it('lands once this build carries the merge commit, and not before', async () => {
     for (const status of ['identical', 'ahead']) {
       github(MERGED, { body: { status } });
-      expect(await readPullState(COLEMAK.url, BUILD)).toBe('merged');
+      expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('merged');
     }
     // The build was made from main before the merge, or from another line of it.
     for (const status of ['behind', 'diverged']) {
       github(MERGED, { body: { status } });
-      expect(await readPullState(COLEMAK.url, BUILD)).toBe('landing');
+      expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('landing');
     }
   });
 
   it('asks nothing of a build that was not made from a commit, such as a local one', async () => {
     const asked = github(MERGED);
-    expect(await readPullState(COLEMAK.url, '')).toBe('merged');
+    expect(await readPullState(COLEMAK.url, 'bundled', '')).toBe('merged');
     expect(asked).toEqual([PULL_API]);
   });
 
   it('is unknown, and the copy kept, when GitHub cannot say which commits the build has', async () => {
     github(MERGED, { status: 403 });
-    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+    expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('unknown');
     github({ state: 'closed', merged: true });
-    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+    expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('unknown');
     github(MERGED, { body: { status: 'sideways' } });
-    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+    expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('unknown');
+  });
+
+  it('is merged at once for a community layout, whose file the app reads with no deploy', async () => {
+    // Its pull request is into the data branch, whose commits no build of main has in its history:
+    // the comparison would say diverged for ever, and the copy would never go.
+    const asked = github(MERGED, { body: { status: 'diverged' } });
+    expect(await readPullState(COLEMAK.url, 'community', BUILD)).toBe('merged');
+    expect(asked).toEqual([PULL_API]);
+  });
+
+  it('keeps the copy when the build commit is no commit, rather than taking it for a local build', async () => {
+    for (const build of ['abc123', `${'b'.repeat(39)}`, 'main']) {
+      const asked = github(MERGED, { body: { status: 'ahead' } });
+      expect(await readPullState(COLEMAK.url, 'bundled', build)).toBe('unknown');
+      expect(asked).toEqual([PULL_API]);
+    }
   });
 
   it('is asked about only a pull request that is merged', async () => {
     const asked = github({ state: 'closed', merged: false });
-    expect(await readPullState(COLEMAK.url, BUILD)).toBe('closed');
+    expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('closed');
     github({ state: 'open', merged: false });
-    expect(await readPullState(COLEMAK.url, BUILD)).toBe('open');
+    expect(await readPullState(COLEMAK.url, 'bundled', BUILD)).toBe('open');
     expect(asked).toEqual([PULL_API]);
   });
 });

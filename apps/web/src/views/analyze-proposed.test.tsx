@@ -8,15 +8,25 @@ import { renderRoute } from '../test/render.js';
 const PULL_API = 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100';
 
 /** What GitHub answers about the pull request: its state, or nothing at all; and each time asked. */
-function pullIs(state: 'open' | 'merged' | 'closed' | 'unreachable') {
+function pullIs(state: 'open' | 'merged' | 'landing' | 'closed' | 'unreachable') {
   const asked = vi.fn();
   const real = globalThis.fetch;
+  // Landing is merged with the app built before the merge: GitHub says the build is behind it.
+  if (state === 'landing') vi.stubEnv('VITE_BUILD_COMMIT', 'b'.repeat(40));
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
-    if (String(input) !== PULL_API) return real(input, init);
+    const url = String(input);
+    if (url.startsWith('https://api.github.com/repos/rafaelromao/layerbench/compare/')) {
+      return new Response(JSON.stringify({ status: 'behind' }));
+    }
+    if (url !== PULL_API) return real(input, init);
     asked();
     if (state === 'unreachable') throw new TypeError('offline');
     return new Response(
-      JSON.stringify({ state: state === 'open' ? 'open' : 'closed', merged: state === 'merged' }),
+      JSON.stringify({
+        state: state === 'open' ? 'open' : 'closed',
+        merged: state === 'merged' || state === 'landing',
+        merge_commit_sha: 'a'.repeat(40),
+      }),
     );
   });
   return asked;
@@ -41,7 +51,10 @@ async function openPlain(proposal: { url: string | null } | null) {
 const tag = () => within(bar()).queryByRole('link', { name: 'proposed' });
 
 describe('the tag of a proposed change, on Analyze', () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
 
   it('is beside the name of a custom layout a change was proposed from, linked to its pull request', async () => {
     pullIs('open');
@@ -49,6 +62,14 @@ describe('the tag of a proposed change, on Analyze', () => {
     const badge = await within(bar()).findByRole('link', { name: 'proposed' });
     expect(badge).toHaveAttribute('href', PULL);
     expect(badge).toHaveAttribute('title', 'A change proposed to the Library: its pull request');
+  });
+
+  it('reads merged while the app that is open has not got the change yet', async () => {
+    pullIs('landing');
+    await openPlain({ url: PULL });
+    const badge = await within(bar()).findByRole('link', { name: 'merged' });
+    expect(badge).toHaveAttribute('href', PULL);
+    expect(tag()).toBeNull();
   });
 
   it('is not on a custom layout no change was proposed from, nor on one not sent yet', async () => {
