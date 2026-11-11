@@ -26,6 +26,7 @@ import {
   useState,
 } from 'react';
 import { proposeChange } from '../../auth/github-session.js';
+import { readCommunityOnce, useCommunity } from '../../community/community.js';
 import { Board } from '../../components/Board.js';
 import { Collapsible } from '../../components/Collapsible.js';
 import { ErrorAlert } from '../../components/ErrorAlert.js';
@@ -57,6 +58,8 @@ import { HELP, type HelpTopic, rulerShown } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
 import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
+import { libraryLayoutNamed } from '../../proposals/target.js';
+import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
@@ -169,6 +172,8 @@ export function Workbench({
   /** The custom layouts, for the picker; read again after each save. */
   const customLayouts = useCollection('layouts');
   const storage = useStorage();
+  /** The change proposed from this layout, while its pull request is open: tagged in the bar. */
+  const { url: proposalUrl, refresh: refreshProposals } = useProposalUrl(session.storedId);
 
   // ------------------------------------------------------------------ what is analyzed
 
@@ -350,6 +355,8 @@ export function Workbench({
                 toCanonicalJson({ ...layout, id: proposal.target.id, name: proposal.name }),
               ),
             ).catch(() => null);
+      // The proposal moved with a rename, or was sent again, settled or refused: the tag reads it.
+      if (followed && followed.kind !== 'none') refreshProposals();
       if (followed?.kind === 'sent') {
         const to = followed.proposal.name;
         if (followed.outcome.kind === 'sent')
@@ -368,15 +375,23 @@ export function Workbench({
         );
       }
     },
-    [state.layout, session.save, session.storedId, customLayouts.refresh, storage],
+    [
+      state.layout,
+      session.save,
+      session.storedId,
+      customLayouts.refresh,
+      refreshProposals,
+      storage,
+    ],
   );
 
   // Save on a bundled or community layout asks first: propose the change, or save a copy. The
-  // layout it was is kept for the dialog, as saving makes it a custom layout of its own.
-  const [choosing, setChoosing] = useState<LayoutSource | null>(null);
+  // layout it was is kept for the dialog, as saving makes it a custom layout of its own. Submit on a
+  // custom layout that goes by the name of one the Library has asks to propose it too, `own`.
+  const [choosing, setChoosing] = useState<{ source: LayoutSource; own: boolean } | null>(null);
   const propose = useCallback(
     async (copy?: CopyName): Promise<ProposeOutcome> => {
-      const source = choosing;
+      const source = choosing?.source;
       const layout = state.layout;
       if (!source) return { kind: 'failed', error: 'this layout is not one of the Library' };
       // The Library never lists two layouts under one name, so CI would refuse it.
@@ -409,21 +424,23 @@ export function Workbench({
       );
       void customLayouts.refresh();
       // Kept before it is sent, so a send that fails is tried again by the copy's next save.
-      const proposal = { name: layout.name, target: source, url: null };
-      await recordProposal(storage, saved.id, proposal);
+      const proposed = { name: layout.name, target: source, url: null };
+      await recordProposal(storage, saved.id, proposed);
       const sent = await proposeChange(source, toCanonicalJson({ ...layout, id: source.id }));
       if (sent.kind === 'refused') {
         // What the sign-in server refuses it would refuse again: the copy is a layout of one's own.
         await forgetProposal(storage, saved.id).catch(() => false);
+        refreshProposals();
         return { kind: 'refused', reason: `${sent.reason}. Your copy is saved among your layouts` };
       }
       if (sent.kind === 'sent') {
-        await recordProposal(storage, saved.id, { ...proposal, url: sent.url });
+        await recordProposal(storage, saved.id, { ...proposed, url: sent.url });
         void customLayouts.refresh();
       }
+      refreshProposals();
       return sent;
     },
-    [choosing, session.save, state.layout, storage, customLayouts.refresh],
+    [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals],
   );
 
   // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
@@ -446,12 +463,20 @@ export function Workbench({
   const copying = session.storedId === null;
   const save = useCallback(() => {
     if (session.storedId !== null) void store();
-    else if (session.source) setChoosing(session.source);
+    else if (session.source) setChoosing({ source: session.source, own: false });
     else setNaming({ taken: null, overwrite: true });
   }, [session.storedId, session.source, store]);
 
-  // Submit proposes the custom layout under the id it is stored by, which names its file.
+  // Submit proposes the custom layout under the id it is stored by, which names its file. Where the
+  // Library has a layout by the layout's name, a new one would be refused, and what is left is a
+  // change to propose again: a closed one leaves its copy as one's own layout, and Save sends nothing.
   const [submitting, setSubmitting] = useState(false);
+  const submit = useCallback(async () => {
+    await readCommunityOnce().catch(() => {});
+    const source = libraryLayoutNamed(state.layout.name, useCommunity.getState().layouts);
+    if (source) setChoosing({ source, own: true });
+    else setSubmitting(true);
+  }, [state.layout.name]);
   const submitted = useMemo(
     () => (session.storedId === null ? null : { ...state.layout, id: session.storedId }),
     [state.layout, session.storedId],
@@ -858,8 +883,9 @@ export function Workbench({
         onMeasureLanguages={measureLanguages}
         onSave={save}
         onCancel={state.dirty && state.saved !== null ? discard : undefined}
-        onSubmit={submitted ? () => setSubmitting(true) : undefined}
+        onSubmit={submitted ? () => void submit() : undefined}
         copiesOnSave={session.storedId === null}
+        proposal={proposalUrl ?? undefined}
         // A custom layout is picked as itself, whatever its link carries.
         layoutRef={session.pickedRef}
         onPick={pick}
@@ -879,7 +905,8 @@ export function Workbench({
       {choosing && (
         <ProposeDialog
           layout={state.layout}
-          source={choosing}
+          source={choosing.source}
+          own={choosing.own}
           propose={propose}
           copyName={copyName}
           taken={(name) => nameTaken(customLayouts.entries, name, null)}

@@ -55,19 +55,21 @@ layout, proposes your edits to that layout itself, for everyone. Sign in with Gi
 dialog asks you to if you have not, as the pull request names you, and **Save a copy** still works
 meanwhile. Proposing saves the layout here, under its name, like any custom layout, and opens a
 public pull request on [layerbench](https://github.com/rafaelromao/layerbench) with the layout as it
-is now; the dialog gives its link. In **Library**, your copy is marked *proposed*, linked to the
-pull request. If one of your custom layouts has the name already, such as the copy of a change you
-proposed before, the dialog asks what to call this copy, or offers to overwrite that one; the pull
-request still proposes the layout under its own name. A layout that comes with the app cannot be
-proposed under another one's name, nor one that names no author. You can have five changes
-proposed and open at once.
+is now; the dialog gives its link. In **Library**, and in the bar of **Analyze** while your copy is
+open there, it is marked *proposed*, linked to the pull request. If one of your custom layouts has
+the name already, such as the copy of a change you proposed before, the dialog asks what to call
+this copy, or offers to overwrite that one; the pull request still proposes the layout under its
+own name. A layout that comes with the app cannot be proposed under another one's name, nor one
+that names no author. You can have five changes proposed and open at once.
 
 Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
 version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
 the change is in the Library, for a layout that comes with the app with the next version of the
 app, and your copy goes. If it is closed instead, your copy stays one of your custom layouts.
 **Library** checks each time it opens, and says which happened; so does **Save** on your copy, which
-then keeps it as you saved it and sends nothing.
+then keeps it as you saved it and sends nothing. To propose the change again, click **Submit** on
+the copy: while it goes by the name of the layout it was proposed to, Submit offers **Propose
+change** to that layout, bundled or community, where it would otherwise submit a new layout.
 
 ### A name another layout has
 
@@ -331,9 +333,11 @@ comes from is welcome, not needed.
 4. Otherwise it asks before it opens the pull request, which is public. It then gives you the pull
    request's link, where the maintainer may ask for changes.
 
-Submitting the same layout again while its pull request is open updates that pull request with the
-layout as it is now, rather than opening another. Once the pull request is merged, the layout is a
-community layout. Your own copy stays one of your custom layouts.
+A custom layout that goes by the name of a bundled or community layout is not a new layout:
+**Submit** on it opens **Propose change** to that layout instead, as **Save** does on the layout
+itself. Submitting the same layout again while its pull request is open updates that pull request
+with the layout as it is now, rather than opening another. Once the pull request is merged, the
+layout is a community layout. Your own copy stays one of your custom layouts.
 
 ### Bundled with the app
 

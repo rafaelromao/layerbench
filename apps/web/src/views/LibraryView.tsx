@@ -56,6 +56,7 @@ import {
   useSummaries,
 } from '../engine/use-summaries.js';
 import { HELP, type HelpTopic, rulerHelp } from '../guide/help.js';
+import { ProposedBadge } from '../proposals/ProposedBadge.js';
 import { forgetProposal, proposalOf, settleProposals } from '../proposals/proposals.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
@@ -349,17 +350,7 @@ function LayoutCard({
               {item.community && (
                 <span className="badge badge-outline badge-secondary badge-xs">community</span>
               )}
-              {proposal && (
-                <a
-                  className="badge badge-outline badge-accent badge-xs"
-                  href={proposal}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="A change proposed to the Library: its pull request"
-                >
-                  proposed
-                </a>
-              )}
+              {proposal && <ProposedBadge href={proposal} />}
               {item.category && (
                 <span className="lb-category badge badge-ghost badge-xs">
                   {CATEGORY_NAMES[item.category]}
