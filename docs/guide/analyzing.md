@@ -160,7 +160,11 @@ by the wrong key counts as wasted.
 When a character can be typed more than one way, it takes the fewest presses, then the way that
 leaves no layer key held, then the one that makes the fewest same-finger pairs with the keys before
 it in the word, then the one with less effort on cyanophage's grid, where a thumb is free, so what
-is typed never depends on what a thumb costs. When several keys reach a layer the same way, each
+is typed never depends on what a thumb costs. Where the layout has a Repeat key, a letter typed
+again by tapping the same key again counts as three presses: one finger tapping a key twice is worse
+than two taps on two fingers, so the Repeat key is used for a doubled letter even where it takes two
+presses, a layer key and Repeat, as long as its layer is one key away: a Repeat behind a third layer
+is not used. Without one, or with doubled letters set to tap twice, nothing changes. When several keys reach a layer the same way, each
 word is typed with the one that makes it the fewest same-finger pairs, so the key tapped for a
 layer can change from word to word, as **How is this typed?** shows.
 

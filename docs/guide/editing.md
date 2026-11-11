@@ -465,15 +465,23 @@ keeps the page where it is, at either end too:
   **Tap twice**, tapping its key again. Both ways of each are on. The one marked is the one the
   analysis uses: the first that is on and that some key of the layout gives; a way no key gives says
   so and is passed over. Left alone, a capital takes the cheapest key that gives Shift, held or
-  tapped, and a doubled letter the cheaper of the repeat key and tapping twice, a Repeat on a
-  one-shot layer counting the press that reaches it; so **Shift kind**, where keys both tap and
+  tapped, and a doubled letter the cheaper of the repeat key and tapping twice, tapping the same key
+  again counting as three presses and a Repeat on a layer counting the press that reaches it; so
+  **Shift kind**, where keys both tap and
   hold Shift, and **Doubled letters** mark no way until you set them. Once you move or turn off a
   way, the order you set is the rule: a capital takes the cheapest key of the first way in that
-  order that some key gives, and a doubled letter the first way that works. A Repeat on a one-shot
-  layer is two presses, the layer key and Repeat: left alone it is used where that is the cheapest
-  way, as for a letter that is on a one-shot layer too, and loses to tapping a base layer letter
-  again, one press; with **Repeat key** first it is used for every doubled letter. A character with a
-  path of its own keeps it for its doubled letter. One way always stays on: the last that some key
+  order that some key gives, and a doubled letter the first way that works. A Repeat on a layer is
+  two presses, the layer key and Repeat: left alone it is used for a doubled letter even though
+  tapping the letter again is one press, since one finger tapping a key twice counts as three and
+  two taps on two fingers are better. That is the same key pressed twice in a row: a Shift or a
+  layer key between the two taps is no repeated tap, and the Repeat key is not pressed twice in a
+  row, so a third letter of three is tapped again. Where the Repeat takes three presses the layer
+  keys left held and then the effort decide. With **Repeat key** first it is used for every
+  doubled letter. Either way a Repeat is used only where its layer is reached directly: by a key
+  on a layer that is already on, a hold, a one-shot or a toggle. A Repeat behind a third layer, or
+  on a layer that comes on only as two others are held together, is no way to type, and the
+  letter is tapped again. Where the layout has no Repeat key, or doubled letters are set to tap
+  twice, nothing changes. A character with a path of its own keeps it for its doubled letter. One way always stays on: the last that some key
   gives.
 - **Configuration** has the board itself, in cards: the **preset** and the **keys** of the board,
   and then two cards for how the layout's one-shots end, **One-shot layers** and **One-shot keys**:
