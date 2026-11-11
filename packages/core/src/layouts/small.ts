@@ -369,30 +369,6 @@ const STURDY_COMBOS: ComboDef[] = [
 
 // ---------------------------------------------------------------- Enthium
 
-/**
- * The Symbol and Number layers of Suraj Kurapati's Glorious Engrammer keymap, where Enthium's README
- * sends a columnar board (`keymap.json` of github.com/sunaku/glove80-keymaps), on the forty-two
- * keys. His Glove80's thumb keys nearest the thumb are the inner ones here: `r` holds Symbol, Tab
- * Number. Its number row and the row under the letters, where Symbol has `(` `)` and `&`, are past
- * these keys, and so are its World and Emoji layers.
- */
-const ENTHIUM_SYMBOLS = drawn(
-  '3x6+3',
-  [
-    '! [ { } ] ? . ∅ ∅ ∅ ∅ ∅',
-    '# ^ = _ $ * , ∅ ∅ space ∅ ```',
-    '~ < | - > / ; " \' ` \\ ▽',
-    '@ : % ∅ ∅ ∅',
-  ],
-  { '```': macro('```') },
-);
-const ENTHIUM_NUMBERS = drawn('3x6+3', [
-  '∅ ∅ space ∅ ∅ 0 G 7 8 9 : %',
-  '∅ ∅ ∅ ∅ ∅ x k 4 5 6 - +',
-  'e ∅ ∅ ∅ ∅ f j 1 2 3 / *',
-  '∅ ∅ ∅ 0 . >',
-]);
-
 // ---------------------------------------------------------------- Hands Down
 
 /**
@@ -966,24 +942,6 @@ export const SMALL_DEFS: ClassicDef[] = [
       "Magic Sturdy: an adaptive key in the letter block and a repeat key on a thumb, and its keymap's Symbols and Numbers. Its rules are the ones that type letters.",
     link: 'https://github.com/getreuer/qmk-keymap',
     note: 'Letters and layers from getreuer.c.',
-  },
-  {
-    id: 'enthium',
-    name: 'Enthium',
-    author: 'Suraj N. Kurapati (sunaku)',
-    geometry: '3x6+3',
-    rows: "∅ q y o u = x l d p z ∅\nb c i a e - k h t n s w\n∅ ' , . ; / j m g f v ∅",
-    thumbs: '∅ tab space r bspc ∅',
-    special: { ...COMMON, tab: TRANSPARENT },
-    layers: [
-      { id: 'num', name: 'Numbers', byKey: ENTHIUM_NUMBERS },
-      { id: 'sym', name: 'Symbols', byKey: ENTHIUM_SYMBOLS },
-    ],
-    holds: { L1: 'num', R0: 'sym' },
-    description:
-      "Enthium v14: r on the right thumb, b and w on the outer pinky keys, so a forty-two-key board, and its author's Symbols and Numbers.",
-    link: 'https://github.com/sunaku/enthium',
-    note: "Letters from layout.json, layers from the author's keymap the README points to, https://github.com/sunaku/glove80-keymaps.",
   },
   {
     id: 'nordrassil',
