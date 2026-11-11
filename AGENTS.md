@@ -30,9 +30,12 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   with Numbers or Symbols, `TYPES` for one with neither, and by language `LACKS`) for a layout
   written in code. A change proposed from the app turns one into a document (README → Bundled
   layouts) and its file is what is reviewed then: nothing of it is pinned any more, for the edit the
-  app offers is one that types a key more, and the tables name a layout once, written in code or
-  not, so that change leaves the tests passing. Tests of the engine take their examples from
-  fixtures, never from another bundled layout's keys, which a change may move. Keys that type
+  app offers is one that types a key more, and the lists and tables of the tests name a layout once,
+  written in code or not, so that change leaves them passing. Tests of the engine take their
+  examples from fixtures (`fixtures/boards.ts`, and Qwerty built from its definition in the test,
+  `apps/web/src/test/qwerty.ts`) rather than from the keys of a bundled layout, which a change may
+  move; the golden set (Qwerty, Romak, Magic Romak) is the exception, as the reports pin it.
+  Keys that type
   nothing the analysis counts, holds onto layers that type nothing, a toggle to a layer a hold
   reaches too, modifiers held on a layer's keys and dead keys the analysis cannot compose stay out. Their layers count toward their category, as any layer of their own
   (`hasDefaultLayers` in `templates.ts`): Hands Down's three are Special by the `z` and `q` on their
