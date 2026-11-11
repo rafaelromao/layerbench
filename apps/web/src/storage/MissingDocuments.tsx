@@ -163,7 +163,7 @@ export function MissingDocuments() {
     <ul
       ref={list}
       aria-label="Documents saved in this browser that are not in your GitHub account"
-      className="max-h-44 w-full overflow-y-auto"
+      className="max-h-36 w-full overflow-y-auto sm:max-h-44"
     >
       {missing.map((document, at) => (
         <Row

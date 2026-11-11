@@ -102,7 +102,7 @@ describe('the status that says the account lacks documents', () => {
     ]);
     await shown(many);
     expect(within(list()).getAllByRole('listitem')).toHaveLength(12);
-    expect(list()).toHaveClass('overflow-y-auto', 'max-h-44');
+    expect(list()).toHaveClass('overflow-y-auto', 'max-h-36', 'sm:max-h-44');
   });
 
   it('says which it held once, and says nothing of a reason it cannot know', async () => {
