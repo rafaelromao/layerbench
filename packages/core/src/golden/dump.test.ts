@@ -1,9 +1,16 @@
-import { mkdirSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
-import { deflateSync } from 'node:zlib';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { describe, it } from 'vitest';
 import { toCanonicalJson } from '../layout/json.js';
 import { bundledLayout, documentedLayout } from '../layouts/index.js';
 import { goldenDocuments } from './documents.js';
+import { inlineBlob } from './inline-blob.js';
 import { goldenPath } from './paths.js';
 import { buildGoldenReport, goldenMatrix, goldenName } from './report.js';
 
@@ -45,14 +52,14 @@ describe.skipIf(!WRITE)('golden dump (GOLDENS=1)', () => {
       if (f.endsWith('.json') && !expected.has(f)) unlinkSync(goldenPath(f));
     }
 
-    // The share-link blob: `?layout=inline:…` round-trips through this exact framing.
+    // The share-link blob: `?layout=inline:…` round-trips through this exact framing. A file that
+    // holds the same text is left as it is: another Node's zlib writes other bytes for it.
     const magic = bundledLayout('magic-romak');
     if (magic) {
+      const path = goldenPath('inline-magic-romak.txt');
       const encoded = JSON.stringify(toCanonicalJson(magic));
-      writeFileSync(
-        goldenPath('inline-magic-romak.txt'),
-        deflateSync(Buffer.from(encoded, 'utf8')).toString('base64url'),
-      );
+      const existing = existsSync(path) ? readFileSync(path, 'utf8') : null;
+      writeFileSync(path, inlineBlob(existing, encoded));
     }
   }, 300_000);
 });
