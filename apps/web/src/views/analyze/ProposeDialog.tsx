@@ -27,6 +27,10 @@ type Step = { kind: 'choose' } | { kind: 'sending' } | ProposeOutcome;
  * is merged or closed; where a custom layout has its name, the copy is asked another, or to
  * replace that one, and the pull request keeps the name. Signed out, it asks to sign in first, and
  * Save a copy still works. Mount it while it is open, as `NameDialog` is.
+ *
+ * Submit opens it too for a custom layout that goes by the name of one the Library has (`own`):
+ * what is left of a change proposed and closed. There is no copy to make then, the layout being
+ * one's own already, and it is proposed again.
  */
 export function ProposeDialog({
   layout,
@@ -35,6 +39,7 @@ export function ProposeDialog({
   copyName,
   taken,
   onCopy,
+  own = false,
   onClose,
 }: {
   layout: Layout;
@@ -47,6 +52,8 @@ export function ProposeDialog({
   taken: (name: string) => TakenLayout | null;
   /** Save a copy instead, under a name of its own. */
   onCopy: () => void;
+  /** The layout is one of the user's custom layouts already: nothing to copy, and it is Submit's. */
+  own?: boolean;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -85,12 +92,12 @@ export function ProposeDialog({
       >
         <div className="modal-box max-w-md space-y-3">
           <h2 id={titleId} className="font-semibold text-base">
-            Save {layout.name}
+            {own ? 'Propose' : 'Save'} {layout.name}
           </h2>
           <p className="text-xs opacity-70">
-            {layout.name} is one of {where}. Propose your change to it, by a pull request on GitHub,
-            or save a copy of your own. A proposal is saved here too, until its pull request is
-            merged or closed.
+            {own
+              ? `${layout.name} is one of ${where}. Propose this layout as a change to it, by a pull request on GitHub: one still open gets this version, and one closed is opened again. It is saved first, with any changes not saved yet, and stays among your custom layouts until the pull request is merged or closed.`
+              : `${layout.name} is one of ${where}. Propose your change to it, by a pull request on GitHub, or save a copy of your own. A proposal is saved here too, until its pull request is merged or closed.`}
           </p>
           <Body step={step} login={login} />
           {step.kind === 'choose' && status === 'signed-out' && (
@@ -111,9 +118,19 @@ export function ProposeDialog({
           <div className="modal-action">
             {step.kind === 'choose' && (
               <>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
-                  Save a copy
-                </button>
+                {own ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => dialog.current?.close()}
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={copy}>
+                    Save a copy
+                  </button>
+                )}
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"

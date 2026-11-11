@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getGeometryPreset } from '../geometry/presets.js';
-import { BUNDLED_LAYOUTS, bundledLayout, withNewLayoutDefaults } from '../layouts/index.js';
+import { bundledLayout, goldenLayouts, withNewLayoutDefaults } from '../layouts/index.js';
 import { DEFAULT_LAYER_ID_LIST, DEFAULT_LAYER_IDS } from '../layouts/templates.js';
 import {
   alphaLayers,
@@ -14,6 +14,17 @@ import { buildGeometry } from './compile.js';
 import type { Binding, Layout } from './types.js';
 
 const kp = (symbol: string): Binding => ({ kind: 'kp', symbol });
+
+/**
+ * Qwerty with the default layers but Accents, which leaves its Numbers and Symbols its own, as an
+ * author's are, after `edit` changes them by id.
+ */
+function withOwn(edit: (layers: Record<string, Layout['layers'][number]>) => void): Layout {
+  const l = qwerty();
+  const own = { ...l, layers: l.layers.filter((x) => x.id !== DEFAULT_LAYER_IDS.accents) };
+  edit(Object.fromEntries(own.layers.map((x) => [x.id, x])));
+  return own;
+}
 
 /** Qwerty as a user would copy it and give the default layers. */
 function qwerty(): Layout {
@@ -67,19 +78,25 @@ const EXPECTED: Record<LayoutCategory, string[]> = {
 };
 
 describe('the bundled layouts', () => {
-  it('each fall in the category the rules give', () => {
-    // Those the list names and the Library still has: a Library request may delete one, or add one
-    // the list does not name yet, on its branch.
+  // The list pins the design of each layout written in code. A layout a change proposed in the app
+  // made a document is its file, whose category follows the rules from what it has, so a change
+  // that edits what makes it Special, or deletes it, leaves the list as it is, and nothing fails.
+  const written = goldenLayouts();
+
+  it('each fall in the category the rules give, those written in code', () => {
     const named = new Set(Object.values(EXPECTED).flat());
     const got: Record<LayoutCategory, string[]> = { special: [], thumb_alpha: [], standard: [] };
-    for (const l of BUNDLED_LAYOUTS) {
+    for (const l of written) {
       if (named.has(l.id ?? '')) got[layoutCategory(l)].push(l.id ?? l.name);
     }
-    const has = new Set(BUNDLED_LAYOUTS.map((l) => l.id));
+    const ids = new Set(written.map((l) => l.id));
     for (const c of Object.keys(EXPECTED) as LayoutCategory[])
-      expect(got[c].sort()).toEqual(EXPECTED[c].filter((id) => has.has(id)).sort());
-    // Nearly all of them: the list is not left behind.
-    expect(BUNDLED_LAYOUTS.filter((l) => named.has(l.id ?? '')).length).toBeGreaterThan(30);
+      expect(got[c].sort()).toEqual(EXPECTED[c].filter((id) => ids.has(id)).sort());
+  });
+
+  it('are all in the list, those written in code: a new one is placed in a category here', () => {
+    const named = new Set(Object.values(EXPECTED).flat());
+    expect(written.filter((l) => !named.has(l.id ?? '')).map((l) => l.id)).toEqual([]);
   });
 });
 
@@ -304,14 +321,29 @@ describe('a custom copy of Qwerty', () => {
       { feature: 'macro', layer: 'num', key: 'RHI', label: 'Macro “xyz”' },
     ]);
     expect(layoutCategory(own)).toBe('special');
-    expect(specialFeatures(bundledLayout('enthium') as Layout).map((f) => f.label)).toEqual([
-      'Macro “```”',
-    ]);
-    // Their authors' layers give each a second alpha layer too: Hands Down's Symbols has `z` and
-    // `q`, Enthium's Numbers letters.
-    for (const id of ['hands-down-gold', 'hands-down-promethium', 'hands-down-vibranium'])
-      expect([id, alphaLayers(bundledLayout(id) as Layout)]).toEqual([id, ['base', 'sym']]);
-    expect(alphaLayers(bundledLayout('enthium') as Layout)).toEqual(['base', 'num']);
+  });
+
+  // What some authors' layers have, built here: a change proposed in the app moves a bundled
+  // layout's keys, and these are tests of the rules, not of those layouts.
+  it('reads a macro of three backticks on its own Symbols by its text', () => {
+    const l = withOwn((layers) => {
+      layers[DEFAULT_LAYER_IDS.symbols].bindings.RHI = { kind: 'macro', symbols: '```' };
+    });
+    expect(specialFeatures(l).map((f) => f.label)).toEqual(['Macro “```”']);
+  });
+
+  it('counts a second alpha layer where its own Numbers or Symbols type letters', () => {
+    const onNumbers = withOwn((layers) => {
+      layers[DEFAULT_LAYER_IDS.numbers].bindings.RHM = kp('e');
+    });
+    expect(alphaLayers(onNumbers)).toEqual(['base', 'num']);
+    expect(layoutCategory(onNumbers)).toBe('special');
+    const onSymbols = withOwn((layers) => {
+      layers[DEFAULT_LAYER_IDS.symbols].bindings.LHI = kp('z');
+      layers[DEFAULT_LAYER_IDS.symbols].bindings.LHM = kp('q');
+    });
+    expect(alphaLayers(onSymbols)).toEqual(['base', 'sym']);
+    expect(layoutCategory(onSymbols)).toBe('special');
   });
 
   it('is Thumb Alpha once a thumb types a letter, through a tap-hold too', () => {

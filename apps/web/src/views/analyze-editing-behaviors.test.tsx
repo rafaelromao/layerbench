@@ -1,4 +1,4 @@
-import { CLASSIC_LAYOUTS, type Layout } from '@layerbench/core';
+import type { Layout } from '@layerbench/core';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,6 +14,7 @@ import {
 } from '../test/analyze-editing.js';
 import { keyNamed, withoutShare } from '../test/keys.js';
 import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
+import { qwertyAsWritten } from '../test/qwerty.js';
 import { customInLink, renderRoute } from '../test/render.js';
 
 describe('Edit', () => {
@@ -425,7 +426,7 @@ async function openPlain(): Promise<void> {
   // Every bundled layout reaches the accents, through Accents or Magic Romak's dead keys; Qwerty as
   // written does not.
   const storage = freshStorage();
-  const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+  const plain = qwertyAsWritten();
   await seed(storage, 'qwerty', 'plain', { name: 'Plain', layers: plain.layers });
   renderRoute('/analyze?layout=custom%3Aplain&corpus=pt-br-general&sample=20000', { storage });
   await screen.findByRole('list', { name: 'Missing keys' }, { timeout: 25_000 });

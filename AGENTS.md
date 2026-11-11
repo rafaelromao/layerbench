@@ -39,7 +39,15 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   and accents in `combos`; `drawn` in `small.ts` lays a layer out as the author draws it. Copy only
   what the keymap types, on the keys the board has: what the author's design lacks, the layout
   cannot type, left for an edit in the app, and `templates.test.ts` pins it (`UNTYPED` for a layout
-  with Numbers or Symbols, `TYPES` for one with neither, and by language `LACKS`). Keys that type
+  with Numbers or Symbols, `TYPES` for one with neither, and by language `LACKS`) for a layout
+  written in code. A change proposed from the app turns one into a document (README → Bundled
+  layouts) and its file is what is reviewed then: nothing of it is pinned any more, for the edit the
+  app offers is one that types a key more, and the lists and tables of the tests name a layout once,
+  written in code or not, so that change leaves them passing. Tests of the engine take their
+  examples from fixtures (`fixtures/boards.ts`, and Qwerty built from its definition in the test,
+  `apps/web/src/test/qwerty.ts`) rather than from the keys of a bundled layout, which a change may
+  move; the golden set (Qwerty, Romak, Magic Romak) is the exception, as the reports pin it.
+  Keys that type
   nothing the analysis counts, holds onto layers that type nothing, a toggle to a layer a hold
   reaches too, modifiers held on a layer's keys and dead keys the analysis cannot compose stay out. Their layers count toward their category, as any layer of their own
   (`hasDefaultLayers` in `templates.ts`): Hands Down's three are Special by the `z` and `q` on their
@@ -91,7 +99,8 @@ rule here moves a key, and keep `templates.test.ts` asserting each rule.
   English; the editor and Measure
   languages read the list as written. New layout and the text and keymap-drawer imports start
   with `['en']`; a JSON document keeps its own. Every bundled layout names at least one.
-  `lang/performance.test.ts` pins every layout's list (`STATED`) and that the
+  `lang/performance.test.ts` pins the list of every layout written in code (`STATED`; a layout
+  that became a document carries its own) and that the
   layout types every letter its languages need (`lang/coverage.ts`, `lang/profiles.ts`): Romak and
   Magic Romak state Portuguese and English, and type `à` by a combo. A layout added as a document
   carries the languages it was saved with. **Measure languages**, in Settings in Analyze, adds each language a

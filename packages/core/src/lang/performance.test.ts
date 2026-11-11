@@ -204,10 +204,51 @@ const STATED: Record<string, string[]> = {
   ),
 };
 
+/**
+ * What is wrong with `STATED`, given the layouts written in code and the ids the Library has: a
+ * layout written in code whose languages it does not state, or a layout it names that the Library
+ * has not. A layout a change made a document, which a request does for any layout written in code
+ * (`library-edit/plan.ts`), is no longer written in code: it carries its own languages, which the
+ * tests below check, so what `STATED` says of it is left alone, and stays true to the Library.
+ */
+function statedProblems(written: readonly Layout[], library: ReadonlySet<string>): string[] {
+  const problems: string[] = [];
+  for (const layout of written) {
+    const id = layout.id as string;
+    const stated = STATED[id];
+    if (stated === undefined) problems.push(`${id} is written in code, and not stated`);
+    else if (JSON.stringify(stated) !== JSON.stringify(layout.languages ?? []))
+      problems.push(`${id} is for ${layout.languages}, and stated ${stated}`);
+  }
+  for (const id of Object.keys(STATED)) {
+    if (!library.has(id)) problems.push(`${id} is stated, and the Library has no such layout`);
+  }
+  return problems;
+}
+
 describe('bundled layouts’ languages', () => {
+  const library = new Set(BUNDLED_LAYOUTS.map((l) => l.id as string));
+
   it('are the ones their authors state, for every layout written in code', () => {
-    const written = Object.fromEntries(goldenLayouts().map((l) => [l.id, l.languages ?? []]));
-    expect(written).toEqual(STATED);
+    expect(statedProblems(goldenLayouts(), library)).toEqual([]);
+  });
+
+  it('are still so when a change has made any one of them a document', () => {
+    for (const changed of goldenLayouts()) {
+      const written = goldenLayouts().filter((l) => l !== changed);
+      expect(statedProblems(written, library), changed.id).toEqual([]);
+    }
+  });
+
+  it('say what is wrong, as the test names it', () => {
+    const [first] = goldenLayouts();
+    expect(statedProblems([{ ...first, languages: ['xx'] }], library)).toEqual([
+      `${first.id} is for xx, and stated ${STATED[first.id as string]}`,
+    ]);
+    expect(statedProblems([], new Set())).toHaveLength(Object.keys(STATED).length);
+    expect(statedProblems([{ ...first, id: 'nowhere' }], library)).toEqual([
+      'nowhere is written in code, and not stated',
+    ]);
   });
 
   // Not one is left without: a layout whose author states none is for English.

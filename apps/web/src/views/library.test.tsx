@@ -1,7 +1,6 @@
 import {
   BUNDLED_LAYOUTS,
   bundledLayout,
-  CLASSIC_LAYOUTS,
   compileLayout,
   declaredLanguages,
   forRanking,
@@ -28,6 +27,7 @@ import { branchWith, communityDoc } from '../test/community.js';
 import { keyNamed } from '../test/keys.js';
 import { layerShareIn, showLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
+import { qwertyAsWritten } from '../test/qwerty.js';
 import {
   customInLink,
   LIBRARY,
@@ -57,7 +57,7 @@ async function savePlain(
   id: string,
   extra: Partial<Layout> = {},
 ): Promise<void> {
-  const plain = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+  const plain = qwertyAsWritten();
   await storage.put('layouts', id, toCanonicalJson({ ...plain, id, name: 'Plain', ...extra }));
 }
 
@@ -1300,7 +1300,7 @@ describe('Languages', () => {
     const user = userEvent.setup();
     const storage = freshStorage();
     const doc = toCanonicalJson({
-      ...(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout),
+      ...qwertyAsWritten(),
       id: 'broken',
       name: 'Broken',
     }) as Record<string, unknown>;

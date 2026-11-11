@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalyzeRequest } from '../engine/protocol.js';
-import { proposalOf } from '../proposals/proposals.js';
+import { proposalOf, recordProposal } from '../proposals/proposals.js';
 import {
   bar,
   copyDialog,
@@ -233,8 +233,14 @@ describe('Edit', () => {
         url: PULL,
       });
 
-      // Saved again, the copy's pull request gets the new version, under the bundled id still.
+      // The copy in hand is tagged as proposed, linked to the pull request, as in the Library.
       await user.click(within(choice).getByRole('button', { name: 'Close' }));
+      expect(await within(bar()).findByRole('link', { name: 'proposed' })).toHaveAttribute(
+        'href',
+        PULL,
+      );
+
+      // Saved again, the copy's pull request gets the new version, under the bundled id still.
       key('Key LHM: s').focus();
       await user.keyboard('ç{Enter}');
       await screen.findByRole('button', { name: keyNamed('Key LHM: ç') });
@@ -363,6 +369,112 @@ describe('Edit', () => {
       expect(await storage.list('proposals')).toEqual([]);
     } finally {
       vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('proposes a closed change again: Submit on a copy that goes by the layout’s name offers Propose change', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    // What a declined proposal leaves: the copy, an ordinary custom layout, and no proposal.
+    const colemak = bundledLayout('colemak') as Layout;
+    await storage.put('layouts', 'colemak', toCanonicalJson({ ...colemak, id: 'colemak' }));
+    const { sent } = await proposing();
+    try {
+      renderRoute('/analyze?layout=custom%3Acolemak&corpus=en-general&sample=1000', { storage });
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+      expect(within(bar()).queryByRole('link', { name: 'proposed' })).toBeNull();
+
+      await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Propose Colemak' });
+      expect(screen.queryByRole('dialog', { name: 'Submit Colemak' })).toBeNull();
+      // The layout is one's own: nothing to copy.
+      expect(within(dialog).queryByRole('button', { name: 'Save a copy' })).toBeNull();
+      await user.click(within(dialog).getByRole('button', { name: 'Propose change' }));
+      expect(await within(dialog).findByRole('link', { name: PULL })).toHaveAttribute('href', PULL);
+
+      // The change goes under the bundled layout's id; the layout stays, with its proposal again.
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        target: { kind: 'bundled', id: 'colemak' },
+        layout: { id: 'colemak', name: 'Colemak' },
+      });
+      expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['colemak']);
+      expect(await proposalOf(storage, 'colemak')).toEqual({
+        name: 'Colemak',
+        target: { kind: 'bundled', id: 'colemak' },
+        url: PULL,
+      });
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(await within(bar()).findByRole('link', { name: 'proposed' })).toHaveAttribute(
+        'href',
+        PULL,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('keeps an open pull request followed when proposing it again from Submit is refused', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const colemak = bundledLayout('colemak') as Layout;
+    await storage.put('layouts', 'colemak', toCanonicalJson({ ...colemak, id: 'colemak' }));
+    await recordProposal(storage, 'colemak', {
+      name: 'Colemak',
+      target: { kind: 'bundled', id: 'colemak' },
+      url: PULL,
+    });
+    const { sent } = await proposing(0, 'the layout does not compile');
+    try {
+      renderRoute('/analyze?layout=custom%3Acolemak&corpus=en-general&sample=1000', { storage });
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+      expect(await within(bar()).findByRole('link', { name: 'proposed' })).toBeInTheDocument();
+
+      await user.click(within(bar()).getByRole('button', { name: 'Submit' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Propose Colemak' });
+      await user.click(within(dialog).getByRole('button', { name: 'Propose change' }));
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: the layout does not compile.',
+      );
+      expect(sent).toHaveLength(1);
+      // What the server refuses, with a pull request open: that one is still the layout's.
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: PULL });
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(within(bar()).getByRole('link', { name: 'proposed' })).toHaveAttribute('href', PULL);
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('offers Propose change for a copy that goes by the name of a community layout, too', async () => {
+    const user = userEvent.setup();
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = freshStorage();
+    await storage.put(
+      'layouts',
+      'night-owl',
+      toCanonicalJson({ ...communityDoc('night-owl', 'night  OWL'), author: 'Me' }),
+    );
+    const { sent } = await proposing();
+    try {
+      renderRoute('/analyze?layout=custom%3Anight-owl&corpus=en-general&sample=1000', { storage });
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('night  OWL'));
+      await user.click(await within(bar()).findByRole('button', { name: 'Submit' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Propose night OWL' });
+      expect(dialog).toHaveTextContent("one of the Library's community layouts");
+      await user.click(within(dialog).getByRole('button', { name: 'Propose change' }));
+      expect(await within(dialog).findByRole('link', { name: PULL })).toBeInTheDocument();
+      expect(sent[0]).toMatchObject({ target: { kind: 'community', id: 'night-owl' } });
+      expect(await proposalOf(storage, 'night-owl')).toMatchObject({
+        target: { kind: 'community', id: 'night-owl' },
+        url: PULL,
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      setCommunitySource(branchWith());
       useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
     }
   }, 60_000);

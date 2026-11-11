@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_SOFT, normalizeText } from '../corpus/normalize.js';
 import { compileLayout } from '../layout/compile.js';
 import type { Layout } from '../layout/types.js';
-import { bundledLayout, CLASSIC_LAYOUTS } from '../layouts/index.js';
+import { bundledLayout, classicLayout } from '../layouts/index.js';
 import { simulate } from '../sim/resolver.js';
 import { layoutLanguageCoverage, layoutLanguages, producibleSymbols } from './coverage.js';
 import {
@@ -13,8 +13,18 @@ import {
   languagesToJudge,
 } from './profiles.js';
 
-/** Qwerty as written, its letters alone. */
-const plainQwerty = () => compileLayout(CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty')!);
+/**
+ * Qwerty as written, its letters alone: built here, so a change proposed to the Library's, which
+ * makes it a document, moves nothing in this file.
+ */
+const plainQwerty = () =>
+  compileLayout(
+    classicLayout({
+      id: 'qwerty',
+      name: 'Qwerty',
+      rows: 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /',
+    }),
+  );
 
 describe('language profiles', () => {
   it('reads a layout that declares no language as one for English', () => {

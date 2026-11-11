@@ -45,7 +45,10 @@ interoperability. A layout added as a document (`src/layouts/documents.ts`) is i
 document; it joins `layouts/` only when it is one of the golden layouts.
 
 `inline-magic-romak.txt` is the deflate + base64url share blob of Magic Romak's document, asserted
-by the web app's `url/inline.test.ts`.
+by the web app's `url/inline.test.ts`. zlib writes other bytes for the same text from one Node to
+the next, so the dump leaves the file as it is when it holds the text it would write
+(`src/golden/inline-blob.ts`): the dump on CI, which a proposal's pull request runs, would
+otherwise rewrite it for nothing.
 
 ## What the cells measure
 

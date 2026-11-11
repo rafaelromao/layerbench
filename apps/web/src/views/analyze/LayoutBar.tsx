@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
 import { addedText, verdictText } from '../../engine/measure-languages.js';
+import { ProposedBadge } from '../../proposals/ProposedBadge.js';
 import { SyncNote } from '../../storage/SyncNote.js';
 import type { Params } from '../../url/params.js';
 import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
@@ -20,8 +21,8 @@ import { SettingsDialog, settingsSummary } from '../SettingsDialog.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
- * The layout in hand and what it is measured on. In sight: its name, whether it is saved and the
- * way to save it, the way to submit a custom layout to the Library, which layout this is, what the
+ * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
+ * change proposed from it is open, and the way to save it, the way to submit a custom layout to the Library, which layout this is, what the
  * numbers are made with, and the way to compare it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
@@ -36,6 +37,7 @@ export function LayoutBar({
   onCancel,
   onSubmit,
   copiesOnSave,
+  proposal,
   layoutRef,
   onPick,
   custom,
@@ -68,6 +70,8 @@ export function LayoutBar({
   onSubmit?: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
   copiesOnSave: boolean;
+  /** The pull request of the change proposed from this custom layout, while it is open. */
+  proposal?: string;
   /** The layout the link names, for the picker. */
   layoutRef: string;
   onPick: (layoutRef: string) => void;
@@ -99,6 +103,7 @@ export function LayoutBar({
             if (name.trim()) onMeta({ name: name.trim() });
           }}
         />
+        {proposal && <ProposedBadge href={proposal} size="sm" />}
         {dirty && (
           <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
         )}
@@ -127,7 +132,7 @@ export function LayoutBar({
           <button
             type="button"
             className="btn btn-sm btn-outline shrink-0 max-sm:px-2"
-            title="Propose it for the Library's community layouts, by a pull request"
+            title="Propose it by a pull request: for the Library's community layouts, or as a change to the Library's layout that goes by its name"
             onClick={onSubmit}
           >
             Submit

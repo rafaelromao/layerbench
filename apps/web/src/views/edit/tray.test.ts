@@ -1,12 +1,13 @@
-import { CLASSIC_LAYOUTS, compileLayout, type Layout, producibleSymbols } from '@layerbench/core';
+import { compileLayout, producibleSymbols } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
+import { qwertyAsWritten } from '../../test/qwerty.js';
 import { type EditAction, editReducer } from './reducer.js';
 import { charLabel, missingKeys } from './tray.js';
 import { initialUndoState, type UndoState, undoable } from './undo.js';
 
 const reducer = undoable(editReducer);
 /** Qwerty as written, with no way to the accents: `ç` is not on it. */
-const qwerty = CLASSIC_LAYOUTS.find((l) => l.id === 'qwerty') as Layout;
+const qwerty = qwertyAsWritten();
 const start = (): UndoState => initialUndoState(qwerty, compileLayout(qwerty));
 
 const at = (state: UndoState, keyId: string) => state.layout.layers[0].bindings[keyId];
