@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   assertDocumentId,
   type Collection,
@@ -11,7 +12,6 @@ import {
   StorageConflictError,
   type StorageMeta,
 } from '@layerbench/core';
-import { sha1Hex } from '../storage/indexeddb.js';
 
 interface Stored {
   json: string;
@@ -64,10 +64,12 @@ export class MemoryStorage implements StorageAdapter {
   ): Promise<StorageMeta> {
     assertDocumentId(id);
     // What takes time first, then the check and the write with nothing awaited between them, as a
-    // store's transaction is.
+    // store's transaction is. The hash is the same SHA-1 the stores give, taken in one step: the
+    // browser's digest is asynchronous in real time, which a test on fake timers cannot wait out.
     const json = JSON.stringify(doc);
-    const sha = await sha1Hex(json);
-    const entries = collection === 'layouts' ? await this.list(collection) : [];
+    const sha = createHash('sha1').update(json).digest('hex');
+    const entries =
+      collection === 'layouts' ? await this.list(collection) : await Promise.resolve([]);
     const existing = this.docs.get(`${collection}/${id}`);
     // A missing document is not a conflict: the first write of an id always wins.
     if (opts.expectedSha !== undefined && existing && existing.sha !== opts.expectedSha) {
