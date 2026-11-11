@@ -135,8 +135,21 @@ export async function commitFiles(
 }
 
 /**
+ * A pull request's title follows the convention (`convention/pr-title.ts`) or nothing is sent:
+ * Release Please reads it once it is merged, and no page sends a title, so one that does not is a
+ * mistake in this code.
+ */
+function assertConventional(title: string): void {
+  const problems = pullTitleProblems(title);
+  if (problems.length > 0) {
+    throw new Error(`a pull request's title is not a conventional one: ${problems.join('; ')}`);
+  }
+}
+
+/**
  * The changes, on a pull request from `branch` into `base`: committed to the one open, or to the
  * branch started over from `base`, with a new pull request. Its address, and whether it was open.
+ * A title that breaks the convention is refused before a branch is started.
  */
 export async function openOrUpdate(
   gh: GitHub,
@@ -150,6 +163,7 @@ export async function openOrUpdate(
   },
 ): Promise<{ url: string; reused: boolean }> {
   const { base, branch, changes, message } = pull;
+  assertConventional(pull.title);
   const open = await openPull(gh, base, branch);
   if (open) {
     await commitFiles(gh, branch, changes, message);
@@ -160,19 +174,12 @@ export async function openOrUpdate(
   return { url: await createPull(gh, pull), reused: false };
 }
 
-/**
- * The pull request from `branch` into `base`: its address. Its title follows the convention
- * (`convention/pr-title.ts`) or nothing is sent: Release Please reads it once it is merged, and
- * no page sends a title, so one that does not is a mistake in this code.
- */
+/** The pull request from `branch` into `base`: its address. */
 export async function createPull(
   gh: GitHub,
   pull: { base: string; branch: string; title: string; body: string },
 ): Promise<string> {
-  const problems = pullTitleProblems(pull.title);
-  if (problems.length > 0) {
-    throw new Error(`a pull request's title is not a conventional one: ${problems.join('; ')}`);
-  }
+  assertConventional(pull.title);
   const made = expect(
     await gh('POST', '/pulls', {
       title: pull.title,

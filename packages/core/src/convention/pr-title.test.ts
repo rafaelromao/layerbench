@@ -18,6 +18,10 @@ describe('pullTitleProblems', () => {
     expect(pullTitleProblems(title)).toEqual([]);
   });
 
+  it('counts characters, not UTF-16 units: forty-eight emoji fit', () => {
+    expect(pullTitleProblems(`feat: ${'🙂'.repeat(48)}`)).toEqual([]);
+  });
+
   it('accepts every type and every scope', () => {
     for (const type of PULL_TYPES) expect(pullTitleProblems(`${type}: x`)).toEqual([]);
     for (const scope of PULL_SCOPES) expect(pullTitleProblems(`fix(${scope}): x`)).toEqual([]);
@@ -31,8 +35,10 @@ describe('pullTitleProblems', () => {
     ['feat(Library): a filter', /`Library` is not a scope/],
     ['feat(parser): a filter', /`parser` is not a scope/],
     ['feat(): a filter', /scope is empty/],
-    ['feat:a filter', /followed by a space/],
+    ['feat:a filter', /must be followed by a space/],
     ['feat:  a filter', /one space, not more/],
+    ['feat: \u200b', /description .* missing/],
+    ['feat: a\u2028filter', /more than one line/],
     ['feat: ', /description .* missing/],
     ['feat:', /description .* missing/],
     [': a filter', /no type before the colon/],
@@ -40,6 +46,7 @@ describe('pullTitleProblems', () => {
     ['feat: a filter ', /spaces before or after/],
     ['feat: a\nfilter', /more than one line/],
     [`feat: ${'x'.repeat(MAX_TITLE_LENGTH)}`, /characters long; at most 100/],
+    [`feat: ${'🙂'.repeat(MAX_TITLE_LENGTH)}`, /characters long; at most 100/],
     ['Merge pull request #1 from a/b', /does not start with/],
     ['chore(main): release soon', /does not start with|not a scope/],
   ])('refuses %j, and says why', (title, why) => {

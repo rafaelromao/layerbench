@@ -1,10 +1,12 @@
 /**
  * The title of a pull request into `main`: a Conventional Commits header
  * (https://www.conventionalcommits.org/en/v1.0.0/), `type(scope)!: description`, with a type and a
- * scope from the lists here. A merge puts the title in `main`'s history, and Release Please reads
- * the next version and the changelog from it (`release-please-config.json`), so the rule is
- * checked on every pull request (`.github/workflows/pr-title.yml`) and held by the titles the
- * sign-in server writes (`library-title.ts`). The same rule is in `CONTRIBUTING.md`.
+ * scope from the lists here. A squash merge makes the title its commit's header and a merge commit
+ * carries it in its body, and Release Please reads the next version and the changelog from it
+ * (`release-please-config.json`), so the rule is checked on every pull request
+ * (`.github/workflows/pr-title.yml`) and held by the titles the sign-in server writes
+ * (`library-title.ts`). The same rule is in `CONTRIBUTING.md`; a test keeps the lists here equal to
+ * the changelog's sections and to the tables there.
  */
 
 /**
@@ -74,11 +76,12 @@ export const CONVENTION_HINT =
 /** What is wrong with `title`, one line each; none when it follows the convention. */
 export function pullTitleProblems(title: string): string[] {
   if (RELEASE_TITLE.test(title)) return [];
-  if (/[\r\n]/.test(title)) return ['the title is more than one line'];
+  if (/[\r\n\u2028\u2029]/.test(title)) return ['the title is more than one line'];
   const problems: string[] = [];
   if (title !== title.trim()) problems.push('the title has spaces before or after it');
-  if (title.length > MAX_TITLE_LENGTH) {
-    problems.push(`the title is ${title.length} characters long; at most ${MAX_TITLE_LENGTH}`);
+  const length = [...title].length;
+  if (length > MAX_TITLE_LENGTH) {
+    problems.push(`the title is ${length} characters long; at most ${MAX_TITLE_LENGTH}`);
   }
   const found = HEADER.exec(title.trim())?.groups;
   if (!found) {
@@ -101,8 +104,12 @@ export function pullTitleProblems(title: string): string[] {
       problems.push(`\`${scope}\` is not a scope; use one of ${list(PULL_SCOPES)}, or none`);
     }
   }
-  if (space === '' && rest !== '') problems.push('the colon is followed by a space');
-  if (rest.trim() === '') problems.push('the description after the colon is missing');
-  else if (rest.startsWith(' ')) problems.push('the colon is followed by one space, not more');
+  if (space === '' && rest !== '') problems.push('the colon must be followed by a space');
+  // Zero-width characters are no description either.
+  if (rest.replace(/[\s\u200b-\u200d\u2060\ufeff]/g, '') === '') {
+    problems.push('the description after the colon is missing');
+  } else if (rest.startsWith(' ')) {
+    problems.push('the colon must be followed by one space, not more');
+  }
   return problems;
 }

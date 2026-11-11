@@ -34,9 +34,10 @@ the scope are lowercase and come from these lists, which the check reads from
 | `ci` | the workflows | none |
 | `chore` | anything else that is housekeeping | none |
 
-A change that is none of the first four opens no release: the next one that is a feature or a fix
-carries the version. A `!` before the colon marks a change that breaks what was working. While the
-version is below 1.0.0 it bumps the minor version, and from 1.0.0 the major.
+A change that is none of the first four opens no release: the next one that is a feature, a fix, a
+performance gain or a revert carries the version. A `!` before the colon marks a change that breaks
+what was working, whatever its type, and opens a release too (`docs!:` does). While the version is
+below 1.0.0 it bumps the minor version, and from 1.0.0 the major.
 
 | Scope | The part of the code it names |
 |---|---|
@@ -67,7 +68,10 @@ chore(deps): bump vitest
 ```
 
 If the check fails, edit the title on GitHub. It runs again as soon as the title changes; no push is
-needed.
+needed, and re-running the failed run would read the title it had then. Two limits: GitHub starts no
+`pull_request` workflow for a pull request that has a merge conflict, so one is not checked until the
+conflict is gone; and nothing requires the check to pass before a merge, which a repository ruleset
+that requires `pr-title / title` would.
 
 ### Pull requests the app opens
 
@@ -100,10 +104,10 @@ request's title (`squash_merge_commit_title: PR_TITLE` in the REST API). With th
 squashes a pull request of one commit with that commit's own title, and only a pull request of
 several commits with the pull request's.
 
-Release Please also reads a merge commit, by the title in its body, but it does not read a `!` there:
-a breaking change merged that way is not marked as one. History before the first release is not
-conventional and is left as it is; Release Please starts after `bootstrap-sha` in
-`release-please-config.json`.
+Release Please also reads a merge commit, by the title in its body, but it does not read a title with
+a `!` there: such a pull request is missed altogether, with no release and no changelog line. Only a
+squash merge makes a breaking change count. A rebase merge puts the title nowhere in the history.
+History before the first release is not conventional and is left as it is.
 
 ## Releases
 
@@ -117,7 +121,12 @@ does not read it.
 
 - Do not edit the release pull request's title: Release Please finds the pull request it merged by
   it, and builds the release's notes from its body.
-- No release pull request is open until a feature or a fix has been merged after `bootstrap-sha`.
+- Release Please counts from the tag `v0.2.0`, the version the manifest starts at, which must exist
+  before its first run: it is the commit `b7a0fc8a`, `git tag v0.2.0 b7a0fc8a` and `git push origin
+  v0.2.0`. Without it the first release's notes link to a tag that is not there. The config's
+  `bootstrap-sha` names the same commit and is read only while no release or tag is found.
+- No release pull request is open until a feature, a fix, a performance gain, a revert or a breaking
+  change has been merged after that tag.
 - The release pull request is opened as the GitHub App, so its checks run. If the workflow fails
   to open it, the App's permissions are the first place to look: it needs to write the repository's
   contents and pull requests.

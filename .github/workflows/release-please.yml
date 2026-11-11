@@ -5,7 +5,7 @@ name: release-please
 # package.json files and writes CHANGELOG.md. Merging that pull request tags the version
 # (`vX.Y.Z`) and publishes a GitHub release. Nothing here builds or deploys: the merge is a push to
 # main, which the `ci` workflow deploys as it does any other. A merge with nothing in it that is a
-# feature or a fix (docs, ci, chore, ...) opens no release pull request.
+# feat, fix, perf or revert, or breaking (docs, ci, chore, ...), opens no release pull request.
 # The config is release-please-config.json, the last released version .release-please-manifest.json.
 on:
   push:

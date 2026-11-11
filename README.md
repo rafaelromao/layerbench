@@ -219,7 +219,7 @@ and `coverage/` is git ignored.
 
 A pull request's title is checked too, by the `pr-title` workflow: a Conventional Commits header
 with a type and a scope from the lists in [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-titles).
-`PR_TITLE='fix(library): change enthium' pnpm pr-title` runs the same check on a title here.
+`PR_TITLE='fix(library): change enthium' pnpm pr-title` runs the same check on a title here, and fails without one.
 
 To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
