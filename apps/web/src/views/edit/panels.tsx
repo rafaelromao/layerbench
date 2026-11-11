@@ -1235,7 +1235,7 @@ export function PathsPanel({
             <span className="lb-path-hint">
               {shiftOffered.length === 0
                 ? 'No key taps or holds Shift. A key that does makes this work.'
-                : 'How a capital is typed: Shift tapped once before the letter, or held while it goes down. Left alone, the cheapest key that gives it; set an order, and the cheapest key of the first way that works.'}
+                : 'A capital: Shift tapped once, or held. Left alone, the cheapest key; set an order, and the first way that works.'}
             </span>
           </div>
         </Slide>
@@ -1254,8 +1254,8 @@ export function PathsPanel({
               onMove={moveWay('doubledLetters', rules.doubledLetters)}
             />
             <span className="lb-path-hint">
-              A letter twice in a row. Left alone, the cheaper way, tapping the same key again
-              counting as three presses; set an order, and the first that works.
+              A letter twice in a row. Left alone, the Repeat key where one key reaches it; set an
+              order, and the first that works.
             </span>
           </div>
         </Slide>
