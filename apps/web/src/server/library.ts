@@ -1,5 +1,6 @@
 // By path rather than by package, as in `submit.ts`: the dev server's config bundles what it
 // imports by path.
+import { libraryPull } from '../../../../packages/core/src/convention/library-title.js';
 import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
 import { BUNDLED_IDS } from '../../../../packages/core/src/layouts/bundled-ids.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
@@ -126,7 +127,7 @@ async function requestPull(
   gh: GitHub,
   request: LibraryRequest,
   login: string,
-  title: string,
+  pull: { title: string; commit: string },
   what: string,
 ): Promise<SubmitResult> {
   const branch = `library/${login}/${request.action}/${request.id}`;
@@ -139,8 +140,8 @@ async function requestPull(
     base: MAIN,
     branch,
     changes,
-    message: `${title}\n\nAsked by @${login} with LayerBench.`,
-    title,
+    message: `${pull.commit}\n\nAsked by @${login} with LayerBench.`,
+    title: pull.title,
     body: [
       `${what}, asked by @${login} with LayerBench.`,
       '',
@@ -155,16 +156,16 @@ async function dataPull(
   gh: GitHub,
   change: FileChange,
   login: string,
-  action: string,
+  action: 'change' | 'delete',
   id: string,
   what: string,
 ): Promise<SubmitResult> {
-  const title = `Community: ${action} ${id}`;
+  const { title, commit } = libraryPull('community', action, id);
   const { url, reused } = await openOrUpdate(gh, {
     base: SUBMIT_BASE,
     branch: `data/${login}/${action}/${id}`,
     changes: [change],
-    message: `${title}\n\nAsked by @${login} with LayerBench.`,
+    message: `${commit}\n\nAsked by @${login} with LayerBench.`,
     title,
     body: [
       `${what}, asked by @${login} with LayerBench.`,
@@ -207,7 +208,7 @@ export function propose(
         gh,
         { action: 'change', id, layout: doc, by: login },
         login,
-        `Library: change ${id}`,
+        libraryPull('library', 'change', id),
         `Changes the bundled layout \`${id}\` to ${codeSpan(checked.name)} by ${codeSpan(checked.author)}`,
       );
     }
@@ -242,7 +243,7 @@ export function remove(gh: GitHub, target: Target, login: string): Promise<Submi
         gh,
         { action: 'delete', id, by: login },
         login,
-        `Library: delete ${id}`,
+        libraryPull('library', 'delete', id),
         `Deletes the bundled layout \`${id}\``,
       );
     }
@@ -288,7 +289,7 @@ export function promote(
       gh,
       { action: 'promote', id, layout: doc, by: login },
       login,
-      `Library: promote ${id}`,
+      libraryPull('library', 'promote', id),
       `Promotes ${codeSpan(checked.name)} by ${codeSpan(checked.author)} into the Library as \`${id}\`${moved}`,
     );
   });

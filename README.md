@@ -217,6 +217,10 @@ to make a change pass: add tests instead. `src/main.tsx`, the analysis worker's 
 file's coverage is printed by `pnpm --filter @layerbench/core test:coverage` (or `@layerbench/web`),
 and `coverage/` is git ignored.
 
+A pull request's title is checked too, by the `pr-title` workflow: a Conventional Commits header
+with a type and a scope from the lists in [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-titles).
+`PR_TITLE='fix(library): change enthium' pnpm pr-title` runs the same check on a title here.
+
 To sign in on the dev server, set up the GitHub App first (see
 [Setting up sign-in](#setting-up-sign-in)). Then put `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` and
 `SESSION_SECRET` in `apps/web/.env.local`, which git ignores, with a client secret and a session key
@@ -315,6 +319,16 @@ Set up once:
 No other repository in the `layerbench` organization may have a Pages site. It would be served on
 the app's origin, where it could read what the app keeps in the browser, the sign-in session
 included.
+
+### Releases
+
+`.github/workflows/release-please.yml` keeps a release pull request open: the next version, set in
+the `package.json` files, and `CHANGELOG.md`, from the titles of the pull requests merged since the
+last release ([CONTRIBUTING.md](CONTRIBUTING.md#releases) has what counts). Merging it tags
+`vX.Y.Z` and publishes a GitHub release; it deploys nothing of its own, the merge being a push to
+main like any other. It opens the pull request as the GitHub App, with the variable
+`LAYERBENCH_APP_ID` and the secret `LAYERBENCH_APP_PRIVATE_KEY` that `ci` and `library-edit` use, so
+its checks run; the App needs to write the repository's contents and pull requests.
 
 ### Setting up sign-in
 

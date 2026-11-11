@@ -7,8 +7,10 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pullTitleProblems } from '../../../../packages/core/src/convention/pr-title.js';
 import { type AuthEnv, handleAuth } from './github-auth.js';
 import { type LibraryAnswer, OPEN_PROPOSALS } from './library.js';
+import { client, createPull } from './pull-request.js';
 
 const PAGE = 'https://app.example';
 const AUTH = 'https://auth.example';
@@ -243,9 +245,14 @@ describe('proposing a change to a bundled layout', () => {
     expect(repo.pulls[0]).toMatchObject({
       head: 'library/you/change/colemak',
       base: 'main',
-      title: 'Library: change colemak',
+      title: 'fix(library): change colemak',
     });
     expect(repo.pulls[0].body).toContain('@you');
+    // The branch's commit is bookkeeping (chore); the pull request's title is the change.
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(String(put?.body?.message)).toMatch(
+      /^chore\(library\): change colemak\n\nAsked by @you with LayerBench\.$/,
+    );
   });
 
   it('commits the new request to the pull request while it is open, applied or not', async () => {
@@ -345,7 +352,7 @@ describe('proposing a change to a community layout', () => {
     expect(repo.pulls[0]).toMatchObject({
       head: 'data/you/change/breeze',
       base: 'layerbench-data',
-      title: 'Community: change breeze',
+      title: 'fix(community): change breeze',
     });
   });
 
@@ -389,8 +396,8 @@ describe("a maintainer's change to the Library", () => {
     expect(community.status).toBe(201);
     expect(fileOn('data/you/delete/breeze', 'community/breeze.json')).toBeUndefined();
     expect(repo.pulls.map((p) => [p.base, p.title])).toEqual([
-      ['main', 'Library: delete colemak'],
-      ['layerbench-data', 'Community: delete breeze'],
+      ['main', 'fix(library): delete colemak'],
+      ['layerbench-data', 'fix(community): delete breeze'],
     ]);
   });
 
@@ -435,6 +442,10 @@ describe("a maintainer's change to the Library", () => {
     });
     expect(moved.status).toBe(201);
     expect(repo.pulls[1].body).toContain('community');
+    expect(repo.pulls.map((p) => p.title)).toEqual([
+      'feat(library): promote gust',
+      'feat(library): promote breeze',
+    ]);
   });
 
   it('refuses to promote an id the Library has, or a custom one the community has', async () => {
@@ -472,5 +483,45 @@ describe("a maintainer's change to the Library", () => {
     expect(change.status).toBe(400);
     expect(wrote()).toBe(false);
     expect(repo.pulls).toEqual([]);
+  });
+});
+
+describe('the titles of the pull requests the server opens', () => {
+  it('follow the convention in every case, with a type that says what the merge does', async () => {
+    repo.push = true;
+    const target = (kind: string, id: string) => ({ kind, id });
+    await ask('propose', {
+      target: target('bundled', 'colemak'),
+      layout: doc('colemak', 'Colemak'),
+    });
+    await ask('propose', {
+      target: target('community', 'breeze'),
+      layout: doc('breeze', 'Breeze'),
+    });
+    await ask('maintain', { action: 'delete', target: target('bundled', 'colemak') });
+    await ask('maintain', { action: 'delete', target: target('community', 'breeze') });
+    await ask('maintain', {
+      action: 'promote',
+      target: target('custom', 'gust'),
+      layout: doc('gust', 'Gust'),
+    });
+    expect(repo.pulls.map((p) => p.title)).toEqual([
+      'fix(library): change colemak',
+      'fix(community): change breeze',
+      'fix(library): delete colemak',
+      'fix(community): delete breeze',
+      'feat(library): promote gust',
+    ]);
+    for (const pull of repo.pulls) expect(pullTitleProblems(pull.title)).toEqual([]);
+  });
+
+  it('are never sent when they do not, so no code path opens a pull request that fails the check', async () => {
+    const gh = client('ghs_installation');
+    for (const title of ['Library: change colemak', 'Upgrade Enthium to v15', 'feat(parser): x']) {
+      await expect(
+        createPull(gh, { base: 'main', branch: 'library/you/change/colemak', title, body: '' }),
+      ).rejects.toThrow(/not a conventional one/);
+    }
+    expect(calls).toEqual([]);
   });
 });

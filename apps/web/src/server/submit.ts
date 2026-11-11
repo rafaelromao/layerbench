@@ -1,5 +1,6 @@
 // By path rather than by package: Vite bundles the dev server's config with what it imports by
 // path, but leaves a package to Node, which cannot follow core's `.js` imports to its `.ts` files.
+import { libraryPull } from '../../../../packages/core/src/convention/library-title.js';
 import { compileLayout } from '../../../../packages/core/src/layout/compile.js';
 import { BUNDLED_IDS } from '../../../../packages/core/src/layouts/bundled-ids.js';
 import { documentLayout } from '../../../../packages/core/src/layouts/documents.js';
@@ -98,7 +99,8 @@ export async function submit(
   try {
     const existing = await openPull(gh, SUBMIT_BASE, branch);
     if (existing) {
-      await commitFiles(gh, branch, [[path, text]], `Community: update ${id}\n\n${by}`);
+      const { commit } = libraryPull('community', 'update', id);
+      await commitFiles(gh, branch, [[path, text]], `${commit}\n\n${by}`);
       return { status: 200, answer: { url: existing, reused: true } };
     }
 
@@ -111,12 +113,13 @@ export async function submit(
     }
 
     // Left from a submission whose pull request was closed, the branch starts over.
+    const { title, commit } = libraryPull('community', 'add', id);
     await startBranch(gh, SUBMIT_BASE, branch);
-    await commitFiles(gh, branch, [[path, text]], `Community: add ${id}\n\n${by}`);
+    await commitFiles(gh, branch, [[path, text]], `${commit}\n\n${by}`);
     const url = await createPull(gh, {
       base: SUBMIT_BASE,
       branch,
-      title: `Community: add ${id}`,
+      title,
       body: [
         `Adds \`${path}\`: ${codeSpan(checked.name)} by ${codeSpan(checked.author)}, submitted by @${login} with LayerBench.`,
         '',

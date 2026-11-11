@@ -1,3 +1,5 @@
+import { pullTitleProblems } from '../../../../packages/core/src/convention/pr-title.js';
+
 /**
  * The steps every pull request the sign-in server opens is made of, as the GitHub App, in the one
  * repository it is installed on: find the one open from a branch, start that branch from another,
@@ -158,11 +160,19 @@ export async function openOrUpdate(
   return { url: await createPull(gh, pull), reused: false };
 }
 
-/** The pull request from `branch` into `base`: its address. */
+/**
+ * The pull request from `branch` into `base`: its address. Its title follows the convention
+ * (`convention/pr-title.ts`) or nothing is sent: Release Please reads it once it is merged, and
+ * no page sends a title, so one that does not is a mistake in this code.
+ */
 export async function createPull(
   gh: GitHub,
   pull: { base: string; branch: string; title: string; body: string },
 ): Promise<string> {
+  const problems = pullTitleProblems(pull.title);
+  if (problems.length > 0) {
+    throw new Error(`a pull request's title is not a conventional one: ${problems.join('; ')}`);
+  }
   const made = expect(
     await gh('POST', '/pulls', {
       title: pull.title,

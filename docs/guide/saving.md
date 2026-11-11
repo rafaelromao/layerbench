@@ -62,6 +62,9 @@ request still proposes the layout under its own name. A layout that comes with t
 proposed under another one's name, nor one that names no author. You can have five changes
 proposed and open at once.
 
+The pull request's title is written for you, as `fix(library): change colemak` is for a change to
+Colemak; leave it as it is.
+
 Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
 version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
 the change is in the Library, for a layout that comes with the app with the next version of the
@@ -329,7 +332,8 @@ comes from is welcome, not needed.
    id no bundled or community layout has (rename it if one does), and that it compiles. If anything
    is missing it says what, and sends nothing.
 4. Otherwise it asks before it opens the pull request, which is public. It then gives you the pull
-   request's link, where the maintainer may ask for changes.
+   request's link, where the maintainer may ask for changes. Its title is written for you, as
+   `feat(community): add my-layout`; leave it as it is.
 
 Submitting the same layout again while its pull request is open updates that pull request with the
 layout as it is now, rather than opening another. Once the pull request is merged, the layout is a
