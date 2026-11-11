@@ -29,7 +29,8 @@
     "keymap": "pnpm --filter @layerbench/core run keymap",
     "languages": "pnpm --filter @layerbench/core run languages",
     "library-edit": "pnpm --filter @layerbench/core run library-edit",
-    "community-cleanup": "pnpm --filter @layerbench/core run community-cleanup"
+    "community-cleanup": "pnpm --filter @layerbench/core run community-cleanup",
+    "pr-title": "test -n \"$PR_TITLE\" || { echo \"Set PR_TITLE to the title to check.\"; exit 1; }; pnpm --filter @layerbench/core run pr-title"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.12",

@@ -1,5 +1,17 @@
 # LayerBench: agent notes
 
+## Pull request titles
+
+The title of a pull request into `main` is a Conventional Commits header, `type(scope): description`
+(`!` before the colon for a breaking change), with a type and a scope from the lists in
+[CONTRIBUTING.md](CONTRIBUTING.md#pull-request-titles); the `pr-title` check fails any other, and
+Release Please reads the next version and the changelog from it. Name the pull request that way when
+you open it, with a scope from the list, none if none fits. The pull requests the sign-in server
+opens have their titles written by `libraryPull` (`packages/core/src/convention/library-title.ts`):
+no dialog takes one, and `createPull` refuses a title the rule does not accept. A new part of the
+code gets its scope in `PULL_SCOPES` (`pr-title.ts`) and in CONTRIBUTING.md, in the same pull
+request.
+
 ## Default layers
 
 Read this before changing how symbols, digits or accents are spread over the default layers

@@ -1,0 +1,41 @@
+name: release-please
+
+# Release Please reads the Conventional Commits header of what is merged into main (a pull request's
+# title: CONTRIBUTING.md) and keeps one pull request open that sets the next version in the
+# package.json files and writes CHANGELOG.md. Merging that pull request tags the version
+# (`vX.Y.Z`) and publishes a GitHub release. Nothing here builds or deploys: the merge is a push to
+# main, which the `ci` workflow deploys as it does any other. A merge with nothing in it that is a
+# feat, fix, perf or revert, or breaking (docs, ci, chore, ...), opens no release pull request.
+# The config is release-please-config.json, the last released version .release-please-manifest.json.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The job token never writes: the GitHub App does, because a pull request opened with the job token
+# starts no workflow, so the release pull request would never be checked. The App's token also
+# needs no change to the repository's Actions settings (repository variable LAYERBENCH_APP_ID,
+# secret LAYERBENCH_APP_PRIVATE_KEY, as in `library-edit` and `ci`).
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    if: github.repository == 'rafaelromao/layerbench'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.LAYERBENCH_APP_ID }}
+          private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
+      # Pinned by commit: the tag is v5.0.0 (it runs on Node 24, which GitHub's runners provide).
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

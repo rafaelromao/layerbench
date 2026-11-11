@@ -1,0 +1,39 @@
+name: pr-title
+
+# The title of a pull request into main is what a merge puts in main's history, and what Release
+# Please reads the next version and the changelog from, so it must be a Conventional Commits header
+# with a type and scope from the lists in packages/core/src/convention/pr-title.ts (CONTRIBUTING.md
+# has the rule). It runs again when the title is edited, which a pull request's own checks do not:
+# `edited` is not one of the default events. A pull request into another branch, as the community
+# layouts' (layerbench-data), is not released from, so is left alone.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      # No version here: the action reads `packageManager` from package.json. Pinned by commit: the
+      # tag is v4.4.0.
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The title is a person's text: it goes in through the environment and never into the command.
+      - run: pnpm pr-title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}

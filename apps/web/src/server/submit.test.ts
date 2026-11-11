@@ -1,6 +1,7 @@
 import { createVerify, generateKeyPairSync } from 'node:crypto';
 import { BUNDLED_LAYOUTS, toCanonicalJson } from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { pullTitleProblems } from '../../../../packages/core/src/convention/pr-title.js';
 import { appJwt } from './github-app.js';
 import { type AuthEnv, handleAuth } from './github-auth.js';
 import { MAX_LAYOUT_BYTES, type SubmitAnswer } from './submit.js';
@@ -186,9 +187,16 @@ describe('submitting a layout', () => {
     expect(put?.body?.sha).toBeUndefined();
     expect(decode(put?.body?.content)).toEqual(layout());
     expect(put?.body?.message).toContain('Submitted by @you');
+    // The branch's commit is bookkeeping (chore); the pull request's title is the change.
+    expect(String(put?.body?.message)).toMatch(/^chore\(community\): add my-layout\n/);
 
     const pull = calls.find((c) => c.method === 'POST' && c.url === `${REPO}/pulls`);
-    expect(pull?.body).toMatchObject({ head: 'submit/you/my-layout', base: 'layerbench-data' });
+    expect(pull?.body).toMatchObject({
+      head: 'submit/you/my-layout',
+      base: 'layerbench-data',
+      title: 'feat(community): add my-layout',
+    });
+    expect(pullTitleProblems(String(pull?.body?.title))).toEqual([]);
     const text = String(pull?.body?.body);
     expect(text).toContain('submitted by @you');
     // The layout's own text, in code spans, mentions no one and cannot close the span.
@@ -228,6 +236,7 @@ describe('submitting a layout', () => {
     );
     const put = calls.find((c) => c.method === 'PUT');
     expect(put?.body).toMatchObject({ branch: 'submit/you/my-layout', sha: 'file-sha' });
+    expect(String(put?.body?.message)).toMatch(/^chore\(community\): update my-layout\n/);
     expect(calls.some((c) => c.method === 'POST' && c.url.startsWith(REPO))).toBe(false);
   });
 
