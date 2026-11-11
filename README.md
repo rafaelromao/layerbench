@@ -225,7 +225,9 @@ file's coverage is printed by `pnpm --filter @layerbench/core test:coverage` (or
 and `coverage/` is git ignored.
 
 A pull request's title is checked too, by the `pr-title` workflow: a Conventional Commits header
-with a type and a scope from the lists in [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-titles).
+with a type and a scope from the lists in [CONTRIBUTING.md](CONTRIBUTING.md#pull-request-titles),
+and a pull request into `main` merges only once it passes, by a squash
+([CONTRIBUTING.md](CONTRIBUTING.md#merging)).
 `PR_TITLE='fix(library): change enthium' pnpm pr-title` runs the same check on a title here, and fails without one.
 
 To sign in on the dev server, set up the GitHub App first (see

@@ -58,3 +58,26 @@ describe("main's ruleset", () => {
     expect(read('.github/workflows/pr-title.yml')).toMatch(/^jobs:\n {2}title:$/m);
   });
 });
+
+describe('CONTRIBUTING.md on merging', () => {
+  const doc = read('CONTRIBUTING.md').replace(/\s+/g, ' ');
+
+  it('says the ruleset holds the check and the squash, and how it is made from its file', () => {
+    expect(doc).toContain('`.github/rulesets/main.json`');
+    expect(doc).toContain('requires `pr-title / title`');
+    expect(doc).not.toMatch(/nothing requires the check/i);
+    expect(doc).toContain(
+      'gh api -X PUT "repos/{owner}/{repo}/rulesets/$id" --input .github/rulesets/main.json',
+    );
+    expect(doc).toContain(
+      'gh api -X POST repos/{owner}/{repo}/rulesets --input .github/rulesets/main.json',
+    );
+  });
+
+  it("says a squash takes just the pull request's title, and how that is set", () => {
+    expect(doc).toContain(
+      'gh api -X PATCH repos/{owner}/{repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=BLANK',
+    );
+    expect(doc).not.toMatch(/choose the one that uses/);
+  });
+});
