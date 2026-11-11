@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import {
   followProposal,
@@ -7,6 +7,7 @@ import {
   proposalOf,
   pullApi,
   readProposal,
+  readPullState,
   recordProposal,
   settleProposals,
 } from './proposals.js';
@@ -64,7 +65,7 @@ describe('settling the proposals whose pull requests are done', () => {
     const outcome = await settleProposals(storage, async (url) =>
       url.endsWith('/100') ? 'merged' : 'closed',
     );
-    expect(outcome).toEqual({ accepted: ['Colemak'], declined: ['Breeze'] });
+    expect(outcome).toEqual({ accepted: ['Colemak'], declined: ['Breeze'], landing: [] });
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['breeze']);
     expect(await storage.list('proposals')).toEqual([]);
   });
@@ -79,7 +80,7 @@ describe('settling the proposals whose pull requests are done', () => {
       read.push(url);
       return 'merged';
     });
-    expect(outcome).toEqual({ accepted: [], declined: [] });
+    expect(outcome).toEqual({ accepted: [], declined: [], landing: [] });
     expect(read).toEqual([]);
     expect((await storage.list('proposals')).map((e) => e.id)).toEqual(['breeze']);
     expect(await forgetProposal(storage, 'breeze')).toBe(true);
@@ -91,8 +92,80 @@ describe('settling the proposals whose pull requests are done', () => {
     const outcome = await settleProposals(storage, async (url) =>
       url.endsWith('/100') ? 'open' : 'unknown',
     );
-    expect(outcome).toEqual({ accepted: [], declined: [] });
+    expect(outcome).toEqual({ accepted: [], declined: [], landing: [] });
     expect(await storage.list('proposals')).toHaveLength(2);
+  });
+
+  it('keeps a merged one, copy and all, while the app open has not got its change yet', async () => {
+    // The Library's layouts are the app's own, so the change reaches them with the next deploy, a
+    // quarter of an hour after the merge: until then the copy is all the owner has of it.
+    const storage = await withTwo();
+    const outcome = await settleProposals(storage, async (url) =>
+      url.endsWith('/100') ? 'landing' : 'closed',
+    );
+    expect(outcome).toEqual({ accepted: [], declined: ['Breeze'], landing: ['colemak'] });
+    expect((await storage.list('layouts')).map((e) => e.id).sort()).toEqual(['breeze', 'colemak']);
+    expect((await storage.list('proposals')).map((e) => e.id)).toEqual(['colemak']);
+  });
+});
+
+describe('a merged pull request and the app that reads it', () => {
+  const MERGE = 'a'.repeat(40);
+  const BUILD = 'b'.repeat(40);
+  const PULL_API = 'https://api.github.com/repos/rafaelromao/layerbench/pulls/100';
+  const COMPARE = `https://api.github.com/repos/rafaelromao/layerbench/compare/${MERGE}...${BUILD}`;
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** GitHub's answers: the pull request, and how the build compares with its merge commit. */
+  function github(pull: object, compare: { status?: number; body?: object } = {}) {
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+      const url = String(input);
+      asked.push(url);
+      if (url === PULL_API) return new Response(JSON.stringify(pull));
+      if (url.startsWith(COMPARE)) {
+        return new Response(JSON.stringify(compare.body ?? {}), { status: compare.status ?? 200 });
+      }
+      return new Response('{}', { status: 404 });
+    });
+    return asked;
+  }
+  const MERGED = { state: 'closed', merged: true, merge_commit_sha: MERGE };
+
+  it('lands once this build carries the merge commit, and not before', async () => {
+    for (const status of ['identical', 'ahead']) {
+      github(MERGED, { body: { status } });
+      expect(await readPullState(COLEMAK.url, BUILD)).toBe('merged');
+    }
+    // The build was made from main before the merge, or from another line of it.
+    for (const status of ['behind', 'diverged']) {
+      github(MERGED, { body: { status } });
+      expect(await readPullState(COLEMAK.url, BUILD)).toBe('landing');
+    }
+  });
+
+  it('asks nothing of a build that was not made from a commit, such as a local one', async () => {
+    const asked = github(MERGED);
+    expect(await readPullState(COLEMAK.url, '')).toBe('merged');
+    expect(asked).toEqual([PULL_API]);
+  });
+
+  it('is unknown, and the copy kept, when GitHub cannot say which commits the build has', async () => {
+    github(MERGED, { status: 403 });
+    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+    github({ state: 'closed', merged: true });
+    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+    github(MERGED, { body: { status: 'sideways' } });
+    expect(await readPullState(COLEMAK.url, BUILD)).toBe('unknown');
+  });
+
+  it('is asked about only a pull request that is merged', async () => {
+    const asked = github({ state: 'closed', merged: false });
+    expect(await readPullState(COLEMAK.url, BUILD)).toBe('closed');
+    github({ state: 'open', merged: false });
+    expect(await readPullState(COLEMAK.url, BUILD)).toBe('open');
+    expect(asked).toEqual([PULL_API]);
   });
 });
 
@@ -129,11 +202,16 @@ describe('saving the copy of a proposal again', () => {
   });
 
   it('is settled instead, sending nothing, once its pull request is merged or closed', async () => {
-    for (const now of ['merged', 'closed'] as const) {
+    // Merged is merged to a copy saved again, whether or not this app has the change yet.
+    for (const now of ['merged', 'landing', 'closed'] as const) {
       const { storage, sent, send } = await withColemak();
       await storage.put('layouts', 'colemak', { format: 'layerbench/layout@1', name: 'Colemak' });
       const followed = await followProposal(storage, 'colemak', 'colemak', send, async () => now);
-      expect(followed).toEqual({ kind: 'done', proposal: COLEMAK, state: now });
+      expect(followed).toEqual({
+        kind: 'done',
+        proposal: COLEMAK,
+        state: now === 'landing' ? 'merged' : now,
+      });
       expect(sent).toEqual([]);
       expect(await storage.list('proposals')).toEqual([]);
       // The copy was just saved: it stays, an ordinary custom layout.

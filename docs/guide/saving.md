@@ -68,9 +68,11 @@ Colemak; leave it as it is.
 Edit your copy and **Save** it again while the pull request is open, and the pull request gets that
 version, under the name it proposed: renaming your copy renames only the copy. Once it is merged,
 the change is in the Library, for a layout that comes with the app with the next version of the
-app, and your copy goes. If it is closed instead, your copy stays one of your custom layouts.
-**Library** checks each time it opens, and says which happened; so does **Save** on your copy, which
-then keeps it as you saved it and sends nothing. To propose the change again, click **Submit** on
+app, which is out a quarter of an hour or so after the merge. Until the app you have open is that
+version, your copy stays, tagged **merged**; load the page again when the version is out, and your
+copy goes. If it is closed instead, your copy stays one of your custom layouts. **Library** checks
+each time it opens, and says which happened, in a message that stays until you close it; so does
+**Save** on your copy, which then keeps it as you saved it and sends nothing. To propose the change again, click **Submit** on
 the copy: while it goes by the name of the layout it was proposed to, Submit offers **Propose
 change** to that layout, bundled or community, where it would otherwise submit a new layout.
 

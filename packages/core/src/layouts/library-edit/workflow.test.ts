@@ -99,4 +99,16 @@ describe('the ci workflow', () => {
     ).toBe('');
     expect(last).toBeGreaterThan(wait.indexOf('sleep 90'));
   });
+
+  it('builds the deployed app knowing its commit, which a pull request build has no use for', () => {
+    // The app settles a merged proposal once its own commit has the merge: it reads this.
+    const build = stepWith(ci, 'run: pnpm build');
+    expect(build).toContain(
+      "VITE_BUILD_COMMIT: ${{ github.event_name == 'push' && github.sha || '' }}",
+    );
+    // What is uploaded and deployed is the build of the push, in the same run.
+    expect(indexOfStep(ci, 'run: pnpm build')).toBeLessThan(
+      indexOfStep(ci, 'actions/upload-artifact'),
+    );
+  });
 });

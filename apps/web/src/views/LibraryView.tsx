@@ -57,11 +57,12 @@ import {
 } from '../engine/use-summaries.js';
 import { HELP, type HelpTopic, rulerHelp } from '../guide/help.js';
 import { ProposedBadge } from '../proposals/ProposedBadge.js';
-import { forgetProposal, proposalOf, settleProposals } from '../proposals/proposals.js';
+import { forgetProposal, proposalOf } from '../proposals/proposals.js';
+import { useSettleProposals } from '../proposals/use-settle.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useSession } from '../state/session.js';
 import { toast } from '../state/toasts.js';
-import { useCollection, useStorage } from '../storage/use-storage.js';
+import { useCollection, useSettled, useStorage } from '../storage/use-storage.js';
 import { encodeInline } from '../url/inline.js';
 import {
   ENGLISH_CORPUS,
@@ -321,6 +322,7 @@ function LayoutCard({
   heatMode,
   actions,
   proposal,
+  merged,
 }: {
   item: Listed;
   /** The layout as it is ranked, features left out, whose combos the board draws. */
@@ -334,8 +336,10 @@ function LayoutCard({
   heatMode: HeatMode | null;
   /** Analyze, last so it is always flush right, and Delete to its left on a custom layout. */
   actions: ReactNode;
-  /** The pull request of the change a custom layout holds, while it is open. */
+  /** The pull request of the change a custom layout holds, until it is settled. */
   proposal?: string;
+  /** The change is merged, and this app, built before, does not have it yet. */
+  merged?: boolean;
 }) {
   return (
     <article className="lb-library-card card bg-base-100 border border-base-300 min-w-0">
@@ -350,7 +354,7 @@ function LayoutCard({
               {item.community && (
                 <span className="badge badge-outline badge-secondary badge-xs">community</span>
               )}
-              {proposal && <ProposedBadge href={proposal} />}
+              {proposal && <ProposedBadge href={proposal} merged={merged} />}
               {item.category && (
                 <HelpWord
                   help={HELP.categories}
@@ -964,28 +968,12 @@ export function LibraryView() {
       live = false;
     };
   }, [proposals.entries, storage]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once each time the storage changes
-  useEffect(() => {
-    let live = true;
-    void settleProposals(storage)
-      .then(({ accepted, declined }) => {
-        if (!live) return;
-        for (const name of accepted) {
-          toast.info(`Your change to ${name} was accepted; your copy of it is gone`);
-        }
-        for (const name of declined) {
-          toast.info(`Your change to ${name} was declined; your copy stays in your layouts`);
-        }
-        if (accepted.length + declined.length > 0) {
-          custom.refresh();
-          proposals.refresh();
-        }
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [storage]);
+  // A merged change leaves its copy once the app has it, which is when this page is loaded after
+  // the deploy that follows the merge: until then the copy stays, and is told as merged.
+  const landing = useSettleProposals(storage, useSettled(), () => {
+    custom.refresh();
+    proposals.refresh();
+  });
 
   // A maintainer's change to the Library: asked about, then a pull request.
   const maintainer = useGitHubSession((s) => s.status === 'signed-in' && s.maintainer);
@@ -1202,6 +1190,7 @@ export function LibraryView() {
               heat={settings.status === 'failed' ? null : heats.get(item.key)}
               heatMode={heatOn ? heatMode : null}
               proposal={item.custom ? proposalUrls.get(item.id) : undefined}
+              merged={item.custom && landing.has(item.id)}
               actions={
                 <>
                   {maintainer && (item.custom || item.community) && (

@@ -74,9 +74,14 @@ jobs:
       - run: pnpm typecheck
       # The sign-in Worker's address goes into the page's code and its content security policy. It
       # is set for this step only: the unit tests expect the page's own origin.
+      #
+      # A push to main also tells the build which commit it is made from: a change proposed from the
+      # app and merged is in the Library of the deploy that has its merge commit, and the app asks
+      # GitHub whether it is that one before it lets the proposer's copy go.
       - run: pnpm build
         env:
           VITE_AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}
+          VITE_BUILD_COMMIT: ${{ github.event_name == 'push' && github.sha || '' }}
       - if: github.event_name == 'push'
         env:
           AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}

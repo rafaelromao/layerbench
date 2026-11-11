@@ -3,13 +3,13 @@ import { useCollection, useStorage } from '../storage/use-storage.js';
 import { proposalOf, readPullState } from './proposals.js';
 
 /**
- * The pull request of the change proposed from the custom layout `id`, while it is open: null for
- * a layout none was proposed from, one not sent yet, and one whose pull request is merged or
- * closed. Read, never settled: settling a merged one deletes the copy, which is the Library's to
- * do, not the page that has it open. A pull request GitHub could not be asked about still counts
- * as open, as on the Library's cards. GitHub is asked once for each pull request, not each time
- * the proposals are read again. `refresh` reads the proposals again, after one is kept, moved or
- * forgotten.
+ * The pull request of the change proposed from the custom layout `id`, while it is open, or merged
+ * and not in this app yet: null for a layout none was proposed from, one not sent yet, and one whose
+ * pull request is merged, the app having the change, or closed. Read, never settled: settling a
+ * merged one deletes the copy, which is the Library's to do, not the page that has it open. A pull
+ * request GitHub could not be asked about still counts as open, as on the Library's cards. GitHub
+ * is asked once for each pull request, not each time the proposals are read again. `refresh` reads
+ * the proposals again, after one is kept, moved or forgotten.
  */
 export function useProposalUrl(id: string | null): { url: string | null; refresh: () => void } {
   const storage = useStorage();
@@ -38,7 +38,8 @@ export function useProposalUrl(id: string | null): { url: string | null; refresh
     if (url === null) return;
     let live = true;
     void readPullState(url).then((state) => {
-      if (live) setAsked({ url, open: state === 'open' || state === 'unknown' });
+      // Merged but not in this app yet (`landing`), the copy still holds the change: tagged.
+      if (live) setAsked({ url, open: state !== 'merged' && state !== 'closed' });
     });
     return () => {
       live = false;
