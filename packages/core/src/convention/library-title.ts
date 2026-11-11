@@ -1,3 +1,4 @@
+import { isDocumentId } from '../storage/ids.js';
 import { MAX_TITLE_LENGTH, type PullType, pullTitleProblems } from './pr-title.js';
 
 /**
@@ -44,4 +45,23 @@ export function libraryPull(
   const problems = [...pullTitleProblems(title), ...pullTitleProblems(commit)];
   if (problems.length > 0) throw new Error(`not a conventional title: ${problems.join('; ')}`);
   return { title, commit };
+}
+
+/**
+ * The title a Library request's pull request should have, or null when it has one that follows the
+ * convention already, a person's own title included. The sign-in server writes the title when it
+ * opens the pull request, but it is a deployed program of its own, and one deployed before the
+ * convention goes on writing the old titles until it is deployed again: `library-edit` retitles
+ * the pull request with this, from the request on its branch, so that no proposal waits on a
+ * deploy. An action or an id a request cannot have is null too: it is refused when it is applied.
+ */
+export function libraryRetitle(
+  request: { action?: unknown; id?: unknown },
+  current: string,
+): string | null {
+  if (pullTitleProblems(current).length === 0) return null;
+  const { action, id } = request;
+  if (action !== 'change' && action !== 'delete' && action !== 'promote') return null;
+  if (typeof id !== 'string' || !isDocumentId(id)) return null;
+  return libraryPull('library', action, id).title;
 }

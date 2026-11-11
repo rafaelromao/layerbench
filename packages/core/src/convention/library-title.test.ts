@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { type LibraryArea, type LibraryPullAction, libraryPull } from './library-title.js';
+import {
+  type LibraryArea,
+  type LibraryPullAction,
+  libraryPull,
+  libraryRetitle,
+} from './library-title.js';
 import { MAX_TITLE_LENGTH, pullTitleProblems } from './pr-title.js';
 
 const AREAS: LibraryArea[] = ['library', 'community'];
@@ -60,5 +65,43 @@ describe('libraryPull', () => {
 
   it('refuses an id that would break the title', () => {
     expect(() => libraryPull('library', 'change', 'a\nb')).toThrow(/not a conventional title/);
+  });
+});
+
+describe('libraryRetitle', () => {
+  it('gives a title the sign-in server of before the convention left as it was, from the request', () => {
+    // What a Worker deployed before the convention opened #150 with.
+    expect(libraryRetitle({ action: 'change', id: 'enthium' }, 'Library: change enthium')).toBe(
+      'fix(library): change enthium',
+    );
+    expect(
+      libraryRetitle({ action: 'promote', id: 'my-layout' }, 'Library: promote my-layout'),
+    ).toBe('feat(library): promote my-layout');
+    expect(libraryRetitle({ action: 'delete', id: 'bird' }, 'Library: delete bird')).toBe(
+      'fix(library): delete bird',
+    );
+  });
+
+  it('leaves a title that follows the convention, a person’s own too', () => {
+    expect(
+      libraryRetitle({ action: 'change', id: 'enthium' }, 'fix(library): change enthium'),
+    ).toBe(null);
+    expect(
+      libraryRetitle({ action: 'change', id: 'enthium' }, 'feat(layouts): upgrade Enthium to v15'),
+    ).toBe(null);
+  });
+
+  it('is null for a request that cannot be applied: nothing is made of it', () => {
+    expect(libraryRetitle({ action: 'drop', id: 'enthium' }, 'Library: drop enthium')).toBe(null);
+    expect(libraryRetitle({ action: 'change', id: '../x' }, 'Library: change ../x')).toBe(null);
+    expect(libraryRetitle({ action: 'change' }, 'Library: change')).toBe(null);
+    expect(libraryRetitle({}, '')).toBe(null);
+  });
+
+  it('is a title the convention accepts, for every action a request has', () => {
+    for (const action of ['change', 'delete', 'promote']) {
+      const title = libraryRetitle({ action, id: 'a_b-C-2' }, 'Library: something');
+      expect(pullTitleProblems(title as string)).toEqual([]);
+    }
   });
 });

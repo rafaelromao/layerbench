@@ -11,6 +11,10 @@ name: library-edit
 # document. One that pins a key a change moves still fails, and is the branch's to fix.
 # Deleting a layout leaves the tests that pin something of it by its id failing in CI, until they
 # are taken out on the branch: they describe a layout the Library no longer has.
+# The pull request is titled as the convention asks (CONTRIBUTING.md), by the run itself and not
+# only by the sign-in server: that is a program deployed by hand, and one deployed before the
+# convention goes on opening pull requests with the old titles until it is deployed again. The
+# title is only set when the one it has fails the convention, so a person's own is kept.
 on:
   push:
     branches: ['library/**']
@@ -18,8 +22,11 @@ on:
 permissions:
   contents: read
 
+# A newer request on a branch replaces the run applying the older one. The push that run ends with
+# starts a run of its own, which has nothing to apply: it is in a group of its own, so that it does
+# not cancel the run it is the end of, which would show as cancelled for a request it applied.
 concurrency:
-  group: library-edit-${{ github.ref }}
+  group: library-edit-${{ github.ref }}-${{ endsWith(github.event.head_commit.message, ', applied') }}
   cancel-in-progress: true
 
 jobs:
@@ -42,6 +49,13 @@ jobs:
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
           fi
+      # The App writes the result to the branch, and the pull request's title. A token lasts an hour.
+      - if: steps.request.outputs.found == 'true'
+        uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.LAYERBENCH_APP_ID }}
+          private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
       # No version here: the action reads `packageManager` from package.json.
       - if: steps.request.outputs.found == 'true'
         uses: pnpm/action-setup@v4
@@ -52,6 +66,29 @@ jobs:
           cache: pnpm
       - if: steps.request.outputs.found == 'true'
         run: pnpm install --frozen-lockfile
+      # Before the request is applied, which deletes it. The pull request is opened a moment after
+      # its branch is pushed, so it is waited for. The title is the pull request's own text: it goes
+      # in through the environment and never into a command.
+      - if: steps.request.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          RETITLE_OUT: ${{ runner.temp }}/title.txt
+        run: |
+          number=
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            number=$(gh pr list --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].number // empty')
+            [ -n "$number" ] && break
+            sleep 10
+          done
+          if [ -z "$number" ]; then
+            echo "::warning::No open pull request for this branch to title."
+            exit 0
+          fi
+          PR_TITLE=$(gh pr view "$number" --json title --jq .title) pnpm library-retitle
+          if [ -s "$RETITLE_OUT" ]; then
+            gh pr edit "$number" --title "$(cat "$RETITLE_OUT")"
+          fi
       - if: steps.request.outputs.found == 'true'
         run: pnpm library-edit
       # The Efforts the editor measures a layout's languages against: the bundled layouts changed.
@@ -63,12 +100,6 @@ jobs:
         run: pnpm check:fix
       - if: steps.request.outputs.found == 'true'
         run: pnpm typecheck && pnpm check
-      - if: steps.request.outputs.found == 'true'
-        uses: actions/create-github-app-token@v2
-        id: app
-        with:
-          app-id: ${{ vars.LAYERBENCH_APP_ID }}
-          private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
       - if: steps.request.outputs.found == 'true'
         env:
           TOKEN: ${{ steps.app.outputs.token }}
