@@ -38,6 +38,7 @@
     "keymap": "KEYMAP=1 vitest run src/layouts/magic-romak-source.test.ts",
     "languages": "LANGUAGES=1 vitest run src/lang/write.test.ts",
     "library-edit": "LIBRARY_EDIT=1 vitest run src/layouts/library-edit/write.test.ts",
+    "library-retitle": "vitest run src/layouts/library-edit/retitle-write.test.ts",
     "community-cleanup": "vitest run src/layouts/library-edit/cleanup-write.test.ts",
     "pr-title": "vitest run src/convention/pr-title-check.test.ts"
   },

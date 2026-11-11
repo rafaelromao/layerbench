@@ -20,18 +20,48 @@ jobs:
   # take the longest, and nothing they do waits on the engine's.
   build:
     runs-on: ubuntu-latest
+    # `actions` is to read the library-edit run a Library request waits for, below.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v5
         with:
           # Dependency install scripts, tests and the build run after this; none of them needs a token.
           persist-credentials: false
       # A Library request still on a branch is one library-edit has not applied, or refused: what
-      # would be merged is not what it asks for yet.
-      - run: |
-          if [ -e .library ]; then
-            echo "A Library request is still on this branch: see the library-edit workflow's run."
-            exit 1
+      # would be merged is not what it asks for yet. library-edit applies it in a few minutes and
+      # pushes the result, which starts this workflow again and replaces this run, so a request is
+      # waited for here and not failed at once, as a proposal that opens red is taken for broken. It
+      # fails when library-edit ended and nothing replaced this run: the request was refused, the
+      # application failed, or its result left a conflict, which starts no run; the run says why.
+      # Only a pull request from a branch of this repository has such a run to wait for.
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          [ -e .library ] || exit 0
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" = "$GH_REPO" ]; then
+            echo "A Library request is on this branch: waiting for the library-edit run that applies it."
+            state=
+            missing=0
+            for _ in $(seq 1 80); do
+              state=$(gh run list --workflow library-edit.yml --commit "$SHA" --limit 1 --json status,conclusion --jq '.[0] // empty | "\(.status) \(.conclusion)"' || true)
+              case "$state" in
+                completed*) break ;;
+                '') missing=$((missing + 1)); [ "$missing" -ge 20 ] && break ;;
+              esac
+              sleep 15
+            done
+            echo "library-edit: ${state:-no run found}"
+            # Applied, its push replaces this run within seconds: what follows is for when it did not.
+            sleep 90
           fi
+          echo "::error::A Library request is on this branch and its result has not replaced it: see the library-edit run for this commit."
+          exit 1
       # No version here: the action reads `packageManager` from package.json, and specifying both
       # makes it fail with "Multiple versions of pnpm specified".
       - uses: pnpm/action-setup@v4

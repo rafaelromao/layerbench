@@ -115,7 +115,10 @@ change**, and the sign-in Worker opens, as the GitHub App, a pull request into m
 `library-edit` workflow applies it on that branch (`pnpm library-edit`; a layout written in code
 becomes a document, `packages/core/src/layouts/library-edit/`), runs `pnpm languages` and
 `pnpm goldens`, and pushes the result as the App, so CI checks what would be merged; CI fails while
-a request is still on a branch. What is pushed to the branch after that is left as it is. Where a
+a request is still on a branch (CI waits for the `library-edit` run while it applies one, and fails
+only if that run ends and nothing replaced it). `library-edit` also titles the pull request as
+`CONTRIBUTING.md` asks, when the sign-in server deployed does not yet. What is pushed to the branch
+after that is left as it is. Where a
 layout is written, in code or as a document, fails no test: the core suite passes with fifteen
 layouts written in code made documents unchanged, as the workflow does. A test that names what a
 layout's keys are, as `layouts.test.ts` does of Romak's, still fails for a change that moves one of
