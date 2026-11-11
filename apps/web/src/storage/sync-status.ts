@@ -259,7 +259,7 @@ export function useSyncSummary(): SyncSummary {
   const conflicts = useSync((s) => s.last?.conflicts.length ?? 0);
   const held = useSync((s) => s.held?.account ?? null);
   const scheduled = useSync((s) => s.scheduled);
-  const lacking = useSync((s) => s.lacking);
+  const lacking = useSync((s) => s.missing?.length ?? null);
   const auditFailed = useSync((s) => s.auditFailed);
   const auditing = useSync((s) => s.auditing);
   const online = useSyncExternalStore(subscribeOnline, isOnline, () => true);

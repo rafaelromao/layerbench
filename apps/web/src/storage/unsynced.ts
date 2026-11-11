@@ -1,4 +1,4 @@
-import type { Collection } from '@layerbench/core';
+import { COLLECTIONS, type Collection } from '@layerbench/core';
 
 /** Where the marks are kept between visits; tests keep them in memory. */
 export interface MarksBacking {
@@ -44,6 +44,32 @@ interface Kept {
   audit?: Audit;
 }
 
+/** A document saved in this browser that the account's gists do not have. */
+export interface Missing {
+  collection: Collection;
+  id: string;
+  /** As it was saved here when the look was made. */
+  name: string;
+  /**
+   * Whether the version both stores last held the same of is on record: if it is, some GitHub
+   * account held the document once (not known which, for a browser has had more than one), and does
+   * not now. Without one it is not known whether it ever was sent.
+   */
+  sent: boolean;
+}
+
+/** Whether a stored value is a well-formed `Missing`. */
+function isMissing(value: unknown): value is Missing {
+  if (!value || typeof value !== 'object') return false;
+  const m = value as Record<string, unknown>;
+  return (
+    COLLECTIONS.some((c) => c === m.collection) &&
+    typeof m.id === 'string' &&
+    typeof m.name === 'string' &&
+    typeof m.sent === 'boolean'
+  );
+}
+
 /** A look at every document this browser holds against an account's gists. */
 export interface Audit {
   account: string;
@@ -51,6 +77,8 @@ export interface Audit {
   at: number;
   /** How many documents this browser held that the account lacked. */
   lacking: number;
+  /** Which they were. Absent from a look made before they were kept, so only the count is known. */
+  missing?: Missing[];
 }
 
 interface Read {
@@ -92,7 +120,14 @@ export class Unsynced {
         typeof a.account === 'string' &&
         typeof a.at === 'number' &&
         typeof a.lacking === 'number'
-          ? a
+          ? {
+              account: a.account,
+              at: a.at,
+              lacking: a.lacking,
+              // A list that is not whole is no list: the count alone is what is known then.
+              ...(Array.isArray(a.missing) &&
+                a.missing.every(isMissing) && { missing: a.missing as Missing[] }),
+            }
           : null;
       return { unsent: new Set(unsent), base: new Map(base), account, audit };
     } catch {

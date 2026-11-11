@@ -12,7 +12,7 @@ import {
   type StorageMeta,
   stableStringify,
 } from '@layerbench/core';
-import { type Unsynced, unsynced } from './unsynced.js';
+import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /**
  * A document changed here since the gists last held it, and in the gists since: neither version is
@@ -74,8 +74,10 @@ export interface Audited {
   adopted: number;
   /** Differing, and not known to be an older copy: marked, for sending to weigh. */
   marked: number;
-  /** In this browser and not in the gists. */
+  /** In this browser and not in the gists, as `missing` lists them. */
   lacking: number;
+  /** Those documents, by name. */
+  missing: Missing[];
 }
 
 /** Thrown when a copy up is told to stop. */
@@ -543,6 +545,85 @@ export class CompositeStorage implements StorageAdapter {
       await this.local.delete(collection, id, opts);
       // Gone from this browser, there is nothing left of it to send.
       this.marks.forget(collection, id);
+      // Whatever lists documents of this browser is told one went, marked or not.
+      this.marks.notify();
+    });
+  }
+
+  /**
+   * Delete a document from this browser alone, as the user chooses for one the account lacks: the
+   * gists are neither read nor written, so one they hold under the same id stays there, and nothing
+   * is deleted from the account unseen. `alongside` are other collections' documents under the same
+   * id that go with it, as a layout's proposal does. Returns the documents gone, as
+   * `collection/id`, one already gone from here included; null, with nothing deleted, when it has
+   * been saved since the user was shown it (a save marks it, to be sent, and changes its version),
+   * which is not the document they chose to throw away.
+   */
+  deleteHere(
+    collection: Collection,
+    id: string,
+    alongside: readonly Collection[] = [],
+  ): Promise<string[] | null> {
+    return this.exclusive(async () => {
+      // Read first, deleted only if still that version: a save from another tab that lands between
+      // the two is never deleted, though no mark was there to see when it was looked for.
+      const mine = await this.local.get(collection, id);
+      if (this.marks.has(collection, id)) return null;
+      const gone: string[] = [];
+      try {
+        if (mine) await this.local.delete(collection, id, { expectedSha: mine.meta.sha });
+      } catch (e) {
+        if (e instanceof StorageConflictError) return null;
+        throw e;
+      }
+      this.marks.forget(collection, id);
+      gone.push(`${collection}/${id}`);
+      for (const c of alongside) {
+        const other = await this.local.get(c, id).catch(() => null);
+        if (!other) continue;
+        try {
+          await this.local.delete(c, id, { expectedSha: other.meta.sha });
+        } catch (e) {
+          // Saved again meanwhile: it is not the one that was looked at, and stays.
+          if (e instanceof StorageConflictError) continue;
+          throw e;
+        }
+        this.marks.forget(c, id);
+        gone.push(`${c}/${id}`);
+      }
+      return gone;
+    });
+  }
+
+  /**
+   * Which of these documents (`collection/id`) this browser still holds: a look at its own copies
+   * alone, the gists not asked.
+   */
+  async holds(keys: readonly string[]): Promise<Set<string>> {
+    const held = new Set<string>();
+    for (const collection of COLLECTIONS) {
+      const prefix = `${collection}/`;
+      const wanted = keys.filter((k) => k.startsWith(prefix));
+      if (wanted.length === 0) continue;
+      const here = new Set((await this.local.list(collection)).map((e) => `${prefix}${e.id}`));
+      for (const key of wanted) if (here.has(key)) held.add(key);
+    }
+    return held;
+  }
+
+  /**
+   * Send one document of this browser to the gists, as the user asks for one the account lacks:
+   * weighed as `copyUp` weighs each, without touching the others, and whether or not it is marked.
+   * 'absent' when this browser no longer holds it. What it did is what `copyUp` reports of it.
+   */
+  copyOne(collection: Collection, id: string): Promise<CopiedUp | 'absent'> {
+    return this.exclusive(async () => {
+      const done: CopiedUp = { copied: 0, current: 0, conflicts: [], taken: 0, failed: [] };
+      if (!this.remote) return done;
+      const entry = (await this.local.list(collection)).find((e) => e.id === id);
+      if (!entry) return 'absent';
+      await this.sendOne(collection, entry, true, done, true);
+      return done;
     });
   }
 
@@ -567,7 +648,7 @@ export class CompositeStorage implements StorageAdapter {
    * One the gists lack is counted and left: another browser may have deleted it.
    */
   async audit(opts: { signal?: AbortSignal } = {}): Promise<Audited> {
-    const found: Audited = { equal: 0, adopted: 0, marked: 0, lacking: 0 };
+    const found: Audited = { equal: 0, adopted: 0, marked: 0, lacking: 0, missing: [] };
     const remote = this.remote;
     if (!remote) return found;
     for (const collection of COLLECTIONS) {
@@ -577,10 +658,20 @@ export class CompositeStorage implements StorageAdapter {
         remote.list(collection),
       ]);
       const theirs = new Set(there.map((e) => e.id));
-      for (const { id } of here) {
+      /** One the gists lack. A version on record means they held it once: it was deleted from them. */
+      const lack = (id: string, name: string) => {
+        found.lacking++;
+        found.missing.push({
+          collection,
+          id,
+          name,
+          sent: this.marks.base(collection, id) !== null,
+        });
+      };
+      for (const { id, name } of here) {
         if (this.marks.has(collection, id)) continue;
         if (!theirs.has(id)) {
-          found.lacking++;
+          lack(id, name);
           continue;
         }
         await this.exclusive(async () => {
@@ -592,7 +683,7 @@ export class CompositeStorage implements StorageAdapter {
           ]);
           if (!mine) return;
           if (!seen) {
-            found.lacking++;
+            lack(id, name);
             return;
           }
           if (sameDocument(mine.doc, seen.doc)) {

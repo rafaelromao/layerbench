@@ -165,9 +165,15 @@ When you sign in, and at most every twelve hours for each account, this browser'
 compared with your account's by their **contents**, never by when each was saved: the same in both
 is recorded as such; one this browser holds an unedited older copy of is brought up to your
 account's; any other that differs is marked, and sent or asked about like the rest. A document your
-account lacks is not sent by itself, since another browser may have deleted it, but is counted:
-**Storage** says how many, with a button to send them, and does not show a ✓ until there are none.
-If the comparison cannot finish, it says so, with a button to run it again.
+account lacks is not sent by itself, since another browser may have deleted it, but is listed: the
+status, above the editor and in **Storage**, names each one, with its kind, and says if a GitHub
+account held it before (a recorded version is what tells it; on a browser that has been signed in to
+more than one account it may have been another). Each row has **Send**, which sends that one and no
+other, and **Delete**, which asks first, in the row, and then deletes it from this browser alone:
+nothing is asked of your account, and one it holds under the same id stays there. A document saved
+again since, or deleted elsewhere in the app, comes off the list. **Send them** sends all of them.
+**Storage** does not show a ✓ until the list is empty. If the comparison cannot finish, it says so,
+with a button to run it again.
 
 **If this browser's last account is not the one signed in.** What is marked is held back, and the
 status says so, naming both accounts: a browser that someone else used may hold what is theirs. **Send
@@ -251,7 +257,12 @@ from there. One tab sends at a time.
 - A rule set or a text is weighed against the version this browser last read or held, which any read
   in another tab moves on, not the version its editor opened, as a layout's is.
 - Documents here that your account lacks stay in the status until you send them or delete them here:
-  one deleted from your account on purpose looks the same as one never sent.
+  one deleted from your account on purpose looks the same as one never sent, but for the note that a
+  GitHub account held it before, which only a document whose version was recorded has. The list is as
+  of the last comparison, so one sent or deleted from another browser since is only taken off when the
+  comparison is next made, and what it calls missing is judged by your account's list of documents: one
+  whose row was dropped from that list, while its file is still there, is listed too, and **Send** or
+  **Send them** is what lists it again.
 - What is not sent is remembered in this browser's site data, apart from the documents. A browser that
   loses it (Safari after a week unused, or a tab killed at the wrong moment) loses the memory of what was
   unsent, not the documents: a copy that differs from your account's is then treated as an edit when

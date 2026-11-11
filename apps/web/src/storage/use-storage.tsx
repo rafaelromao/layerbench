@@ -84,6 +84,20 @@ export function useSettled(): boolean {
   return useContext(SettledContext);
 }
 
+/**
+ * Lists collections again, as after documents were deleted from them behind the lists' backs: only
+ * the collections something has opened a list of are asked for.
+ */
+export function useRefreshCollections(): (collections: readonly Collection[]) => void {
+  const listings = useContext(ListingsContext);
+  return useCallback(
+    (collections) => {
+      for (const collection of collections) void listings?.get(collection)?.refresh();
+    },
+    [listings],
+  );
+}
+
 /** Copy up, where storage reaches GitHub; null where it is this browser's alone. */
 export function useCopyUp(): (() => Promise<CopiedUp>) | null {
   const storage = useStorage();
