@@ -41,7 +41,7 @@ import { communityRef } from '../community/ref.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue, qualityBorder } from '../components/format.js';
 import { HeatLegend } from '../components/HeatLegend.js';
-import { HelpLink } from '../components/HelpLink.js';
+import { HelpLink, HelpWord } from '../components/HelpLink.js';
 import { BandBadge } from '../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
 import { readCustom } from '../custom/read.js';
@@ -361,9 +361,11 @@ function LayoutCard({
                 </a>
               )}
               {item.category && (
-                <span className="lb-category badge badge-ghost badge-xs">
-                  {CATEGORY_NAMES[item.category]}
-                </span>
+                <HelpWord
+                  help={HELP.categories}
+                  word={CATEGORY_NAMES[item.category]}
+                  className="lb-category badge badge-ghost badge-xs"
+                />
               )}
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}

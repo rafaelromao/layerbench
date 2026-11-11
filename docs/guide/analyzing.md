@@ -69,24 +69,10 @@ its navigator is on, coloured against the busiest key of all the layout's layers
 turning through the layers compares them; a key's tooltip gives its percentage of that key. A layer
 with nothing to show for the measure stays plain, and says so under the board.
 
-Each card also names the layout's category, so you can keep the list to the ones you want. The order is the sort's alone, whatever the category. The category follows
-from the layout's own keys, whether it came with the app or is yours, and nothing on its
-[default layers](editing.md#default-layers) counts; the layers its author defines,
-Numbers and Symbols among them, do:
-
-- **Standard**: every layout that is neither of the two below. Most have one alpha layer, a layer
-  where a key types a letter from a to z by itself, and no letter on a thumb, on a board of 34 keys
-  or more.
-- **Thumb Alpha**: a layout that is not Special, but where a thumb key types a letter on an alpha
-  layer.
-- **Special**: a layout with an adaptive key, a macro, an alt repeat or a mod morph, on a key or on
-  a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included.
-  A sentence space on the space key, which changes with the key before it as an adaptive key does,
-  makes a layout Special too. So does a shift key that starts caps word,
-  which is a mod morph.
-
-Untick a category under **Categories**, in **Rank and filter**, to leave its layouts out of the list
-and the ranking.
+Each card also names the layout's [category](#categories), a link to how it is worked out, so you
+can keep the list to the ones you want: untick a category under **Categories**, in **Rank and
+filter**, to leave its layouts out of the list and the ranking. The order is the sort's alone,
+whatever the category.
 
 Layouts are compared on the text, not on their presses. The pair rules are a share of the letter
 pairs the text has, SFB of the letters it has, and Effort is per character typed, so a layout's layer taps, holds
@@ -142,6 +128,30 @@ The same switches are in every view that analyzes, in its **Settings**. **Compar
 their keys are drawn as written, as in **Analyze**. **Analyze A** and **Analyze B** open either one
 typed the same way. **Analyze with**, in **Analyze**, does it for the
 one layout, which is still edited as written: only its numbers leave the features out.
+
+### Categories
+
+A layout is in exactly one category, which follows from its own keys, whether it came with the app
+or is yours. The name on each card in the Library leads here. Three rules decide it, checked in
+this order, and the first that fits is the category:
+
+1. **Special**: a layout with an adaptive key, a macro, an alt repeat or a mod morph, on a key or on
+   a combo; or with more than one alpha layer; or on a board of fewer than 34 keys, thumbs included
+   (a row-stagger board's one space bar counts once). A sentence space, which changes with the key
+   before it as an adaptive key does, makes a layout Special too. So does a shift key that starts
+   caps word, which is a mod morph.
+2. **Thumb Alpha**: a layout that is not Special, but where a thumb key types a letter on an alpha
+   layer.
+3. **Standard**: a layout that is neither: no special feature, no letter on a thumb, at most one
+   alpha layer, and a board of 34 keys or more.
+
+An *alpha layer* is a layer where a key types a letter from a to z by itself: as a plain key, as the
+tap or the hold of a tap-hold, as a layer-tap's tap, on either side of a morph, in a tap dance, or
+as an adaptive key's default or one of its branches. The letters a macro types do not count. A
+layout that has an Accents layer has the [default layers](editing.md#default-layers), Numbers,
+Symbols and Accents, and nothing on them counts toward its category, nor does a combo that fires
+only on them. One without Accents has the layers its author defines, Numbers and Symbols among them,
+and they count.
 
 ### Changing the costs
 

@@ -1687,6 +1687,22 @@ button.lb-combo-apart:focus-visible {
     padding-inline: 0.625rem;
   }
 }
+/* A card's category leads to the guide's rules for categories: marked as a link on hover and focus,
+   as the badges above are, and as tall as a finger needs. */
+.lb-category {
+  text-decoration: none;
+}
+.lb-category:hover,
+.lb-category:focus-visible {
+  outline: 1px solid var(--lb-ring);
+  outline-offset: 1px;
+}
+@media (pointer: coarse) {
+  .lb-category {
+    min-height: 1.5rem;
+    padding-inline: 0.625rem;
+  }
+}
 .lb-stat-main {
   display: flex;
   flex-direction: column;
