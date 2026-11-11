@@ -399,9 +399,13 @@ describe('layouts as their authors designed them', () => {
     Object.keys(layout.layers[0].bindings).filter((k) => /^[LR]\d$/.test(k));
   const typed = (b: Binding | undefined) => (b?.kind === 'hold_tap' ? b.tap : b);
 
+  // The layouts this names that are written in code: one a change proposed in the app made a
+  // document is its file, no longer a definition to hold to this, and leaves the list as it is.
+  const inCode = (ids: string[]) => ids.filter((id) => written.has(id)).sort();
+
   it('are every layout of the Library whose author defines no layer past its letters', () => {
     expect(alone.map((l) => l.id).sort()).toEqual(
-      [
+      inCode([
         'aptmak',
         'aptv3',
         'bird',
@@ -425,7 +429,7 @@ describe('layouts as their authors designed them', () => {
         'sturdy',
         'sunlight',
         'uno',
-      ].sort(),
+      ]),
     );
     // Special by what is theirs, a twenty-six-key board and adaptive keys, and by no layer.
     expect(
@@ -433,7 +437,7 @@ describe('layouts as their authors designed them', () => {
         .filter((l) => layoutCategory(l) === 'special')
         .map((l) => l.id)
         .sort(),
-    ).toEqual(['bird', 'nordrassil', 'uno']);
+    ).toEqual(inCode(['bird', 'nordrassil', 'uno']));
   });
 
   it.each(alone.map((l) => [l.id ?? l.name, l] as const))(

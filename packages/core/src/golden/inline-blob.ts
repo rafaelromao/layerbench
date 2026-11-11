@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync, inflateSync } from 'node:zlib';
 
 /**
@@ -18,4 +19,13 @@ export function inlineBlob(existing: string | null, encoded: string): string {
     }
   }
   return deflateSync(Buffer.from(encoded, 'utf8')).toString('base64url');
+}
+
+/** Writes the share blob of `encoded` to `path` unless the file holds it already; whether it did. */
+export function writeInlineBlob(path: string, encoded: string): boolean {
+  const existing = existsSync(path) ? readFileSync(path, 'utf8') : null;
+  const blob = inlineBlob(existing, encoded);
+  if (blob === existing) return false;
+  writeFileSync(path, blob);
+  return true;
 }

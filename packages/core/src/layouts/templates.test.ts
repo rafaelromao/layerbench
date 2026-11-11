@@ -951,13 +951,16 @@ describe("home row mods: held only where an author's keymap holds them", () => {
         .filter((d) => d.homeRowMods !== undefined)
         .map((d) => d.id)
         .sort(),
-    ).toEqual([
-      'ben-vallack-piano',
-      'hands-down-gold',
-      'hands-down-promethium',
-      'hands-down-vibranium',
-      'magic-sturdy',
-    ]);
+    ).toEqual(
+      // Those still written in code: one a change made a document holds what its file says.
+      [
+        'ben-vallack-piano',
+        'hands-down-gold',
+        'hands-down-promethium',
+        'hands-down-vibranium',
+        'magic-sturdy',
+      ].filter((id) => BEFORE.has(id)),
+    );
   });
 
   it.each([...CLASSIC_DEFS, ...SMALL_DEFS].map((d) => [d.id] as const))(

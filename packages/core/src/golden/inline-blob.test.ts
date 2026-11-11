@@ -1,6 +1,9 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { inlineBlob } from './inline-blob.js';
+import { inlineBlob, writeInlineBlob } from './inline-blob.js';
 
 const TEXT = JSON.stringify({
   name: 'Layout',
@@ -31,5 +34,22 @@ describe('the share blob of a golden dump', () => {
     expect(decoded(inlineBlob(null, TEXT))).toBe(TEXT);
     expect(decoded(inlineBlob('not a blob at all', TEXT))).toBe(TEXT);
     expect(decoded(inlineBlob('', TEXT))).toBe(TEXT);
+  });
+
+  it('writes the file only when it has to', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'inline-blob-'));
+    try {
+      const path = join(dir, 'inline.txt');
+      // None yet: written. The same text in other bytes: left alone. Other text: written.
+      expect(writeInlineBlob(path, TEXT)).toBe(true);
+      const other = blob(TEXT, 1);
+      writeFileSync(path, other);
+      expect(writeInlineBlob(path, TEXT)).toBe(false);
+      expect(readFileSync(path, 'utf8')).toBe(other);
+      expect(writeInlineBlob(path, `${TEXT} `)).toBe(true);
+      expect(decoded(readFileSync(path, 'utf8'))).toBe(`${TEXT} `);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

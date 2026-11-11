@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { useGitHubSession } from '../auth/github-session.js';
 import { setCommunitySource } from '../community/community.js';
 import type { AnalyzeRequest } from '../engine/protocol.js';
-import { proposalOf } from '../proposals/proposals.js';
+import { proposalOf, recordProposal } from '../proposals/proposals.js';
 import {
   bar,
   copyDialog,
@@ -410,6 +410,39 @@ describe('Edit', () => {
         'href',
         PULL,
       );
+    } finally {
+      vi.unstubAllGlobals();
+      useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });
+    }
+  }, 60_000);
+
+  it('keeps an open pull request followed when proposing it again from Submit is refused', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const colemak = bundledLayout('colemak') as Layout;
+    await storage.put('layouts', 'colemak', toCanonicalJson({ ...colemak, id: 'colemak' }));
+    await recordProposal(storage, 'colemak', {
+      name: 'Colemak',
+      target: { kind: 'bundled', id: 'colemak' },
+      url: PULL,
+    });
+    const { sent } = await proposing(0, 'the layout does not compile');
+    try {
+      renderRoute('/analyze?layout=custom%3Acolemak&corpus=en-general&sample=1000', { storage });
+      await waitFor(() => expect(within(bar()).getByLabelText('Name')).toHaveValue('Colemak'));
+      expect(await within(bar()).findByRole('link', { name: 'proposed' })).toBeInTheDocument();
+
+      await user.click(within(bar()).getByRole('button', { name: 'Submit' }));
+      const dialog = await screen.findByRole('dialog', { name: 'Propose Colemak' });
+      await user.click(within(dialog).getByRole('button', { name: 'Propose change' }));
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        'Nothing was proposed: the layout does not compile.',
+      );
+      expect(sent).toHaveLength(1);
+      // What the server refuses, with a pull request open: that one is still the layout's.
+      expect(await proposalOf(storage, 'colemak')).toMatchObject({ url: PULL });
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(within(bar()).getByRole('link', { name: 'proposed' })).toHaveAttribute('href', PULL);
     } finally {
       vi.unstubAllGlobals();
       useGitHubSession.setState({ status: 'unknown', login: null, maintainer: false });

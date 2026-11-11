@@ -96,7 +96,7 @@ export function ProposeDialog({
           </h2>
           <p className="text-xs opacity-70">
             {own
-              ? `${layout.name} is one of ${where}. Propose this layout as a change to it, by a pull request on GitHub: one still open gets this version, and one closed is opened again. Your layout stays among your custom layouts until the pull request is merged or closed.`
+              ? `${layout.name} is one of ${where}. Propose this layout as a change to it, by a pull request on GitHub: one still open gets this version, and one closed is opened again. It is saved first, with any changes not saved yet, and stays among your custom layouts until the pull request is merged or closed.`
               : `${layout.name} is one of ${where}. Propose your change to it, by a pull request on GitHub, or save a copy of your own. A proposal is saved here too, until its pull request is merged or closed.`}
           </p>
           <Body step={step} login={login} />

@@ -57,7 +57,12 @@ import { useKeyStats } from '../../engine/use-key-stats.js';
 import { HELP, type HelpTopic, rulerShown } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
-import { followProposal, forgetProposal, recordProposal } from '../../proposals/proposals.js';
+import {
+  followProposal,
+  forgetProposal,
+  proposalOf,
+  recordProposal,
+} from '../../proposals/proposals.js';
 import { libraryLayoutNamed } from '../../proposals/target.js';
 import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
@@ -96,6 +101,8 @@ import { SubmitDialog } from './SubmitDialog.js';
 const undoableEditReducer = undoable(editReducer);
 
 /** How long each press of a played word stays lit, and the rest before it plays again. */
+/** How long Submit waits for the community layouts to be read before it goes by the ones it has. */
+const COMMUNITY_WAIT_MS = 2500;
 const PLAY_STEP_MS = 750;
 const PLAY_REST_MS = 1200;
 
@@ -343,7 +350,8 @@ export function Workbench({
       } else toast.info(`Saved ${layout.name}`);
       // Saved under another id than it was stored by, as a new custom layout or over another one: a
       // proposal kept under that id is not this layout's, and goes.
-      if (saved.id !== storedAs) await forgetProposal(storage, saved.id).catch(() => false);
+      if (saved.id !== storedAs && (await forgetProposal(storage, saved.id).catch(() => false)))
+        refreshProposals();
       // A change proposed from this layout follows it: its pull request, while open, gets this
       // version, under the name proposed.
       const followed =
@@ -423,13 +431,18 @@ export function Workbench({
           : { type: 'savedAs', from: layout, layout: named },
       );
       void customLayouts.refresh();
-      // Kept before it is sent, so a send that fails is tried again by the copy's next save.
-      const proposed = { name: layout.name, target: source, url: null };
+      // Kept before it is sent, so a send that fails is tried again by the copy's next save. The
+      // pull request already open for this layout stays its own until the server answers, as a
+      // layout proposed again from Submit holds one.
+      const open = await proposalOf(storage, saved.id).catch(() => null);
+      const sameTarget = open?.target.kind === source.kind && open.target.id === source.id;
+      const proposed = { name: layout.name, target: source, url: sameTarget ? open.url : null };
       await recordProposal(storage, saved.id, proposed);
       const sent = await proposeChange(source, toCanonicalJson({ ...layout, id: source.id }));
       if (sent.kind === 'refused') {
-        // What the sign-in server refuses it would refuse again: the copy is a layout of one's own.
-        await forgetProposal(storage, saved.id).catch(() => false);
+        // What the sign-in server refuses it would refuse again, with no pull request open: the copy
+        // is a layout of one's own. One that is open stays followed.
+        if (proposed.url === null) await forgetProposal(storage, saved.id).catch(() => false);
         refreshProposals();
         return { kind: 'refused', reason: `${sent.reason}. Your copy is saved among your layouts` };
       }
@@ -472,8 +485,16 @@ export function Workbench({
   // change to propose again: a closed one leaves its copy as one's own layout, and Save sends nothing.
   const [submitting, setSubmitting] = useState(false);
   const submit = useCallback(async () => {
-    await readCommunityOnce().catch(() => {});
-    const source = libraryLayoutNamed(state.layout.name, useCommunity.getState().layouts);
+    // A bundled layout is known at once; the community's are read first, for as long as it takes
+    // to be sure they are not slow to come, and the ones last read stand in after that.
+    let source = libraryLayoutNamed(state.layout.name, []);
+    if (!source) {
+      await Promise.race([
+        readCommunityOnce().catch(() => {}),
+        new Promise((wait) => setTimeout(wait, COMMUNITY_WAIT_MS)),
+      ]);
+      source = libraryLayoutNamed(state.layout.name, useCommunity.getState().layouts);
+    }
     if (source) setChoosing({ source, own: true });
     else setSubmitting(true);
   }, [state.layout.name]);
