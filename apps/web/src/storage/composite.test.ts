@@ -2153,6 +2153,34 @@ describe('deleting from this browser alone', () => {
     expect(await composite.deleteHere('layouts', 'lone', ['proposals'])).toEqual(['layouts/lone']);
   });
 
+  it('deletes only the version it read, so a save from another tab in between is never deleted', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    await local.put('layouts', 'mine', { name: 'Mine' });
+    const sha = (await local.get('layouts', 'mine'))?.meta.sha;
+    // The other tab's save lands after the look at the version and before the delete, with its mark
+    // not yet set when the mark was looked for.
+    const real = local.delete.bind(local);
+    const deleting = vi.spyOn(local, 'delete').mockImplementationOnce(async (c, id, opts) => {
+      await local.put('layouts', 'mine', { name: 'Mine, edited in another tab' });
+      return real(c, id, opts);
+    });
+
+    const gone = await new CompositeStorage(local, fakeRemote(), marks).deleteHere(
+      'layouts',
+      'mine',
+    );
+    expect(deleting).toHaveBeenCalledWith('layouts', 'mine', { expectedSha: sha });
+    expect(gone).toBeNull();
+    expect((await local.get('layouts', 'mine'))?.doc.name).toBe('Mine, edited in another tab');
+  });
+
+  it('counts one already gone from here as gone, and deletes nothing', async () => {
+    const local = localAdapter();
+    const composite = new CompositeStorage(local, fakeRemote(), memoryMarks());
+    expect(await composite.deleteHere('layouts', 'never-here')).toEqual(['layouts/never-here']);
+  });
+
   it('does not delete one saved since it was shown, which is marked to be sent', async () => {
     const marks = memoryMarks();
     const local = localAdapter();
@@ -2164,5 +2192,71 @@ describe('deleting from this browser alone', () => {
     ).toBeNull();
     expect(await local.get('layouts', 'edited')).not.toBeNull();
     expect(marks.has('layouts', 'edited')).toBe(true);
+  });
+});
+
+describe('what this browser holds, of a list of documents', () => {
+  it('says which it still holds, asking its own copies alone', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'here', { name: 'Here' });
+    await local.put('rulesets', 'also', { name: 'Also' });
+    const calls = (['list', 'get', 'put', 'delete'] as const).map((m) => vi.spyOn(remote, m));
+
+    const held = await new CompositeStorage(local, remote, memoryMarks()).holds([
+      'layouts/here',
+      'layouts/gone',
+      'rulesets/also',
+      'corpora/gone',
+    ]);
+    expect([...held].sort()).toEqual(['layouts/here', 'rulesets/also']);
+    for (const call of calls) expect(call).not.toHaveBeenCalled();
+  });
+
+  it('tells what listens to the marks that a document was deleted, marked or not', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const composite = new CompositeStorage(local, fakeRemote(), marks);
+    await composite.put('layouts', 'mine', { name: 'Mine' });
+    const heard = vi.fn();
+    marks.subscribe(heard);
+    await composite.delete('layouts', 'mine');
+    expect(heard).toHaveBeenCalled();
+  });
+});
+
+describe('sending one document', () => {
+  it('sends that one and not the others, marked or not', async () => {
+    const marks = memoryMarks();
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'one', { name: 'One' });
+    await local.put('layouts', 'two', { name: 'Two' });
+    const composite = new CompositeStorage(local, remote, marks);
+
+    const result = await composite.copyOne('layouts', 'one');
+    expect(result).toEqual({ copied: 1, current: 0, conflicts: [], taken: 0, failed: [] });
+    expect((await remote.get('layouts', 'one'))?.doc).toEqual({ name: 'One' });
+    expect(await remote.get('layouts', 'two')).toBeNull();
+    // What both hold is on record, as after any send.
+    expect(marks.base('layouts', 'one')).toBe((await remote.get('layouts', 'one'))?.meta.sha);
+  });
+
+  it('says it is absent when this browser no longer holds it', async () => {
+    const composite = new CompositeStorage(localAdapter(), fakeRemote(), memoryMarks());
+    expect(await composite.copyOne('layouts', 'nothing')).toBe('absent');
+  });
+
+  it('leaves a layout whose name the gists have under another id, and says so', async () => {
+    const local = localAdapter();
+    const remote = fakeRemote();
+    await local.put('layouts', 'mine', { name: 'Same name' });
+    await remote.put('layouts', 'theirs', { name: 'Same name' });
+    const result = await new CompositeStorage(local, remote, memoryMarks()).copyOne(
+      'layouts',
+      'mine',
+    );
+    expect(result).toMatchObject({ copied: 0, taken: 1 });
+    expect(await remote.get('layouts', 'mine')).toBeNull();
   });
 });

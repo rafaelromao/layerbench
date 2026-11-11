@@ -122,7 +122,7 @@ describe('the status that says the account lacks documents', () => {
     stop = startAutoSync(storage, unsynced, TIMING, 'me');
     await waitFor(() => expect(useSync.getState().missing).toHaveLength(2));
     const [first, second] = within(list()).getAllByRole('listitem');
-    expect(first).toHaveTextContent('Deleted there · layout, was in your account once');
+    expect(first).toHaveTextContent('Deleted there · layout, was in a GitHub account before');
     expect(second).toHaveTextContent(/^Never sent · layout(?!,)/);
   });
 
@@ -133,7 +133,7 @@ describe('the status that says the account lacks documents', () => {
 
     const row = within(list()).getByRole('listitem');
     expect(row).toHaveTextContent(
-      'Delete Mine from this browser? It is not in your GitHub account, so it will be gone for good.',
+      'Delete Mine from this browser? It is not in your GitHub account as last checked, so it will be gone for good.',
     );
     // Nothing has gone, and focus is on the choice that deletes nothing.
     expect(await local.get('layouts', 'mine')).not.toBeNull();
@@ -210,6 +210,21 @@ describe('the status that says the account lacks documents', () => {
       ),
     );
     expect(await local.get('layouts', 'mine')).not.toBeNull();
+    // Back to asking nothing, with focus on the button that was pressed first, not lost.
+    const again = await screen.findByRole('button', { name: 'Delete Mine from this browser' });
+    await waitFor(() => expect(again).toHaveFocus());
+    expect(screen.queryByRole('button', { name: 'Delete Mine for good' })).toBeNull();
+  });
+
+  it('takes a document off the list when it is deleted from the app meanwhile', async () => {
+    const { storage } = await shown([
+      ['layouts', 'gone', 'Gone'],
+      ['layouts', 'stays', 'Stays'],
+    ]);
+    await storage.delete('layouts', 'gone');
+    await waitFor(() => expect(within(list()).getAllByRole('listitem')).toHaveLength(1));
+    expect(within(list()).getByRole('listitem')).toHaveTextContent('Stays');
+    expect(screen.queryByRole('button', { name: 'Delete Gone from this browser' })).toBeNull();
   });
 
   it('takes a document off the list once it is saved again, as it is then sent by itself', async () => {
@@ -222,19 +237,55 @@ describe('the status that says the account lacks documents', () => {
     expect(within(list()).getByRole('listitem')).toHaveTextContent('Other');
   });
 
-  it('sends one document on its row, and the rest stay listed', async () => {
+  it('sends one document on its row, while the list and the rest stay where they are', async () => {
     const user = userEvent.setup();
     const { local, remote } = await shown([
       ['layouts', 'one', 'One'],
       ['layouts', 'two', 'Two'],
     ]);
+    const before = list();
     await user.click(screen.getByRole('button', { name: 'Send One to your GitHub account' }));
 
-    await waitFor(async () => expect(await remote.get('layouts', 'one')).not.toBeNull());
+    await waitFor(() => expect(texts()).toContain('Sent One to your GitHub account'));
+    expect(await remote.get('layouts', 'one')).not.toBeNull();
     expect(await remote.get('layouts', 'two')).toBeNull();
-    await waitFor(() => expect(within(list()).getAllByRole('listitem')).toHaveLength(1));
+    // Not hidden while it went, as sending everything is: the same list, with the other row in it.
+    expect(list()).toBe(before);
+    expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
     expect(within(list()).getByRole('listitem')).toHaveTextContent('Two');
     expect(await local.get('layouts', 'one')).not.toBeNull();
+    expect(unsynced.has('layouts', 'one')).toBe(false);
+    // Focus goes to the row that took its place.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Send Two to your GitHub account' })).toHaveFocus(),
+    );
+  });
+
+  it('says why a document stays when the account has another layout of its name', async () => {
+    const user = userEvent.setup();
+    const { remote } = await shown([['layouts', 'mine', 'Same name']]);
+    // Another layout of that name, under another id, was saved in the account since the look.
+    await remote.put('layouts', 'theirs', { name: 'Same name' });
+    await user.click(screen.getByRole('button', { name: 'Send Same name to your GitHub account' }));
+
+    await waitFor(() =>
+      expect(texts().join('\n')).toContain('Same name stays in this browser only'),
+    );
+    expect(await remote.get('layouts', 'mine')).toBeNull();
+    expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('says so when it could not send, and keeps the row', async () => {
+    const user = userEvent.setup();
+    const { remote } = await shown([['layouts', 'mine', 'Mine']]);
+    remote.put = async () => {
+      throw new Error('GitHub responded 503');
+    };
+    await user.click(screen.getByRole('button', { name: 'Send Mine to your GitHub account' }));
+
+    await waitFor(() => expect(texts()).toContain('Could not send Mine: GitHub responded 503'));
+    expect(within(list()).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Send Mine to your GitHub account' })).toHaveFocus();
   });
 
   it('still sends all of them with Send them', async () => {

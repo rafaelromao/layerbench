@@ -51,8 +51,9 @@ export interface Missing {
   /** As it was saved here when the look was made. */
   name: string;
   /**
-   * Whether the version both stores last held the same of is on record: if it is, the account had
-   * the document once, and has not now. Without one it is not known whether it ever was sent.
+   * Whether the version both stores last held the same of is on record: if it is, some GitHub
+   * account held the document once (not known which, for a browser has had more than one), and does
+   * not now. Without one it is not known whether it ever was sent.
    */
   sent: boolean;
 }

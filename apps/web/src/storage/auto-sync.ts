@@ -186,7 +186,6 @@ let active: {
   release: () => void;
   audit: () => void;
   everything: () => Promise<void>;
-  send: (document: Missing) => void;
 } | null = null;
 
 /** Try sending now, rather than waiting for the next attempt; nothing while storage is this browser's alone. */
@@ -217,16 +216,59 @@ const keyOf = (d: { collection: string; id: string }) => `${d.collection}/${d.id
  */
 export function dropMissing(keys: readonly string[], marks: Unsynced = unsynced): void {
   const gone = new Set(keys);
-  const left = useSync.getState().missing?.filter((d) => !gone.has(keyOf(d)));
-  if (!left || left.length === useSync.getState().missing?.length) return;
-  useSync.setState({ missing: left });
+  const listed = useSync.getState().missing;
+  const left = listed?.filter((d) => !gone.has(keyOf(d)));
+  if (left && left.length !== listed?.length) useSync.setState({ missing: left });
+  // The kept look is changed by what it holds, not by this tab's list: another tab may have taken
+  // others off it, and they must not come back.
   const audit = marks.audit();
-  if (audit) marks.setAudit({ ...audit, lacking: left.length, missing: left });
+  const kept = audit?.missing?.filter((d) => !gone.has(keyOf(d)));
+  if (audit && kept && kept.length !== audit.missing?.length) {
+    marks.setAudit({ ...audit, lacking: kept.length, missing: kept });
+  }
 }
 
-/** Send one document the account lacks, as the status offers: marked as unsent, which sending takes up. */
-export function sendMissing(document: Missing): void {
-  active?.send(document);
+/**
+ * Send one document the account lacks, as the status offers, without sending the rest: it goes
+ * straight to the gists, so the list stays as it is while it does, and the document leaves it once
+ * the account has it. Whether it left the list.
+ */
+export async function sendMissing(
+  storage: CompositeStorage,
+  document: Missing,
+  marks: Unsynced = unsynced,
+): Promise<boolean> {
+  const { name } = document;
+  try {
+    const result = await whileSending(() => storage.copyOne(document.collection, document.id));
+    if (result === null) {
+      toast.info('Another tab of LayerBench is sending right now. Try again in a moment.');
+      return false;
+    }
+    if (result === 'absent') {
+      dropMissing([keyOf(document)], marks);
+      toast.info(`${name} is not in this browser any more`);
+      return true;
+    }
+    if (result.conflicts.length > 0) {
+      // The account has one under that id now: asked about, as any other, and no longer lacking.
+      noteResult(mergedWithShown(result));
+      dropMissing([keyOf(document)], marks);
+      return true;
+    }
+    if (result.taken > 0) {
+      toast.info(
+        `${name} stays in this browser only, because your GitHub account has another layout of the same name. Rename it, or open it and save to overwrite the other.`,
+      );
+      return false;
+    }
+    dropMissing([keyOf(document)], marks);
+    toast.info(`Sent ${name} to your GitHub account`);
+    return true;
+  } catch (e) {
+    toast.error(`Could not send ${name}: ${messageOf(e)}`);
+    return false;
+  }
 }
 
 /**
@@ -390,10 +432,25 @@ export function startAutoSync(
     }
   };
 
+  /**
+   * Take off what the account is said to lack what this browser no longer holds: deleted, or renamed
+   * to another id, since it was found. One that cannot be looked for stays.
+   */
+  const pruneGone = async () => {
+    const listed = useSync.getState().missing;
+    if (!listed?.length) return;
+    const keys = listed.map(keyOf);
+    const held = await storage.holds(keys).catch(() => null);
+    if (stopped || !held) return;
+    const gone = keys.filter((k) => !held.has(k));
+    if (gone.length > 0) dropMissing(gone, marks);
+  };
+
   const onMarks = () => {
     // One saved or sent since it was found missing is not what the account lacks to be told of.
     const waiting = useSync.getState().missing?.filter((d) => marks.has(d.collection, d.id));
     if (waiting?.length) dropMissing(waiting.map(keyOf), marks);
+    void pruneGone();
     if (marks.count() === 0) {
       // Nothing is left to send, so nothing is held back, waiting to be tried again, or failing.
       cancelTimers();
@@ -438,11 +495,6 @@ export function startAutoSync(
     release,
     audit: () => void audit(true),
     everything: () => copyEverything(() => storage.copyUp({ everything: true })),
-    send: (document: Missing) => {
-      // Marked, it is what sending takes up, over what the account holds of it, which is nothing.
-      marks.mark(document.collection, document.id);
-      void run();
-    },
   };
   active = handle;
 
@@ -465,6 +517,8 @@ export function startAutoSync(
       (last.missing || last.lacking === 0)
     ) {
       useSync.setState({ missing: last.missing ?? [] });
+      // Documents deleted here since it was made are not what it found.
+      void pruneGone();
       return;
     }
     const given = new AbortController();

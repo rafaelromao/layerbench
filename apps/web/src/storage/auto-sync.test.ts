@@ -6,6 +6,7 @@ import { MemoryStorage } from '../test/memory-storage.js';
 import {
   checkAgain,
   copyEverything,
+  dropMissing,
   forgetOffered,
   review,
   sendEverything,
@@ -576,11 +577,59 @@ describe('looking at every document, once in a while', () => {
       { collection: 'corpora', id: 'b', name: 'B', sent: true },
     ] as const;
     marks.setAudit({ account: 'alice', at: Date.now(), lacking: 2, missing: [...found] });
-    const storage = new CompositeStorage(new MemoryStorage('l'), new MemoryStorage('g'), marks);
+    const local = new MemoryStorage('l');
+    await local.put('layouts', 'a', { name: 'A' });
+    await local.put('corpora', 'b', { name: 'B' });
+    const storage = new CompositeStorage(local, new MemoryStorage('g'), marks);
     const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 3_600_000 }, 'alice');
     await vi.advanceTimersByTimeAsync(10);
     expect(useSync.getState().missing).toEqual(found);
     stop();
+  });
+
+  it('drops from what it kept the documents deleted here since, as they are not what it found', async () => {
+    const marks = memoryMarks();
+    const found = [
+      { collection: 'layouts', id: 'kept', name: 'Kept', sent: false },
+      { collection: 'layouts', id: 'deleted', name: 'Deleted', sent: false },
+    ] as const;
+    marks.setAudit({ account: 'alice', at: Date.now(), lacking: 2, missing: [...found] });
+    const local = new MemoryStorage('l');
+    await local.put('layouts', 'kept', { name: 'Kept' });
+    const storage = new CompositeStorage(local, new MemoryStorage('g'), marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 3_600_000 }, 'alice');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(useSync.getState().missing?.map((d) => d.id)).toEqual(['kept']);
+    expect(marks.audit()?.missing?.map((d) => d.id)).toEqual(['kept']);
+    expect(marks.audit()?.lacking).toBe(1);
+    stop();
+  });
+
+  it('takes a document off the list when it is deleted from the app, by whatever deletes it', async () => {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    await local.put('layouts', 'gone', { name: 'Gone' });
+    await local.put('layouts', 'stays', { name: 'Stays' });
+    const storage = new CompositeStorage(local, new MemoryStorage('github'), marks);
+    const stop = startAutoSync(storage, marks, { ...TIMING, auditEveryMs: 0 });
+    await vi.waitFor(() => expect(useSync.getState().missing).toHaveLength(2));
+
+    await storage.delete('layouts', 'gone');
+    await vi.waitFor(() => expect(useSync.getState().missing?.map((d) => d.id)).toEqual(['stays']));
+    expect(marks.audit()?.missing?.map((d) => d.id)).toEqual(['stays']);
+    stop();
+  });
+
+  it('does not bring back, in what it kept, what another tab took off it', () => {
+    const marks = memoryMarks();
+    const a = { collection: 'layouts', id: 'a', name: 'A', sent: false } as const;
+    const b = { collection: 'layouts', id: 'b', name: 'B', sent: false } as const;
+    // This tab's list still has both; another tab deleted b, and kept it so.
+    useSync.setState({ missing: [a, b] });
+    marks.setAudit({ account: 'alice', at: 1, lacking: 1, missing: [a] });
+    dropMissing(['layouts/a'], marks);
+    expect(marks.audit()?.missing).toEqual([]);
+    expect(useSync.getState().missing).toEqual([b]);
   });
 
   it('looks again when what it kept is only a count, so the documents can be named', async () => {

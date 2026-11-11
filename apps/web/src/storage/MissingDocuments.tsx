@@ -29,9 +29,11 @@ function Row({
   onDelete,
 }: {
   document: Missing;
+  /** Something is being done to a document of the list: nothing else is started meanwhile. */
   busy: boolean;
-  onSend: () => void;
-  onDelete: () => void;
+  onSend: () => Promise<boolean>;
+  /** Whether it was deleted; if not, the row goes back to asking nothing. */
+  onDelete: () => Promise<boolean>;
 }) {
   const [confirming, setConfirming] = useState(false);
   const remove = useRef<HTMLButtonElement>(null);
@@ -46,6 +48,16 @@ function Row({
     }
   }, [confirming]);
 
+  const back = () => {
+    returning.current = true;
+    setConfirming(false);
+  };
+  // A button that is busy keeps focus, as one that is disabled would lose it, and does nothing.
+  const guard = (act: () => void) => () => {
+    if (!busy) act();
+  };
+  const busyClass = busy ? ' opacity-60' : '';
+
   const { name } = document;
   return (
     <li className="flex flex-wrap items-center gap-x-2 gap-y-1 border-current/20 border-t py-1">
@@ -54,28 +66,25 @@ function Row({
           <legend className="sr-only">Delete {name}?</legend>
           <p className="min-w-0 flex-1 basis-48 [overflow-wrap:anywhere]">
             Delete <span className="font-semibold">{name}</span> from this browser? It is not in
-            your GitHub account, so it will be gone for good.
+            your GitHub account as last checked, so it will be gone for good.
           </p>
           <div className="flex shrink-0 gap-1">
             <button
               type="button"
-              className="btn btn-xs btn-neutral"
+              className={`btn btn-xs btn-neutral${busyClass}`}
               aria-label={`Delete ${name} for good`}
-              disabled={busy}
-              onClick={onDelete}
+              aria-disabled={busy}
+              onClick={guard(() => void onDelete().then((gone) => gone || back()))}
             >
               Delete
             </button>
             <button
               ref={keep}
               type="button"
-              className="btn btn-xs btn-outline"
+              className={`btn btn-xs btn-outline${busyClass}`}
               aria-label={`Keep ${name}`}
-              disabled={busy}
-              onClick={() => {
-                returning.current = true;
-                setConfirming(false);
-              }}
+              aria-disabled={busy}
+              onClick={guard(back)}
             >
               Keep
             </button>
@@ -87,26 +96,26 @@ function Row({
             <span className="font-semibold">{name}</span>{' '}
             <span className="opacity-80">
               · {NOUN[document.collection]}
-              {document.sent ? ', was in your account once' : ''}
+              {document.sent ? ', was in a GitHub account before' : ''}
             </span>
           </span>
           <div className="flex shrink-0 gap-1">
             <button
               type="button"
-              className="btn btn-xs btn-outline"
+              className={`btn btn-xs btn-outline${busyClass}`}
               aria-label={`Send ${name} to your GitHub account`}
-              disabled={busy}
-              onClick={onSend}
+              aria-disabled={busy}
+              onClick={guard(() => void onSend())}
             >
               Send
             </button>
             <button
               ref={remove}
               type="button"
-              className="btn btn-xs btn-outline"
+              className={`btn btn-xs btn-outline${busyClass}`}
               aria-label={`Delete ${name} from this browser`}
-              disabled={busy}
-              onClick={() => setConfirming(true)}
+              aria-disabled={busy}
+              onClick={guard(() => setConfirming(true))}
             >
               Delete
             </button>
@@ -136,8 +145,9 @@ export function MissingDocuments() {
       rows?.[Math.min(at, rows.length - 1)]?.querySelector('button')?.focus();
     });
 
-  const remove = async (document: Missing, at: number) => {
-    if (!(storage instanceof CompositeStorage)) return;
+  /** Whether the document was deleted. */
+  const remove = async (document: Missing, at: number): Promise<boolean> => {
+    if (!(storage instanceof CompositeStorage)) return false;
     setBusy(true);
     try {
       const gone = await deleteMissing(storage, document);
@@ -145,15 +155,30 @@ export function MissingDocuments() {
         toast.info(
           `${document.name} was saved again since you were shown it, so it was not deleted.`,
         );
-        return;
+        return false;
       }
       toast.info(`Deleted ${document.name} from this browser`);
       refresh(collectionsOf(gone));
       focusNear(at);
+      return true;
     } catch (e) {
       toast.error(
         `Could not delete ${document.name}: ${e instanceof Error ? e.message : String(e)}`,
       );
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Whether the document was sent, and so is off the list. */
+  const send = async (document: Missing, at: number): Promise<boolean> => {
+    if (!(storage instanceof CompositeStorage)) return false;
+    setBusy(true);
+    try {
+      const sent = await sendMissing(storage, document);
+      if (sent) focusNear(at);
+      return sent;
     } finally {
       setBusy(false);
     }
@@ -170,11 +195,8 @@ export function MissingDocuments() {
           key={`${document.collection}/${document.id}`}
           document={document}
           busy={busy}
-          onSend={() => {
-            sendMissing(document);
-            focusNear(at);
-          }}
-          onDelete={() => void remove(document, at)}
+          onSend={() => send(document, at)}
+          onDelete={() => remove(document, at)}
         />
       ))}
     </ul>
