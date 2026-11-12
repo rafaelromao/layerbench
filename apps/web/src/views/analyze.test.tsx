@@ -5,29 +5,40 @@ import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { layerNames, layerShareIn, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
 
-/**
- * The analysis client, except that an analysis on the cyanophage-like rules never lands: the first
- * report is the last there is, so what is on screen after a switch to them is of the rules before.
- */
-function neverLandingOnCyanophage() {
+/** Hold a cyanophage analysis until the test releases it, so stale numbers have a stable lifetime. */
+function holdCyanophageAnalysis() {
   const real = testClient();
-  return new Proxy(real, {
+  let requestStarted!: () => void;
+  const cyanophageStarted = new Promise<void>((resolve) => {
+    requestStarted = resolve;
+  });
+  let releaseRequest!: () => void;
+  const client = new Proxy(real, {
     get(target, prop) {
       if (prop === 'peek') return async () => null;
       if (prop === 'analyze') {
         return (request: AnalyzeRequest, opts?: { signal?: AbortSignal }) =>
           request.settings.rules.id === 'cyanophage'
-            ? new Promise<ReportDTO>((_, reject) =>
-                opts?.signal?.addEventListener('abort', () =>
-                  reject(new DOMException('left', 'AbortError')),
-                ),
-              )
+            ? new Promise<void>((resolve, reject) => {
+                const abort = () => reject(new DOMException('left', 'AbortError'));
+                opts?.signal?.addEventListener('abort', abort, { once: true });
+                releaseRequest = () => {
+                  opts?.signal?.removeEventListener('abort', abort);
+                  resolve();
+                };
+                requestStarted();
+              }).then(() => target.analyze(request, opts))
             : target.analyze(request, opts);
       }
       const member = Reflect.get(target, prop);
       return typeof member === 'function' ? member.bind(target) : member;
     },
   });
+  return {
+    client,
+    cyanophageStarted,
+    releaseCyanophage: () => releaseRequest(),
+  };
 }
 
 /** Each key of the board as it is named and described: what it says of its share of the presses. */
@@ -186,7 +197,7 @@ describe('Analyze', () => {
   }, 60_000);
 
   it('drops the link to a ruler while the numbers on screen are of the rules it no longer names', async () => {
-    const client = neverLandingOnCyanophage();
+    const { client } = holdCyanophageAnalysis();
     const user = userEvent.setup();
     renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', { client });
     await screen.findByText('Same finger bigrams');
@@ -464,26 +475,38 @@ describe('Analyze', () => {
 
     it('says it is updating while the numbers on screen are of an analysis since changed', async () => {
       const user = userEvent.setup();
+      const { client, cyanophageStarted, releaseCyanophage } = holdCyanophageAnalysis();
       renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=20000', {
-        client: neverLandingOnCyanophage(),
+        client,
       });
       await screen.findByText('Same finger bigrams');
       // The share is there once the report has landed, a moment after the metrics are.
       await waitFor(() =>
         expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0),
       );
-      expect(shown().some((k) => /\(updating\)/.test(k.label))).toBe(false);
+      // The metrics render before the effect records the report as landed. Wait for that observable
+      // transition before changing settings rather than assuming it happened in the same turn.
+      await waitFor(() => expect(shown().some((k) => /\(updating\)/.test(k.label))).toBe(false));
 
       const dialog = await openSettings();
       await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
       // The last report stands, but it is of what the keys were: each share says so in its name
       // and tooltip, as the key's numbers say they are updating.
+      await cyanophageStarted;
+      const oldNumbers = shown().filter((k) => !Number.isNaN(k.share));
+      expect(oldNumbers.length).toBeGreaterThan(0);
+      for (const k of oldNumbers) {
+        expect(k.label, k.id).toMatch(/% of presses \(updating\)/);
+        expect(k.tooltip, k.id).toMatch(/% of presses \(updating\)/);
+      }
+
+      releaseCyanophage();
       await waitFor(() => {
-        const said = shown().filter((k) => !Number.isNaN(k.share));
-        expect(said.length).toBeGreaterThan(0);
-        for (const k of said) {
-          expect(k.label, k.id).toMatch(/% of presses \(updating\)/);
-          expect(k.tooltip, k.id).toMatch(/% of presses \(updating\)/);
+        const currentNumbers = shown().filter((k) => !Number.isNaN(k.share));
+        expect(currentNumbers.length).toBeGreaterThan(0);
+        for (const k of currentNumbers) {
+          expect(k.label, k.id).not.toMatch(/\(updating\)/);
+          expect(k.tooltip, k.id).not.toMatch(/\(updating\)/);
         }
       });
     }, 60_000);
