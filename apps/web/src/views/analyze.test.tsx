@@ -472,7 +472,7 @@ describe('Analyze', () => {
       await waitFor(() =>
         expect(shown().filter((k) => !Number.isNaN(k.share)).length).toBeGreaterThan(0),
       );
-      expect(shown().some((k) => /\(updating\)/.test(k.label))).toBe(false);
+      await waitFor(() => expect(shown().some((k) => /\(updating\)/.test(k.label))).toBe(false));
 
       const dialog = await openSettings();
       await user.selectOptions(within(dialog).getByLabelText('Rules'), 'cyanophage');
