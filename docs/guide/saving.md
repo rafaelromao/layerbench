@@ -354,8 +354,10 @@ comes from is welcome, not needed.
 A custom layout that goes by the name of a bundled or community layout is not a new layout:
 **Submit** on it opens **Propose change** to that layout instead, as **Save** does on the layout
 itself. Submitting the same layout again while its pull request is open updates that pull request
-with the layout as it is now, rather than opening another. Once the pull request is merged, the
-layout is a community layout. Your own copy stays one of your custom layouts.
+with the layout as it is now, rather than opening another. You can have five layouts submitted and
+open at once, counted apart from the changes you propose; Submit says so when you have, and sends
+nothing until one is merged or closed. Once the pull request is merged, the layout is a community
+layout. Your own copy stays one of your custom layouts.
 
 ### Bundled with the app
 

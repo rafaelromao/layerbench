@@ -9,8 +9,8 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pullTitleProblems } from '../../../../packages/core/src/convention/pr-title.js';
 import { type AuthEnv, handleAuth } from './github-auth.js';
-import { type LibraryAnswer, OPEN_PROPOSALS } from './library.js';
-import { client, createPull } from './pull-request.js';
+import type { LibraryAnswer } from './library.js';
+import { client, createPull, OPEN_AT_ONCE } from './pull-request.js';
 
 const PAGE = 'https://app.example';
 const AUTH = 'https://auth.example';
@@ -301,7 +301,7 @@ describe('proposing a change to a bundled layout', () => {
 describe('how many changes one person proposes at once', () => {
   it('refuses one more than five open, and takes a new version of one of them', async () => {
     // Bundled layouts a request could never take away, nor those a delete takes on its branch.
-    const ids = BUNDLED_IDS.filter((id) => keptInLibrary(id) === null).slice(0, OPEN_PROPOSALS + 1);
+    const ids = BUNDLED_IDS.filter((id) => keptInLibrary(id) === null).slice(0, OPEN_AT_ONCE + 1);
     // More open than one page lists, and a maintainer's delete, which is no proposal.
     const pull = (head: string) => ({
       head,
@@ -326,15 +326,15 @@ describe('how many changes one person proposes at once', () => {
     const before = repo.pulls.length;
     const propose = (id: string) =>
       ask('propose', { target: { kind: 'bundled', id }, layout: doc(id, `${id} changed`) });
-    for (const id of ids.slice(0, OPEN_PROPOSALS)) expect((await propose(id)).status).toBe(201);
-    const over = await propose(ids[OPEN_PROPOSALS]);
+    for (const id of ids.slice(0, OPEN_AT_ONCE)) expect((await propose(id)).status).toBe(201);
+    const over = await propose(ids[OPEN_AT_ONCE]);
     expect([over.status, over.answer.reason]).toEqual([
       429,
       'you have 5 changes proposed and open already; wait for one to be merged or closed',
     ]);
     expect(wrote()).toBe(false);
     expect((await propose(ids[0])).status).toBe(200);
-    expect(repo.pulls).toHaveLength(before + OPEN_PROPOSALS);
+    expect(repo.pulls).toHaveLength(before + OPEN_AT_ONCE);
   });
 });
 
