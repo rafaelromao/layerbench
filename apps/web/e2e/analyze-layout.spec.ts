@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 const EDIT = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000';
 
@@ -164,6 +164,28 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
+  test("the layout picker keeps room to show a name, and the bar's buttons go under it", async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const bar = page.getByRole('region', { name: 'Layout' });
+    // Wide enough to read a layout's name in, whatever else the row holds: Duplicate must not
+    // squeeze it down to its arrow.
+    const picker = await bar.getByRole('combobox', { name: 'Layout' }).boundingBox();
+    expect(picker?.width ?? 0).toBeGreaterThanOrEqual(144);
+
+    const duplicate = bar.getByRole('button', { name: 'Duplicate' });
+    await expect(duplicate).toBeVisible();
+    const box = await duplicate.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box && viewport).toBeTruthy();
+    if (!box || !viewport) return;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(await smallTargets(page, '#analyze-toolbar')).toEqual([]);
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {
     await openEdit(page);
     const nav = page.getByRole('group', { name: 'Layers' });
@@ -224,5 +246,20 @@ test.describe('at a desk', () => {
     await openEdit(page);
     await page.getByRole('button', { name: /^Key LHI:/ }).click();
     await expect(page.getByRole('group', { name: 'Edit LHI' })).toBeVisible();
+  });
+
+  test('the layout picker, Compare and Duplicate share one row', async ({ page }) => {
+    await openEdit(page);
+    const bar = page.getByRole('region', { name: 'Layout' });
+    const centre = async (control: Locator) => {
+      const box = await control.boundingBox();
+      return box ? box.y + box.height / 2 : Number.NaN;
+    };
+    const row = [
+      await centre(bar.getByRole('combobox', { name: 'Layout' })),
+      await centre(bar.getByRole('button', { name: 'Compare' })),
+      await centre(bar.getByRole('button', { name: 'Duplicate' })),
+    ];
+    for (const y of row) expect(Math.abs(y - row[0])).toBeLessThanOrEqual(2);
   });
 });

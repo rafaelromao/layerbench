@@ -149,8 +149,10 @@ export function LayoutBar({
       <SyncNote />
       {/* On a phone one line, so the board and the editor under it start within the first screen:
           the picker shows the layout's name without a caption, and Settings is a gear. */}
-      <div id="analyze-toolbar" className="flex items-end gap-2 sm:gap-3">
-        <label className="form-control min-w-0 flex-1 sm:flex-none">
+      {/* The picker keeps a width its names can be read in: on a phone, what does not fit beside it
+          goes under it. Only the screen's width decides, so the bar does not change with an edit. */}
+      <div id="analyze-toolbar" className="flex flex-wrap items-end gap-2 sm:flex-nowrap sm:gap-3">
+        <label className="form-control min-w-36 flex-1 sm:min-w-0 sm:flex-none">
           <span className="label-text text-xs max-sm:sr-only">Layout</span>
           <select
             name="layout"
@@ -162,7 +164,7 @@ export function LayoutBar({
             <LayoutOptions custom={custom} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
-        <div className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1">
+        <div className="flex shrink-0 items-center gap-2 max-sm:ml-auto sm:min-w-0 sm:flex-1">
           <div className="sm:min-w-0 sm:flex-1">
             <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
               <fieldset className="grid gap-2">
