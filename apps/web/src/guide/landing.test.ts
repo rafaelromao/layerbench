@@ -3,11 +3,12 @@ import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
+import staticRoutes from '../../static-routes.json' with { type: 'json' };
 import { contentSecurityPolicy } from '../../vite.config.js';
 import { createAppRouter } from '../router.js';
 import { parseParams, type RawSearch, toSearch } from '../url/params.js';
 import { anchorsOf, parseGuide } from './markdown.js';
-import { guidePage } from './pages.js';
+import { GUIDE_PAGES, guidePage } from './pages.js';
 
 /**
  * The landing page, `docs/site`, published on its own by `.github/workflows/pages.yml` and served
@@ -232,5 +233,13 @@ describe('the app page', () => {
     expect(size.width).toBe(Number(content('meta[property="og:image:width"]')));
     expect(size.height).toBe(Number(content('meta[property="og:image:height"]')));
     expect(content('meta[property="og:image:alt"]')).not.toBe('');
+  });
+
+  it('publishes a static entry document for every public app route', () => {
+    const expected = Object.keys(router.routesByPath)
+      .filter((path) => path !== '/' && !path.includes('$'))
+      .concat(GUIDE_PAGES.filter(({ slug }) => slug).map(({ slug }) => `/guide/${slug}`))
+      .sort();
+    expect([...staticRoutes].sort()).toEqual(expected);
   });
 });
