@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
+import { contentSecurityPolicy } from '../../vite.config.js';
 import { createAppRouter } from '../router.js';
 import { parseParams, type RawSearch, toSearch } from '../url/params.js';
 import { anchorsOf, parseGuide } from './markdown.js';
@@ -148,5 +149,28 @@ describe('the landing page', () => {
     const linked = all('.layouts a').map((a) => new URL(attr(a, 'href'), 'https://app.invalid'));
     expect(new Set(linked.map((u) => u.searchParams.get('layout')))).toEqual(layouts);
     expect(all('.layouts-title')[0]?.textContent).toContain(String(layouts.size));
+  });
+
+  it("names every host the app's own content security policy allows it to talk to", () => {
+    // 'self' is "itself" in the paragraph's prose, not a host named in code, and the sign-in
+    // worker's own origin is parameterized and varies by environment, so the page names it in
+    // prose too ("that worker"), never as a literal domain; passing no auth origin leaves exactly
+    // the fixed hosts the build always allows. Widening the policy is a decision, and must change
+    // this test with it, as apps/web/src/import/policy.test.ts already holds the policy itself to.
+    const connectSrc = contentSecurityPolicy('')
+      .split('; ')
+      .find((directive) => directive.startsWith('connect-src '))!
+      .split(' ')
+      .slice(1);
+    const policyHosts = new Set(
+      connectSrc.filter((source) => source !== "'self'").map((source) => new URL(source).host),
+    );
+    const privacy = [...page.querySelectorAll('h3')]
+      .find((h3) => h3.textContent === 'Private by construction')
+      ?.closest('li');
+    expect(privacy).not.toBeUndefined();
+    const claim = privacy!.querySelector('p:not(.evidence)')!;
+    const namedHosts = new Set([...claim.querySelectorAll('code')].map((c) => c.textContent));
+    expect(namedHosts).toEqual(policyHosts);
   });
 });
