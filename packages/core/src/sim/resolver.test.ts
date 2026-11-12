@@ -400,6 +400,12 @@ describe('a combo is a way to type, or it is not: the cost does not decide', () 
       expect(trace(board(false), 'ê').keys).toEqual(['LHI', 'RHI']);
     });
 
+    it("names the letter's press by its key's own letter, the accent being the dead key's", () => {
+      const t = trace(board(false), 'ê');
+      expect(t.out).toBe('ê');
+      expect(t.steps.map((s) => s.label)).toEqual(['^', 'e']);
+    });
+
     it('types its capital with the macro too', () => {
       const layout = board(true);
       const shifted: Layout = {
