@@ -54,6 +54,6 @@ test.describe('route fallback screens on a phone', () => {
     ).toBeVisible();
 
     await library.tap();
-    await expect(page.getByRole('heading', { name: 'Library destination' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
   });
 });

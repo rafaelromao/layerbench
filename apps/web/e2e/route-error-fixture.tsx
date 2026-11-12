@@ -5,9 +5,13 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { createRoot } from 'react-dom/client';
+import { AnalysisClientProvider, CustomCorporaProvider } from '../src/engine/client-context.js';
+import '../src/index.css';
 import { createAppRootRoute } from '../src/router.js';
 import { IndexedDbAdapter } from '../src/storage/indexeddb.js';
 import { StorageProvider } from '../src/storage/use-storage.js';
+import type { RawSearch } from '../src/url/params.js';
+import { LibraryView } from '../src/views/LibraryView.js';
 
 const rootRoute = createAppRootRoute();
 const brokenRoute = createRoute({
@@ -20,7 +24,8 @@ const brokenRoute = createRoute({
 const libraryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/library',
-  component: () => <h1>Library destination</h1>,
+  validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
+  component: LibraryView,
 });
 const router = createRouter({
   routeTree: rootRoute.addChildren([brokenRoute, libraryRoute]),
@@ -29,7 +34,11 @@ const router = createRouter({
 });
 
 createRoot(document.getElementById('root') as HTMLElement).render(
-  <StorageProvider adapter={new IndexedDbAdapter('layerbench-route-error-e2e')}>
-    <RouterProvider router={router as never} />
-  </StorageProvider>,
+  <AnalysisClientProvider>
+    <StorageProvider adapter={new IndexedDbAdapter('layerbench-route-error-e2e')}>
+      <CustomCorporaProvider>
+        <RouterProvider router={router as never} />
+      </CustomCorporaProvider>
+    </StorageProvider>
+  </AnalysisClientProvider>,
 );

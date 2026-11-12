@@ -13,6 +13,8 @@ import { createAppRootRoute } from './router.js';
 import { IndexedDbAdapter } from './storage/indexeddb.js';
 import { StorageProvider } from './storage/use-storage.js';
 import { renderRoute, testClient } from './test/render.js';
+import type { RawSearch } from './url/params.js';
+import { LibraryView } from './views/LibraryView.js';
 
 function renderThrowingRoute(error: Error) {
   const root = createAppRootRoute();
@@ -26,7 +28,8 @@ function renderThrowingRoute(error: Error) {
   const library = createRoute({
     getParentRoute: () => root,
     path: '/library',
-    component: () => <h1>Library destination</h1>,
+    validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
+    component: LibraryView,
   });
   const router = createRouter({
     routeTree: root.addChildren([broken, library]),
@@ -83,7 +86,7 @@ describe('rendering errors', () => {
 
     await user.click(screen.getByRole('link', { name: 'Back to the Library' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/library'));
-    expect(await screen.findByRole('heading', { name: 'Library destination' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Library' })).toBeInTheDocument();
   });
 
   it('redacts credentials but keeps diagnostic context', async () => {
