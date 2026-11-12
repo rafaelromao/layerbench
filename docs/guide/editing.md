@@ -435,7 +435,8 @@ keeps the page where it is, at either end too:
   combo types its second part when its keys are pressed together twice. **Typing**, ticked by
   default, makes the combo the way to type what it makes, wherever it works: it is not weighed
   against the other ways, it goes first, and the others follow where it cannot work. A dead key on a
-  combo makes no letter, so its letters are weighed like any other way: it types what no key does. Unticked, it is
+  combo makes no letter, so it is not one of those ways: like any dead key, it types only the letters
+  nothing else types whole. Unticked, it is
   a command: on the keyboard, never pressed by the analysis, with *not typed* on its card, and not
   drawn on the board. The board draws it on the gap between its keys, its hold
   small under what it types; one on three or more keys, on keys apart, or with no room on its gap,
@@ -458,6 +459,8 @@ keeps the page where it is, at either end too:
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
   word, then the less effort. A combo used for typing is not weighed in that: its way comes first.
+  A dead key is not weighed either: its way comes last, used only where no key, macro or combo
+  types the accented letter whole.
   Drag or use the arrows to put one way first instead, and that order is kept. Two cards come before them, in the same shape, for rules that hold for the whole layout,
   each with its ways in a list: **Shift kind**, how a capital is typed, with the shift key tapped
   once before the letter (**Sticky (one-shot)**) or held while the letter goes down (**Hold**), and

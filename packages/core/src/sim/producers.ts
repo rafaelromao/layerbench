@@ -638,11 +638,13 @@ export function enumerateProducers(
     else add(p);
   }
   // Default ordering: a typing combo's own ways first, since it is not weighed against the rest,
-  // then cheapest first, then non-dynamic before dynamic.
+  // and a dead key's last, since it is used only where nothing types the letter whole (as the
+  // resolver's tiers have them); then cheapest first, then non-dynamic before dynamic.
   for (const [, list] of bySymbol) {
     list.sort(
       (a, b) =>
         Number(pressesCombo(b)) - Number(pressesCombo(a)) ||
+        Number(a.kind === 'deadkey') - Number(b.kind === 'deadkey') ||
         a.cost - b.cost ||
         Number(a.dynamic) - Number(b.dynamic) ||
         // Byte order, not locale order: this tie-break decides which producer types a symbol, and
