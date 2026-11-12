@@ -70,6 +70,15 @@ community layout, so saving it offers to propose the change; anywhere else it is
 own.
 _Avoid_: unsaved copy, working copy
 
+**Duplicate**:
+A layout in Analyze copied as a custom layout of its own, under a name asked for, and opened: the
+button of that name in the Layout bar. The copy is the layout as the editor shows it, unsaved edits
+included, and the layout it was made from is left as it was last saved. Two custom layouts never
+share a name, so a name another has is refused and there is no overwriting it. Save makes a copy
+too, of a layout that is not stored here, but keeps the editor on it. A layer, and a step of a
+macro, have a Duplicate of their own.
+_Avoid_: clone, fork
+
 **Edit**:
 One change an author makes to a layout, taken whole: keys bound, swapped or sent to another layer; a
 layer added, removed or moved; a combo added or changed. It either lands, leaving a layout that can

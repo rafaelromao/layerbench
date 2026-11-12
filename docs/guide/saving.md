@@ -12,6 +12,9 @@ A layout of your own starts in **Library**, in one of these ways:
   to call the copy, or, on one that comes with the app or a community layout, whether to propose
   your change instead, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
   below.
+- Press **Duplicate**, in the bar of **Analyze**, on any layout: it asks what to call the duplicate,
+  keeps it among your custom layouts and opens it. See [Duplicating a layout](#duplicating-a-layout)
+  below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
   Accents and, where the board needs it, Extras, described under [Default layers](editing.md#default-layers).
@@ -48,6 +51,26 @@ A custom layout is kept in this browser. To keep it anywhere else, sign in with 
 copy its LayerBench JSON from the editor's **Export** panel and keep the text, which **Import** reads
 back.
 
+### Duplicating a layout
+
+**Duplicate**, in the bar of **Analyze** beside **Compare**, copies the layout you are looking at
+and opens the copy. It works on any layout: one of yours, one that comes with the app, a community
+layout, or one that a link brought here. A dialog asks what to call the duplicate, and offers the
+layout's name with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
+refused. **Cancel** saves nothing and leaves the editor as it was. Duplicate waits while a save is
+under way.
+
+The duplicate is the layout as the editor shows it now, so edits you have not saved go into it, and
+the dialog says so when there are some. The layout it was made from is left as it was last saved: a
+layout of yours opened again is without those edits. Once saved, the duplicate is one of your custom
+layouts, and **Analyze** opens it on its first layer, with nothing marked *unsaved*.
+
+Duplicate never overwrites. A name another custom layout has is refused in the dialog, capitals and
+spacing not making two names, and **Duplicate** stays unavailable until you type another. If the name
+is taken while the dialog is open, in another tab say, the dialog asks again. If the duplicate cannot
+be saved, a message says so and the layout stays open; the next **Duplicate** offers the name you
+gave.
+
 ### Proposing a change
 
 **Propose change**, which **Save** offers on a layout that comes with the app or a community
@@ -83,7 +106,8 @@ Two custom layouts never share a name: capitals and spacing do not make two name
 you save under is already another custom layout's, whether in a copy's dialog, **New layout**, an
 import, or the **Name** field of a layout you renamed, the dialog says so and offers to
 **Overwrite** that layout, or to type another name. Overwrite puts this layout in its place; nothing
-is saved until you choose.
+is saved until you choose. [**Duplicate**](#duplicating-a-layout) is the exception: it only asks for
+another name.
 
 ## Signing in with GitHub
 
