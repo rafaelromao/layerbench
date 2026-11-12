@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && node scripts/check-static-routes.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.e2e.json --noEmit",
     "test": "vitest run --passWithNoTests",
