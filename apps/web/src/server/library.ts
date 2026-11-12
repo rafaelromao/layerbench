@@ -17,9 +17,9 @@ import {
   type FileChange,
   type GitHub,
   GitHubRefused,
-  LIBRARY_REPO,
   openOrUpdate,
   openPull,
+  overLimit,
 } from './pull-request.js';
 import { MAX_LAYOUT_BYTES, SUBMIT_BASE, type SubmitAnswer, type SubmitResult } from './submit.js';
 
@@ -79,44 +79,12 @@ const refused = (status: number, error: string, reason: string): SubmitResult =>
 const notBundled = (id: string) =>
   refused(422, 'not accepted', `no bundled layout has the id "${id}"`);
 
-/**
- * How many changes one person may have proposed and open at once. Each pull request's pushes run
- * the `library-edit` workflow and CI, so one account cannot keep the repository's runners busy.
- */
-export const OPEN_PROPOSALS = 5;
-
-/**
- * The branches of the changes `login` has proposed with open pull requests: branches of this
- * repository only, which LayerBench opens as the App, so a fork's cannot count against anyone.
- */
-async function openBranchesOf(gh: GitHub, login: string): Promise<string[]> {
-  const ours = (ref: unknown): ref is string =>
-    typeof ref === 'string' &&
-    (ref.startsWith(`library/${login}/change/`) || ref.startsWith(`data/${login}/change/`));
-  const branches: string[] = [];
-  for (let page = 1; ; page++) {
-    const open = await gh('GET', `/pulls?state=open&per_page=100&page=${page}`);
-    if (open.status !== 200 || !Array.isArray(open.data)) {
-      throw new GitHubRefused(`GitHub answered ${open.status}`);
-    }
-    for (const pull of open.data) {
-      const head = (pull as { head?: { ref?: unknown; repo?: { full_name?: unknown } } }).head;
-      if (head?.repo?.full_name === LIBRARY_REPO && ours(head.ref)) branches.push(head.ref);
-    }
-    if (open.data.length < 100) return branches;
-  }
-}
+/** The branches of the changes `login` has proposed: to a bundled layout or to a community one. */
+const proposals = (login: string) => [`library/${login}/change/`, `data/${login}/change/`];
 
 /** A refusal when `login` has as many proposals open as one may and `branch` is not one of them. */
-async function overLimit(gh: GitHub, login: string, branch: string): Promise<SubmitResult | null> {
-  const open = await openBranchesOf(gh, login);
-  if (open.includes(branch) || open.length < OPEN_PROPOSALS) return null;
-  return refused(
-    429,
-    'too many open',
-    `you have ${open.length} changes proposed and open already; wait for one to be merged or closed`,
-  );
-}
+const tooMany = (gh: GitHub, login: string, branch: string) =>
+  overLimit(gh, proposals(login), branch, 'changes proposed');
 
 /**
  * A pull request into main that carries a request for CI to apply. A delete or promote asked again
@@ -202,7 +170,7 @@ export function propose(
   return talking(async () => {
     if (target.kind === 'bundled') {
       if (!BUNDLED_IDS.includes(id)) return notBundled(id);
-      const limited = await overLimit(gh, login, `library/${login}/change/${id}`);
+      const limited = await tooMany(gh, login, `library/${login}/change/${id}`);
       if (limited) return limited;
       return requestPull(
         gh,
@@ -215,7 +183,7 @@ export function propose(
     if (!(await exists(gh, communityFile(id), SUBMIT_BASE))) {
       return refused(404, 'not found', `no community layout has the id "${id}"`);
     }
-    const limited = await overLimit(gh, login, `data/${login}/change/${id}`);
+    const limited = await tooMany(gh, login, `data/${login}/change/${id}`);
     if (limited) return limited;
     return dataPull(
       gh,

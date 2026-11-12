@@ -48,7 +48,8 @@ interface Call {
 /** GitHub as Submit finds it: who the token is, what is open, what the branch holds. */
 interface World {
   login: string;
-  openPulls: { html_url: string }[];
+  /** Open pull requests, of this repository's branches or of a fork's. */
+  openPulls: Pull[];
   onBase: boolean;
   onBranch: boolean;
   branchExists: boolean;
@@ -58,6 +59,19 @@ interface World {
   /** A step GitHub refuses, by method and path end. */
   refuse?: string;
 }
+
+interface Pull {
+  html_url: string;
+  head: { ref: string; repo: { full_name: string } };
+}
+
+const OURS = 'rafaelromao/layerbench';
+
+/** An open pull request from `ref`, of this repository unless a fork is named. */
+const pull = (ref: string, repo = OURS, n = 5): Pull => ({
+  html_url: `https://github.com/rafaelromao/layerbench/pull/${n}`,
+  head: { ref, repo: { full_name: repo } },
+});
 
 let calls: Call[];
 let world: World;
@@ -83,7 +97,18 @@ function github(call: Call): Response {
     return json(201, { token: 'ghs_installation' });
   }
   if (!call.headers.get('Authorization')?.endsWith('ghs_installation')) return json(401, {});
-  if (path === `${REPO}/pulls` && method === 'GET') return json(200, world.openPulls);
+  if (path === `${REPO}/pulls` && method === 'GET') {
+    // As GitHub lists them: by `owner:branch` when asked for one, a page of 100 at a time.
+    const query = new URL(url).searchParams;
+    const head = query.get('head');
+    const pulls = head
+      ? world.openPulls.filter(
+          (p) => `${p.head.repo.full_name.split('/')[0]}:${p.head.ref}` === head,
+        )
+      : world.openPulls;
+    const page = Number(query.get('page') ?? 1);
+    return json(200, pulls.slice((page - 1) * 100, page * 100));
+  }
   if (path === `${REPO}/pulls` && method === 'POST') {
     return json(201, { html_url: 'https://github.com/rafaelromao/layerbench/pull/77' });
   }
@@ -222,7 +247,7 @@ describe('submitting a layout', () => {
 
   it('updates the open pull request of the same submitter and layout instead of opening another', async () => {
     const session = await signIn();
-    world.openPulls = [{ html_url: 'https://github.com/rafaelromao/layerbench/pull/5' }];
+    world.openPulls = [pull('submit/you/my-layout')];
     world.onBranch = true;
     const { res, answer } = await submitAs(session);
     expect(res.status).toBe(200);
@@ -360,6 +385,59 @@ describe('submitting a layout', () => {
     const { res, answer } = await submitAs(session);
     expect(res.status).toBe(502);
     expect(answer.error).toBe('GitHub could not be reached');
+  });
+});
+
+describe('how many layouts one person submits at once', () => {
+  const FULL = 'you have 5 layouts submitted and open already; wait for one to be merged or closed';
+
+  it('refuses one more than five open, as Propose change does', async () => {
+    const session = await signIn();
+    world.openPulls = ['a', 'b', 'c', 'd', 'e'].map((id) => pull(`submit/you/${id}`));
+    const { res, answer } = await submitAs(session);
+    expect([res.status, answer]).toEqual([429, { error: 'too many open', reason: FULL }]);
+    expect(calls.some((c) => c.method !== 'GET' && c.url.startsWith(REPO))).toBe(false);
+  });
+
+  it('commits a new version of one of the five to its pull request', async () => {
+    const session = await signIn();
+    world.openPulls = ['a', 'b', 'c', 'd', 'my-layout'].map((id) => pull(`submit/you/${id}`));
+    world.onBranch = true;
+    const { res, answer } = await submitAs(session);
+    expect([res.status, answer]).toEqual([
+      200,
+      { url: 'https://github.com/rafaelromao/layerbench/pull/5', reused: true },
+    ]);
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(put?.body).toMatchObject({ branch: 'submit/you/my-layout', sha: 'file-sha' });
+    expect(calls.some((c) => c.method === 'POST' && c.url.startsWith(REPO))).toBe(false);
+  });
+
+  it("counts only the submissions this repository's branches hold, not a fork's nor a proposal", async () => {
+    const session = await signIn();
+    world.openPulls = [
+      // More open than one page lists, of someone else.
+      ...Array.from({ length: 120 }, (_, i) => pull(`submit/someone/layout-${i}`)),
+      // A fork's branches named as if they were yours, this layout's among them.
+      ...['e', 'f', 'my-layout'].map((id) => pull(`submit/you/${id}`, 'someone/layerbench')),
+      // Changes you proposed, which are counted apart.
+      ...['colemak', 'dvorak'].map((id) => pull(`library/you/change/${id}`)),
+      ...['a', 'b', 'c', 'd'].map((id) => pull(`submit/you/${id}`)),
+    ];
+    const { res } = await submitAs(session);
+    expect(res.status).toBe(201);
+    world.openPulls.push(pull('submit/you/my-layout', OURS, 77));
+    world.onBranch = true;
+    const another = await submitAs(session, layout({ id: 'other-layout' }));
+    expect([another.res.status, another.answer.reason]).toEqual([429, FULL]);
+  });
+
+  it('refuses an id a community layout already has as taken, whatever else is open', async () => {
+    const session = await signIn();
+    world.openPulls = ['a', 'b', 'c', 'd', 'e'].map((id) => pull(`submit/you/${id}`));
+    world.onBase = true;
+    const { res, answer } = await submitAs(session);
+    expect([res.status, answer.error]).toEqual([409, 'taken']);
   });
 });
 
