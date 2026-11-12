@@ -261,6 +261,8 @@ interface ExecContext {
    * accented it: what the board draws for the press, the `o` of a `´` then `o` that typed `ó`.
    */
   drawn: string[];
+  /** Whether this press pressed a dead key itself, as a macro's step: its letters are drawn accented. */
+  ownDeadKey: boolean;
   /** Binding kind that produced the outcome (innermost executed). */
   leaf: BindingKind;
   /**
@@ -430,6 +432,7 @@ export class Machine {
       taps,
       out: [],
       drawn: [],
+      ownDeadKey: false,
       leaf: 'none',
       outer: null,
       reaches: null,
@@ -637,13 +640,17 @@ export class Machine {
     const s = this.state;
     const symbol = this.keycodePressed(pressed);
     let text = symbol;
+    // A dead key pressed before this key accents its letter, which the key draws plain; one this
+    // press pressed itself, as a macro's step, is part of what it draws.
+    let drawn = text;
     if (s.pendingDeadKey !== null && text.length) {
       text = composeDeadKey(s.pendingDeadKey, text);
       s.pendingDeadKey = null;
+      if (ctx.ownDeadKey) drawn = text;
     }
     if (text.length) {
       ctx.out.push(text);
-      ctx.drawn.push(symbol);
+      ctx.drawn.push(drawn);
     }
     ctx.emittedKeycode = true;
     s.lastSymbol = symbol.length ? symbol : s.lastSymbol;
@@ -716,6 +723,7 @@ export class Machine {
               this.emit(ctx, '', b.keycode);
             } else if (r.deadKey) {
               this.keycodePressed('');
+              ctx.ownDeadKey = true;
               this.state.pendingDeadKey = r.deadKey;
               ctx.emittedKeycode = true;
               this.state.lastKeycode = b.keycode;
@@ -939,6 +947,7 @@ export class Machine {
         case 'dead_key':
           ctx.leaf = 'dead_key';
           this.keycodePressed('');
+          ctx.ownDeadKey = true;
           this.state.pendingDeadKey =
             b.shifted !== undefined && this.effectiveShift(ctx, false) ? b.shifted : b.diacritic;
           ctx.emittedKeycode = true;

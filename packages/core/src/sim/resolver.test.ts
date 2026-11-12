@@ -406,6 +406,39 @@ describe('a combo is a way to type, or it is not: the cost does not decide', () 
       expect(t.steps.map((s) => s.label)).toEqual(['^', 'e']);
     });
 
+    it('names a key or combo whose own macro presses the dead key by what it types', () => {
+      const accent = { kind: 'dead_key' as const, diacritic: '´' };
+      const layout: Layout = {
+        format: 'layerbench/layout@1',
+        name: 'Own dead key',
+        hostLocale: 'symbols',
+        geometry: { preset: '3x5+2' },
+        keys: { space: 'L0' },
+        layers: [
+          {
+            id: 'base',
+            bindings: {
+              L0: kp(' '),
+              RHI: { kind: 'macro', steps: [accent, kp('a')] },
+            },
+          },
+        ],
+        combos: [
+          {
+            id: 'oacute',
+            keys: ['LHI', 'LHM'],
+            binding: { kind: 'macro', steps: [accent, kp('o')] },
+            layers: ['base'],
+            timeoutMs: 30,
+            slowRelease: false,
+          },
+        ],
+      };
+      const t = trace(layout, 'áó');
+      expect(t.out).toBe('áó');
+      expect(t.steps.map((s) => s.label)).toEqual(['á', 'ó']);
+    });
+
     it('types its capital with the macro too', () => {
       const layout = board(true);
       const shifted: Layout = {
