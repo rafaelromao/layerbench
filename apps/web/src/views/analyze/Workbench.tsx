@@ -506,6 +506,7 @@ export function Workbench({
         }
         return;
       }
+      setDuplicateNamed(null);
       // The duplicate was opened in this Workbench's place, so all that is left to do is to say so.
       void customLayouts.refresh();
       toast.info(`Saved ${name}`);

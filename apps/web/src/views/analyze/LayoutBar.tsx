@@ -147,8 +147,8 @@ export function LayoutBar({
       </div>
       {/* Where what was just saved is: kept in this browser only, or not sent for a reason. */}
       <SyncNote />
-      {/* On a phone one line, so the board and the editor under it start within the first screen:
-          the picker shows the layout's name without a caption, and Settings is a gear. */}
+      {/* On a phone the picker shows the layout's name without a caption, and Settings is a gear.
+          When the row is tight, the buttons wrap under the picker rather than squeezing its name. */}
       {/* The picker keeps a width its names can be read in: on a phone, what does not fit beside it
           goes under it. Only the screen's width decides, so the bar does not change with an edit. */}
       <div id="analyze-toolbar" className="flex flex-wrap items-end gap-2 sm:flex-nowrap sm:gap-3">

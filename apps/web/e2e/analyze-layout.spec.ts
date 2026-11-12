@@ -164,9 +164,7 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test("the layout picker keeps room to show a name, and the bar's buttons go under it", async ({
-    page,
-  }) => {
+  test('the layout picker keeps room to show a name without sideways scroll', async ({ page }) => {
     await openEdit(page);
     const bar = page.getByRole('region', { name: 'Layout' });
     // Wide enough to read a layout's name in, whatever else the row holds: Duplicate must not
