@@ -484,6 +484,35 @@ export function Workbench({
     else setNaming({ taken: null, overwrite: true });
   }, [session.storedId, session.source, store]);
 
+  // Duplicate saves the layout as the editor shows it as a new custom layout, under a name asked
+  // for, and opens that one. The layout it was made from is left alone.
+  const [duplicating, setDuplicating] = useState<{
+    name: string;
+    taken: TakenLayout | null;
+  } | null>(null);
+  /** The name given for a duplicate that could not be saved, offered again on the next try. */
+  const [duplicateNamed, setDuplicateNamed] = useState<string | null>(null);
+  const duplicate = useCallback(
+    async (name: string) => {
+      const result = await session.duplicate({ ...state.layout, name });
+      if (!result.ok) {
+        if (result.reason === 'name-taken') {
+          // Storage has a layout by the name that the list this page read did not: ask again.
+          setDuplicating({ name, taken: result.taken });
+          void customLayouts.refresh();
+        } else {
+          setDuplicateNamed(name);
+          toast.error(`Duplicate failed: ${result.error}`);
+        }
+        return;
+      }
+      // The duplicate was opened in this Workbench's place, so all that is left to do is to say so.
+      void customLayouts.refresh();
+      toast.info(`Saved ${name}`);
+    },
+    [session.duplicate, state.layout, customLayouts.refresh],
+  );
+
   // Submit proposes the custom layout under the id it is stored by, which names its file. Where the
   // Library has a layout by the layout's name, a new one would be refused, and what is left is a
   // change to propose again: a closed one leaves its copy as one's own layout, and Save sends nothing.
@@ -909,6 +938,7 @@ export function Workbench({
         onSave={save}
         onCancel={state.dirty && state.saved !== null ? discard : undefined}
         onSubmit={submitted ? () => void submit() : undefined}
+        onDuplicate={() => setDuplicating({ name: duplicateNamed ?? copyName, taken: null })}
         copiesOnSave={session.storedId === null}
         proposal={proposalUrl ?? undefined}
         proposalMerged={proposalMerged}
@@ -976,6 +1006,37 @@ export function Workbench({
           onClose={() => {
             setNaming(null);
             setCopyNamed(null);
+          }}
+        />
+      )}
+
+      {duplicating && (
+        <NameDialog
+          title={`Duplicate ${state.layout.name}`}
+          // What goes into the duplicate is what the editor shows, so edits not saved go with it.
+          intro={
+            state.dirty
+              ? `Saves a copy of this layout, with its unsaved changes, among your custom layouts, and opens it. ${state.layout.name} stays as it was.`
+              : 'Saves a copy of this layout among your custom layouts, and opens it.'
+          }
+          nameLabel="Name of the duplicate"
+          initialName={duplicating.name}
+          submitLabel="Duplicate"
+          // Two custom layouts never share a name, and a duplicate does not take another's place.
+          // The one storage just refused the name for is taken even before the list is read again.
+          taken={(name) =>
+            duplicating.taken && sameName(duplicating.taken.name, name)
+              ? duplicating.taken
+              : nameTaken(customLayouts.entries, name, null)
+          }
+          neverOverwrites
+          onSubmit={(name) => {
+            setDuplicating(null);
+            void duplicate(name);
+          }}
+          onClose={() => {
+            setDuplicating(null);
+            setDuplicateNamed(null);
           }}
         />
       )}

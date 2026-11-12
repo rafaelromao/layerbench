@@ -289,7 +289,7 @@ describe('Creating layouts', () => {
     expect(within(settings).getByRole('combobox', { name: 'Rule set' })).toHaveValue('cyanophage');
   }, 60_000);
 
-  it('has no Duplicate on a card, bundled or custom: Analyze and Save make a copy', async () => {
+  it('has no Duplicate on a card, bundled or custom: Analyze makes the copy, by its Duplicate or by Save', async () => {
     const storage = freshStorage();
     const qwerty = bundledLayout('qwerty') as Layout;
     await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));

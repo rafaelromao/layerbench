@@ -23,7 +23,7 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
  * change proposed from it is open, and the way to save it, the way to submit a custom layout to the Library, which layout this is, what the
- * numbers are made with, and the way to compare it.
+ * numbers are made with, the way to compare it, and the way to duplicate it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
  */
@@ -36,6 +36,7 @@ export function LayoutBar({
   onSave,
   onCancel,
   onSubmit,
+  onDuplicate,
   copiesOnSave,
   proposal,
   proposalMerged,
@@ -69,6 +70,8 @@ export function LayoutBar({
   onCancel?: () => void;
   /** Propose it as a community layout; absent for a layout that is not a custom one. */
   onSubmit?: () => void;
+  /** Save a copy of it, as it is now, under a name asked for, and open that. */
+  onDuplicate: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
   copiesOnSave: boolean;
   /** The pull request of the change proposed from this custom layout, while it is open. */
@@ -229,6 +232,15 @@ export function LayoutBar({
           </div>
           <button type="button" className="btn btn-sm btn-outline shrink-0" onClick={onCompare}>
             Compare
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline shrink-0"
+            title="Save a copy of it under a new name, and open the copy"
+            disabled={saving}
+            onClick={onDuplicate}
+          >
+            Duplicate
           </button>
         </div>
       </div>
