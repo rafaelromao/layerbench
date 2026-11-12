@@ -256,6 +256,13 @@ interface ExecContext {
   pos: number;
   taps: number;
   out: string[];
+  /**
+   * What the key's own keycodes typed, each part of `out`, before a dead key pressed before it
+   * accented it: what the board draws for the press, the `o` of a `´` then `o` that typed `ó`.
+   */
+  drawn: string[];
+  /** Whether this press pressed a dead key itself, as a macro's step: its letters are drawn accented. */
+  ownDeadKey: boolean;
   /** Binding kind that produced the outcome (innermost executed). */
   leaf: BindingKind;
   /**
@@ -424,6 +431,8 @@ export class Machine {
       pos,
       taps,
       out: [],
+      drawn: [],
+      ownDeadKey: false,
       leaf: 'none',
       outer: null,
       reaches: null,
@@ -631,11 +640,18 @@ export class Machine {
     const s = this.state;
     const symbol = this.keycodePressed(pressed);
     let text = symbol;
+    // A dead key pressed before this key accents its letter, which the key draws plain; one this
+    // press pressed itself, as a macro's step, is part of what it draws.
+    let drawn = text;
     if (s.pendingDeadKey !== null && text.length) {
       text = composeDeadKey(s.pendingDeadKey, text);
       s.pendingDeadKey = null;
+      if (ctx.ownDeadKey) drawn = text;
     }
-    if (text.length) ctx.out.push(text);
+    if (text.length) {
+      ctx.out.push(text);
+      ctx.drawn.push(drawn);
+    }
     ctx.emittedKeycode = true;
     s.lastSymbol = symbol.length ? symbol : s.lastSymbol;
     s.lastKeycode = keycode ?? (symbol.length ? symbol : s.lastKeycode);
@@ -707,6 +723,7 @@ export class Machine {
               this.emit(ctx, '', b.keycode);
             } else if (r.deadKey) {
               this.keycodePressed('');
+              ctx.ownDeadKey = true;
               this.state.pendingDeadKey = r.deadKey;
               ctx.emittedKeycode = true;
               this.state.lastKeycode = b.keycode;
@@ -930,6 +947,7 @@ export class Machine {
         case 'dead_key':
           ctx.leaf = 'dead_key';
           this.keycodePressed('');
+          ctx.ownDeadKey = true;
           this.state.pendingDeadKey =
             b.shifted !== undefined && this.effectiveShift(ctx, false) ? b.shifted : b.diacritic;
           ctx.emittedKeycode = true;
@@ -1000,7 +1018,8 @@ function labelFor(
   // The Repeat key is named as the board draws it, not by the letter it repeated: a list of pairs
   // would else show a thumb's Repeat and its space as `l␣`, a letter and a space on two keys.
   if (ctx.leaf === 'key_repeat') return '⟳';
-  const text = ctx.out.join('');
+  // A letter a dead key accented is named by the key's own letter: the dead key is its own press.
+  const text = ctx.drawn.join('');
   // A space is drawn as the space bar draws it, alone or after a macro's text: `,␣`.
   if (text.length) return text.includes(' ') ? text.replaceAll(' ', '␣') : text;
   // A layer key is named as the board draws it: Alpha 2 is A2.
