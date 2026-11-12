@@ -256,6 +256,11 @@ interface ExecContext {
   pos: number;
   taps: number;
   out: string[];
+  /**
+   * What the key's own keycodes typed, each part of `out`, before a dead key pressed before it
+   * accented it: what the board draws for the press, the `o` of a `´` then `o` that typed `ó`.
+   */
+  drawn: string[];
   /** Binding kind that produced the outcome (innermost executed). */
   leaf: BindingKind;
   /**
@@ -424,6 +429,7 @@ export class Machine {
       pos,
       taps,
       out: [],
+      drawn: [],
       leaf: 'none',
       outer: null,
       reaches: null,
@@ -635,7 +641,10 @@ export class Machine {
       text = composeDeadKey(s.pendingDeadKey, text);
       s.pendingDeadKey = null;
     }
-    if (text.length) ctx.out.push(text);
+    if (text.length) {
+      ctx.out.push(text);
+      ctx.drawn.push(symbol);
+    }
     ctx.emittedKeycode = true;
     s.lastSymbol = symbol.length ? symbol : s.lastSymbol;
     s.lastKeycode = keycode ?? (symbol.length ? symbol : s.lastKeycode);
@@ -1000,7 +1009,8 @@ function labelFor(
   // The Repeat key is named as the board draws it, not by the letter it repeated: a list of pairs
   // would else show a thumb's Repeat and its space as `l␣`, a letter and a space on two keys.
   if (ctx.leaf === 'key_repeat') return '⟳';
-  const text = ctx.out.join('');
+  // A letter a dead key accented is named by the key's own letter: the dead key is its own press.
+  const text = ctx.drawn.join('');
   // A space is drawn as the space bar draws it, alone or after a macro's text: `,␣`.
   if (text.length) return text.includes(' ') ? text.replaceAll(' ', '␣') : text;
   // A layer key is named as the board draws it: Alpha 2 is A2.
