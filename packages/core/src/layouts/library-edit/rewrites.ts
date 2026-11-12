@@ -157,12 +157,14 @@ function importName(id: string): string {
 const LINE_WIDTH = 100;
 const importOpen = (name: string, id: string) =>
   `import ${name} from './documents/${id}.json' with {`;
+
 /** A document's import, as Biome writes it: one line within `LINE_WIDTH`, three lines past it. */
 function importLines(name: string, id: string): string[] {
   const oneLine = `${importOpen(name, id)} type: 'json' };`;
   if (oneLine.length <= LINE_WIDTH) return [oneLine];
   return [importOpen(name, id), "  type: 'json',", '};'];
 }
+
 /** The last line of the import statement opening at `start`, the one ending in `;`. */
 function importEnd(lines: string[], start: number): number {
   let end = start;

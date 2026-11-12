@@ -161,8 +161,10 @@ describe('the documents module', () => {
   });
 
   it('wraps a long import as Biome does, and still unregisters it and adds one after it', () => {
-    const id = 'hands-down-promethium-mod';
-    const name = 'handsDownPromethiumMod';
+    // Sorts after `sample`, so it becomes the last document; `zed` then sorts after it too, so
+    // appending `zed` lands right past its closing `};`, where a wrapped import used to corrupt.
+    const id = 'vibranium-extended-community-mod';
+    const name = 'vibraniumExtendedCommunityMod';
     const long = registerDocument(text, id);
     expect(long).toContain(
       [`import ${name} from './documents/${id}.json' with {`, "  type: 'json',", '};'].join('\n'),
@@ -171,7 +173,9 @@ describe('the documents module', () => {
     expect(unregisterDocument(long, id)).toBe(text);
 
     const after = registerDocument(long, 'zed');
-    expect(after).toContain("import zed from './documents/zed.json' with { type: 'json' };");
+    expect(after).toContain(
+      ['};', "import zed from './documents/zed.json' with { type: 'json' };"].join('\n'),
+    );
     expect(after.indexOf('./documents/zed.json')).toBeGreaterThan(
       after.indexOf(`./documents/${id}.json`),
     );
