@@ -142,7 +142,8 @@ function importName(id: string): string {
   return /^[0-9]/.test(camel) ? `layout${camel}` : camel;
 }
 
-const importLine = (name: string, id: string) => `import ${name} from './documents/${id}.json';`;
+const importLine = (name: string, id: string) =>
+  `import ${name} from './documents/${id}.json' with { type: 'json' };`;
 const entryLine = (name: string, id: string) => (name === id ? `  ${id},` : `  '${id}': ${name},`);
 const DOCUMENTS_OPEN = 'const DOCUMENTS: Record<string, unknown> = {';
 /** The object with no document left in it, as Biome writes it. */

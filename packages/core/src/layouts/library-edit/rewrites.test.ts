@@ -94,7 +94,7 @@ describe('the ids of the layouts written in code', () => {
 /** `documents.ts` as written, with one document, so the cases hold whatever the Library has. */
 const DOCUMENTS_TS = [
   "import { toCanonicalJson } from '../layout/json.js';",
-  "import sample from './documents/sample.json';",
+  "import sample from './documents/sample.json' with { type: 'json' };",
   '',
   'const DOCUMENTS: Record<string, unknown> = {',
   '  sample,',
@@ -108,14 +108,18 @@ describe('the documents module', () => {
   it('takes one more as it is, and gives it back', () => {
     const live = read('documents.ts');
     const after = registerDocument(live, 'new-layout');
-    expect(after).toContain("import newLayout from './documents/new-layout.json';\n");
+    expect(after).toContain(
+      "import newLayout from './documents/new-layout.json' with { type: 'json' };\n",
+    );
     expect(after).toMatch(/ {2}'new-layout': newLayout,\n\};/);
     expect(unregisterDocument(after, 'new-layout')).toBe(live);
   });
 
   it('registers a document: its import among the others, its entry last', () => {
     const after = registerDocument(text, 'new-layout');
-    expect(after).toContain("import newLayout from './documents/new-layout.json';\n");
+    expect(after).toContain(
+      "import newLayout from './documents/new-layout.json' with { type: 'json' };\n",
+    );
     expect(after.indexOf('./documents/new-layout.json')).toBeLessThan(
       after.indexOf('./documents/sample.json'),
     );
@@ -129,7 +133,7 @@ describe('the documents module', () => {
 
   it('takes a name a string holds, as Magic Romak registered holds Romak', () => {
     const both = registerDocument(registerDocument(text, 'magic-romak'), 'romak');
-    expect(both).toContain("import romak from './documents/romak.json';");
+    expect(both).toContain("import romak from './documents/romak.json' with { type: 'json' };");
     expect(both).toMatch(/ {2}'magic-romak': magicRomak,\n {2}romak,\n\};/);
     expect(() => registerDocument(both, 'romak')).toThrow(LibraryRequestRefused);
   });
@@ -141,7 +145,9 @@ describe('the documents module', () => {
   });
 
   it('names a document whose id starts with a digit so it is still an identifier', () => {
-    expect(registerDocument(text, '3l')).toContain("import layout3l from './documents/3l.json';");
+    expect(registerDocument(text, '3l')).toContain(
+      "import layout3l from './documents/3l.json' with { type: 'json' };",
+    );
   });
 
   it('unregisters a document it registered, back to the text it had', () => {
