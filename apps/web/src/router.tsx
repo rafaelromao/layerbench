@@ -6,6 +6,7 @@ import {
   redirect,
 } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { NotFoundScreen, RouteErrorScreen } from './components/RouteScreens.js';
 import { Shell } from './components/Shell.js';
 import { inlineInFragment } from './url/fragment.js';
 import type { RawSearch } from './url/params.js';
@@ -37,13 +38,20 @@ function stringifySearch(search: RawSearch): string {
   return s ? `?${s}` : '';
 }
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <Shell>
-      <Outlet />
-    </Shell>
-  ),
-});
+/** The shared app boundary; its fallbacks replace this route's normal component, so each owns Shell. */
+export function createAppRootRoute() {
+  return createRootRoute({
+    component: () => (
+      <Shell>
+        <Outlet />
+      </Shell>
+    ),
+    errorComponent: RouteErrorScreen,
+    notFoundComponent: NotFoundScreen,
+  });
+}
+
+const rootRoute = createAppRootRoute();
 
 /** The front door is the Library. */
 const homeRoute = createRoute({

@@ -116,6 +116,33 @@ function storedSession(): string | null {
   }
 }
 
+/** A route error may quote the credentials this module keeps; show its message without those secrets. */
+export function safeErrorMessage(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : error &&
+            typeof error === 'object' &&
+            'message' in error &&
+            typeof error.message === 'string'
+          ? error.message
+          : 'An unexpected error occurred.';
+  const secrets = [token?.value, storedSession()].filter((secret): secret is string => !!secret);
+  let safe = message;
+  for (const secret of secrets) {
+    safe = safe.split(secret).join('[redacted]');
+    safe = safe.split(encodeURIComponent(secret)).join('[redacted]');
+  }
+  return safe
+    .replace(/\b(?:gh[opusr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)\b/gi, '[redacted]')
+    .replace(
+      /\b(access[_ -]?token|refresh[_ -]?token|token|sealed[_ -]?session|session)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;&]+)/gi,
+      '$1=[redacted]',
+    );
+}
+
 function keepSession(value: string | null): void {
   try {
     if (value) localStorage.setItem(SESSION_KEY, value);
