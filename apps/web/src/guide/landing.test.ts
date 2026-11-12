@@ -77,6 +77,32 @@ describe('the landing page', () => {
     }
   });
 
+  it('declares a share preview with an image served by the landing page', () => {
+    const content = (selector: string) => {
+      const tags = all(selector);
+      expect(tags, selector).toHaveLength(1);
+      return attr(tags[0], 'content');
+    };
+    const description = content('meta[name="description"]');
+    expect(content('meta[property="og:title"]')).toBe(
+      'LayerBench — a keyboard layout analyzer that types like your firmware',
+    );
+    expect(content('meta[property="og:description"]')).toBe(description);
+    expect(content('meta[property="og:type"]')).toBe('website');
+    expect(content('meta[property="og:url"]')).toBe('https://rafaelromao.github.io/layerbench/');
+    expect(content('meta[name="twitter:card"]')).toBe('summary_large_image');
+
+    const image = new URL(content('meta[property="og:image"]'));
+    expect(image.href).toBe(
+      'https://rafaelromao.github.io/layerbench/assets/img/analyze-board-light.png',
+    );
+    const path = image.pathname.replace('/layerbench/', '');
+    const size = pngSize(resolve(SITE, path));
+    expect(size.width).toBe(Number(content('meta[property="og:image:width"]')));
+    expect(size.height).toBe(Number(content('meta[property="og:image:height"]')));
+    expect(content('meta[property="og:image:alt"]')).not.toBe('');
+  });
+
   it('shares its icon with the app, which is published apart from it', () => {
     const app = readFileSync(resolve(process.cwd(), 'public/favicon.svg'), 'utf8');
     expect(app).toBe(readFileSync(resolve(SITE, 'assets/favicon.svg'), 'utf8'));
@@ -172,5 +198,39 @@ describe('the landing page', () => {
     const claim = privacy!.querySelector('p:not(.evidence)')!;
     const namedHosts = new Set([...claim.querySelectorAll('code')].map((c) => c.textContent));
     expect(namedHosts).toEqual(policyHosts);
+  });
+});
+
+describe('the app page', () => {
+  const app = new DOMParser().parseFromString(
+    readFileSync(resolve(process.cwd(), 'index.html'), 'utf8'),
+    'text/html',
+  );
+  const content = (selector: string) => {
+    const tags = [...app.querySelectorAll(selector)];
+    expect(tags, selector).toHaveLength(1);
+    return attr(tags[0], 'content');
+  };
+
+  it('declares a share preview with an image served by the app', () => {
+    expect(content('meta[name="description"]')).toBe(
+      'LayerBench types a text on your ZMK keymap the way the firmware would — layers, one-shots, adaptive and repeat keys, combos, macros — and measures the key presses that result.',
+    );
+    expect(content('meta[property="og:title"]')).toBe(
+      'LayerBench — a keyboard layout analyzer that types like your firmware',
+    );
+    expect(content('meta[property="og:description"]')).toBe(content('meta[name="description"]'));
+    expect(content('meta[property="og:type"]')).toBe('website');
+    expect(content('meta[property="og:url"]')).toBe('https://layerbench.github.io/');
+    expect(content('meta[name="twitter:card"]')).toBe('summary_large_image');
+
+    const image = new URL(content('meta[property="og:image"]'));
+    expect(image.href).toBe('https://layerbench.github.io/og-preview.png');
+    const file = resolve(process.cwd(), 'public', image.pathname.slice(1));
+    expect(existsSync(file), image.href).toBe(true);
+    const size = pngSize(file);
+    expect(size.width).toBe(Number(content('meta[property="og:image:width"]')));
+    expect(size.height).toBe(Number(content('meta[property="og:image:height"]')));
+    expect(content('meta[property="og:image:alt"]')).not.toBe('');
   });
 });
