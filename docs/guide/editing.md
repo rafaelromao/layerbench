@@ -22,7 +22,9 @@ layout that is not yours yet, such as one that comes with the app, the first **S
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
 layout, [proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your
 edits to the copy. A layout's link follows its name: rename one already in **Library** and save it,
-and it moves to a link of its new name; a link of the old name opens nothing.
+and it moves to a link of its new name; a link of the old name opens nothing. **Duplicate**, beside
+**Compare**, saves a copy of the layout as it is now under a name you give and opens that copy, on
+any layout, yours or not: see [Duplicating a layout](saving.md#duplicating-a-layout).
 
 The address follows your edits too: a moment after each one, the link holds the layout as it now
 is. Reload the page, or go back to it, in the same tab, and the edits are still there, still

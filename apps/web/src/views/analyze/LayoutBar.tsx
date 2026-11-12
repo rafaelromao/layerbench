@@ -23,7 +23,7 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
  * change proposed from it is open, and the way to save it, the way to submit a custom layout to the Library, which layout this is, what the
- * numbers are made with, and the way to compare it.
+ * numbers are made with, the way to compare it, and the way to duplicate it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
  */
@@ -36,6 +36,7 @@ export function LayoutBar({
   onSave,
   onCancel,
   onSubmit,
+  onDuplicate,
   copiesOnSave,
   proposal,
   proposalMerged,
@@ -69,6 +70,8 @@ export function LayoutBar({
   onCancel?: () => void;
   /** Propose it as a community layout; absent for a layout that is not a custom one. */
   onSubmit?: () => void;
+  /** Save a copy of it, as it is now, under a name asked for, and open that. */
+  onDuplicate: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
   copiesOnSave: boolean;
   /** The pull request of the change proposed from this custom layout, while it is open. */
@@ -144,10 +147,12 @@ export function LayoutBar({
       </div>
       {/* Where what was just saved is: kept in this browser only, or not sent for a reason. */}
       <SyncNote />
-      {/* On a phone one line, so the board and the editor under it start within the first screen:
-          the picker shows the layout's name without a caption, and Settings is a gear. */}
-      <div id="analyze-toolbar" className="flex items-end gap-2 sm:gap-3">
-        <label className="form-control min-w-0 flex-1 sm:flex-none">
+      {/* On a phone the picker shows the layout's name without a caption, and Settings is a gear.
+          When the row is tight, the buttons wrap under the picker rather than squeezing its name. */}
+      {/* The picker keeps a width its names can be read in: on a phone, what does not fit beside it
+          goes under it. Only the screen's width decides, so the bar does not change with an edit. */}
+      <div id="analyze-toolbar" className="flex flex-wrap items-end gap-2 sm:flex-nowrap sm:gap-3">
+        <label className="form-control min-w-36 flex-1 sm:min-w-0 sm:flex-none">
           <span className="label-text text-xs max-sm:sr-only">Layout</span>
           <select
             name="layout"
@@ -159,7 +164,7 @@ export function LayoutBar({
             <LayoutOptions custom={custom} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
-        <div className="flex shrink-0 items-center gap-2 sm:min-w-0 sm:flex-1">
+        <div className="flex shrink-0 items-center gap-2 max-sm:ml-auto sm:min-w-0 sm:flex-1">
           <div className="sm:min-w-0 sm:flex-1">
             <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
               <fieldset className="grid gap-2">
@@ -229,6 +234,15 @@ export function LayoutBar({
           </div>
           <button type="button" className="btn btn-sm btn-outline shrink-0" onClick={onCompare}>
             Compare
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline shrink-0"
+            title="Save a copy of it under a new name, and open the copy"
+            disabled={saving}
+            onClick={onDuplicate}
+          >
+            Duplicate
           </button>
         </div>
       </div>
