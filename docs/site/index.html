@@ -605,15 +605,21 @@
               <p>
                 No account of ours, and no analytics. The app is static files; the only server code
                 is a small worker that signs you in with GitHub and keeps nothing. The app's content
-                security policy lets it talk only to itself, to <code>api.github.com</code> and to
-                that worker; a token is never put in a link, an export or an error. This page loads
-                nothing from anywhere else and runs no JavaScript.
+                security policy lets it talk only to itself, to <code>api.github.com</code>, to that
+                worker and to GitHub's file server, <code>raw.githubusercontent.com</code>: read from,
+                never sent to, for the community layouts the Library reads from it each time it opens
+                and the keymap-drawer file Import reads from an address, both with no sign-in. A token
+                is never put in a link, an export or an error, and none of a user's work leaves the
+                browser unless they sign in. This page loads nothing from anywhere else and runs no
+                JavaScript.
               </p>
               <p class="evidence">
                 In the source: <code>apps/web/vite.config.ts</code>,
                 <code>apps/web/src/server/github-auth.test.ts</code>,
                 <code>apps/web/src/storage/github-api.ts</code>,
-                <code>apps/web/src/storage/github.test.ts</code>
+                <code>apps/web/src/storage/github.test.ts</code>,
+                <code>apps/web/src/import/keymap-url.ts</code>,
+                <code>apps/web/src/community/community.ts</code>
               </p>
             </li>
             <li>
