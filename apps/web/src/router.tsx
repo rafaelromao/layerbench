@@ -38,7 +38,7 @@ function stringifySearch(search: RawSearch): string {
   return s ? `?${s}` : '';
 }
 
-/** The shared app boundary; its fallbacks replace this route's normal component, so each owns Shell. */
+/** Shared root boundary; fallbacks own Shell because they replace the root component. */
 export function createAppRootRoute() {
   return createRootRoute({
     component: () => (

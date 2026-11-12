@@ -116,7 +116,7 @@ function storedSession(): string | null {
   }
 }
 
-/** A route error may quote the credentials this module keeps; show its message without those secrets. */
+/** Remove secrets this module stores before displaying route diagnostics. */
 export function safeErrorMessage(error: unknown): string {
   const message =
     error instanceof Error
@@ -135,12 +135,16 @@ export function safeErrorMessage(error: unknown): string {
     safe = safe.split(secret).join('[redacted]');
     safe = safe.split(encodeURIComponent(secret)).join('[redacted]');
   }
+  const credentialAssignment = new RegExp(
+    [
+      String.raw`\b(access[_ -]?token|refresh[_ -]?token|token|sealed[_ -]?session|session)`,
+      String.raw`\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;&]+)`,
+    ].join(''),
+    'gi',
+  );
   return safe
     .replace(/\b(?:gh[opusr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+)\b/gi, '[redacted]')
-    .replace(
-      /\b(access[_ -]?token|refresh[_ -]?token|token|sealed[_ -]?session|session)\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;&]+)/gi,
-      '$1=[redacted]',
-    );
+    .replace(credentialAssignment, '$1=[redacted]');
 }
 
 function keepSession(value: string | null): void {

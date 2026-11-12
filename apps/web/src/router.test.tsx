@@ -64,7 +64,7 @@ describe('unknown addresses', () => {
 });
 
 describe('rendering errors', () => {
-  it('shows the error and recovery actions in the app shell, then lets the Library open', async () => {
+  it('shows recovery actions and lets the Library open', async () => {
     const user = userEvent.setup();
     const router = renderThrowingRoute(new Error('The view failed to load'));
 
@@ -86,7 +86,7 @@ describe('rendering errors', () => {
     expect(await screen.findByRole('heading', { name: 'Library destination' })).toBeInTheDocument();
   });
 
-  it('keeps the diagnostic message but never displays the access token or sealed session', async () => {
+  it('redacts credentials but keeps diagnostic context', async () => {
     const token = 'ghu_layerbench-test-token';
     const session = 'sealed-session-test-value';
     vi.stubGlobal(
