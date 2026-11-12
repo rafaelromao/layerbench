@@ -67,7 +67,7 @@ describe('promoting a layout to the Library', () => {
     expect(JSON.parse(write[LIBRARY_FILES.document(NEW)])).toEqual(doc);
     expect(write[LIBRARY_FILES.document(NEW)].endsWith('}\n')).toBe(true);
     expect(write[LIBRARY_FILES.documents]).toContain(
-      "import newLayout from './documents/new-layout.json';",
+      "import newLayout from './documents/new-layout.json' with { type: 'json' };",
     );
     expect(write[LIBRARY_FILES.landing]).toContain(`layout=${NEW}&amp;`);
   });
@@ -89,7 +89,9 @@ describe('changing a bundled layout', () => {
     const { write, remove } = plan({ action: 'change', id: CLASSIC, layout: doc });
     expect(write[LIBRARY_FILES.classic]).not.toContain(`id: '${CLASSIC}'`);
     expect(write[LIBRARY_FILES.builtInIds]).not.toContain(`'${CLASSIC}'`);
-    expect(write[LIBRARY_FILES.documents]).toContain(`from './documents/${CLASSIC}.json';`);
+    expect(write[LIBRARY_FILES.documents]).toContain(
+      `from './documents/${CLASSIC}.json' with { type: 'json' };`,
+    );
     expect(JSON.parse(write[LIBRARY_FILES.document(CLASSIC)])).toEqual(doc);
     expect(remove).toEqual([LIBRARY_FILES.golden(CLASSIC)]);
     expect(write[LIBRARY_FILES.landing]).toBeUndefined();
