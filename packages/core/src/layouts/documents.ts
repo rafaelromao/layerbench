@@ -1,7 +1,7 @@
 import { toCanonicalJson } from '../layout/json.js';
 import { safeParseLayout } from '../layout/schema.js';
 import type { Layout } from '../layout/types.js';
-import enthium from './documents/enthium.json';
+import enthium from './documents/enthium.json' with { type: 'json' };
 
 /**
  * Bundled layouts added as documents: each file in `documents/` is a layout exactly as LayerBench
