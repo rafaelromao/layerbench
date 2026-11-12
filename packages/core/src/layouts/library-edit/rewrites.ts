@@ -8,14 +8,25 @@ import { LibraryRequestRefused } from './request.js';
  * does not recognise is left for a person rather than half edited.
  */
 
-/** The index of the only line equal to `line` between `start` and `end`, or a refusal. */
-function onlyLine(lines: string[], line: string, start: number, end: number, what: string): number {
+/** The index of the only line matching `test` between `start` and `end`, or a refusal. */
+function onlyIndex(
+  lines: string[],
+  test: (line: string) => boolean,
+  start: number,
+  end: number,
+  what: string,
+): number {
   const found: number[] = [];
-  for (let i = start; i < end; i++) if (lines[i] === line) found.push(i);
+  for (let i = start; i < end; i++) if (test(lines[i])) found.push(i);
   if (found.length !== 1) {
     throw new LibraryRequestRefused(`${what}: found ${found.length} times, not once`);
   }
   return found[0];
+}
+
+/** The index of the only line equal to `line` between `start` and `end`, or a refusal. */
+function onlyLine(lines: string[], line: string, start: number, end: number, what: string): number {
+  return onlyIndex(lines, (l) => l === line, start, end, what);
 }
 
 /** The lines of the block opening on the line `open` and closing on the first `close` after it. */
@@ -142,8 +153,22 @@ function importName(id: string): string {
   return /^[0-9]/.test(camel) ? `layout${camel}` : camel;
 }
 
-const importLine = (name: string, id: string) =>
-  `import ${name} from './documents/${id}.json' with { type: 'json' };`;
+/** `biome.json`'s `formatter.lineWidth`, past which Biome wraps a line onto more than one. */
+const LINE_WIDTH = 100;
+const importOpen = (name: string, id: string) =>
+  `import ${name} from './documents/${id}.json' with {`;
+/** A document's import, as Biome writes it: one line within `LINE_WIDTH`, three lines past it. */
+function importLines(name: string, id: string): string[] {
+  const oneLine = `${importOpen(name, id)} type: 'json' };`;
+  if (oneLine.length <= LINE_WIDTH) return [oneLine];
+  return [importOpen(name, id), "  type: 'json',", '};'];
+}
+/** The last line of the import statement opening at `start`, the one ending in `;`. */
+function importEnd(lines: string[], start: number): number {
+  let end = start;
+  while (!lines[end].endsWith(';')) end++;
+  return end;
+}
 const entryLine = (name: string, id: string) => (name === id ? `  ${id},` : `  '${id}': ${name},`);
 const DOCUMENTS_OPEN = 'const DOCUMENTS: Record<string, unknown> = {';
 /** The object with no document left in it, as Biome writes it. */
@@ -168,7 +193,7 @@ export function registerDocument(text: string, id: string): string {
   const last = documents.at(-1) ?? imports.at(-1);
   if (last === undefined) throw new LibraryRequestRefused('documents.ts imports nothing');
   const after = documents.find((i) => path(lines[i]) > `./documents/${id}.json`);
-  lines.splice(after ?? last + 1, 0, importLine(name, id));
+  lines.splice(after ?? importEnd(lines, last) + 1, 0, ...importLines(name, id));
   const [, end] = block(lines, DOCUMENTS_OPEN, '};', 'DOCUMENTS');
   lines.splice(end, 0, entryLine(name, id));
   return lines.join('\n');
@@ -178,7 +203,14 @@ export function registerDocument(text: string, id: string): string {
 export function unregisterDocument(text: string, id: string): string {
   const name = importName(id);
   const lines = opened(text);
-  lines.splice(onlyLine(lines, importLine(name, id), 0, lines.length, `the import of ${id}`), 1);
+  const open = onlyIndex(
+    lines,
+    (l) => l.startsWith(importOpen(name, id)),
+    0,
+    lines.length,
+    `the import of ${id}`,
+  );
+  lines.splice(open, importEnd(lines, open) - open + 1);
   const [start, end] = block(lines, DOCUMENTS_OPEN, '};', 'DOCUMENTS');
   lines.splice(onlyLine(lines, entryLine(name, id), start, end, `the entry of ${id}`), 1);
   // The last one gone, the object is written empty, as Biome would.

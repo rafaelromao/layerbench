@@ -159,4 +159,22 @@ describe('the documents module', () => {
     expect(() => registerDocument(text, 'sample')).toThrow(LibraryRequestRefused);
     expect(() => unregisterDocument(text, 'new-layout')).toThrow(LibraryRequestRefused);
   });
+
+  it('wraps a long import as Biome does, and still unregisters it and adds one after it', () => {
+    const id = 'hands-down-promethium-mod';
+    const name = 'handsDownPromethiumMod';
+    const long = registerDocument(text, id);
+    expect(long).toContain(
+      [`import ${name} from './documents/${id}.json' with {`, "  type: 'json',", '};'].join('\n'),
+    );
+    expect(long).toContain(`  '${id}': ${name},`);
+    expect(unregisterDocument(long, id)).toBe(text);
+
+    const after = registerDocument(long, 'zed');
+    expect(after).toContain("import zed from './documents/zed.json' with { type: 'json' };");
+    expect(after.indexOf('./documents/zed.json')).toBeGreaterThan(
+      after.indexOf(`./documents/${id}.json`),
+    );
+    expect(unregisterDocument(unregisterDocument(after, 'zed'), id)).toBe(text);
+  });
 });
