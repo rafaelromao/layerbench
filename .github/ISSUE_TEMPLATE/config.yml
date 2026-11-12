@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Add or change a layout
+    url: https://github.com/rafaelromao/layerbench#bundled-layouts
+    about:
+      Submit (beside Save, in Analyze) sends a layout to the Library with no pull request from
+      you; README → Bundled layouts has the steps to add one by pull request instead. Not an issue.
+  - name: Add a corpus text
+    url: https://github.com/rafaelromao/layerbench#bundled-corpora
+    about: README → Bundled corpora has the steps to add a text, by pull request. Not an issue.
