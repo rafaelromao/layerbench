@@ -148,6 +148,17 @@ function combosFirst(tier: Producer[]): Producer[][] {
   if (combos.length === 0 || combos.length === tier.length) return [tier];
   return [combos, tier.filter((p) => !pressesCombo(p))];
 }
+
+/**
+ * A tier with its dead keys' ways put last, as a tier of their own: an accented letter that a key,
+ * a macro or a combo types whole is typed that way wherever it works, and the dead key and the
+ * letter only where none does.
+ */
+function deadKeysLast(tier: Producer[]): Producer[][] {
+  const dead = tier.filter((p) => p.kind === 'deadkey');
+  if (dead.length === 0 || dead.length === tier.length) return [tier];
+  return [tier.filter((p) => p.kind !== 'deadkey'), dead];
+}
 /**
  * Text → physical key events → n-gram tables.
  */
@@ -347,7 +358,7 @@ export class Simulator {
     const ways = this.doubledWays;
     const handSet = (this.userPaths.get(symbol)?.length ?? 0) > 0;
     const tiers = this.tiersFor(symbol, ordinary, repeats, doubled, ways);
-    return handSet ? tiers : tiers.flatMap(combosFirst);
+    return handSet ? tiers : tiers.flatMap(combosFirst).flatMap(deadKeysLast);
   }
 
   /** Whether the token is the symbol just typed: a doubled letter. */
