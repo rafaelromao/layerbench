@@ -10,6 +10,7 @@ on:
     paths:
       - 'packages/corpora/**'
       - 'apps/web/public/corpora/**'
+      - '.github/workflows/corpora.yml'
 
 permissions:
   contents: read
@@ -22,14 +23,14 @@ jobs:
   corpora:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           # The pull request's base, to tell which texts it adds or changes.
           fetch-depth: 0
       # No version here: the action reads `packageManager` from package.json.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm

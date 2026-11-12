@@ -119,6 +119,28 @@ a `!` there: such a pull request is missed altogether, with no release and no ch
 squash merge makes a breaking change count. A rebase merge puts the title nowhere in the history.
 History before the first release is not conventional and is left as it is.
 
+## Updating GitHub Actions pins
+
+Workflow actions are pinned to a full commit SHA so a tag cannot change what a workflow runs. Keep
+the release tag beside each pin as a comment (`uses: owner/action@<40-character-sha> # vX.Y.Z`).
+Use an exact release tag, not a moving major tag, and update every use of the same action to the same
+version and SHA. The `actions/*` actions must each have one version throughout the workflows.
+
+To resolve a release tag, inspect both its direct ref and its peeled ref:
+
+```sh
+git ls-remote https://github.com/OWNER/REPOSITORY.git \
+  'refs/tags/vX.Y.Z' 'refs/tags/vX.Y.Z^{}'
+```
+
+For an annotated tag, use the 40-character commit SHA on the `^{}` line; for a lightweight tag, use
+the SHA on the direct tag line. Verify the repository and release tag before updating the pin. Update
+all workflow uses, including secret-bearing jobs and `.github/workflows/community-index.yml` on the
+`layerbench-data` branch, with the same SHA and version comment; keep its test mirror at
+`packages/core/fixtures/community-index.workflow.yml` in sync too. Run
+`pnpm --filter @layerbench/core exec vitest run src/convention/workflow-pins.test.ts` to check the
+main workflow inventory, pin format, version comments and consistent GitHub-owned action versions.
+
 ## Releases
 
 `.github/workflows/release-please.yml` runs on every push to `main`. It keeps one pull request open,
