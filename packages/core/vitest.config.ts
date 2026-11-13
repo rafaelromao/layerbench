@@ -4,6 +4,8 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    // pnpm runs this pool beside the web/jsdom pool; three workers in each leave OS headroom.
+    maxWorkers: 3,
     // Some tests run every bundled layout through the simulator, which takes a few seconds and
     // about three times that under coverage on a CI runner; Vitest's default of five is too short.
     testTimeout: 30_000,

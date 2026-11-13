@@ -3,10 +3,12 @@ import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
+import staticRoutes from '../../static-routes.json' with { type: 'json' };
+import { contentSecurityPolicy } from '../../vite.config.js';
 import { createAppRouter } from '../router.js';
 import { parseParams, type RawSearch, toSearch } from '../url/params.js';
 import { anchorsOf, parseGuide } from './markdown.js';
-import { guidePage } from './pages.js';
+import { GUIDE_PAGES, guidePage } from './pages.js';
 
 /**
  * The landing page, `docs/site`, published on its own by `.github/workflows/pages.yml` and served
@@ -74,6 +76,32 @@ describe('the landing page', () => {
     for (const { url } of references.filter(({ url }) => isLocal(url))) {
       expect(existsSync(resolve(SITE, url)), url).toBe(true);
     }
+  });
+
+  it('declares a share preview with an image served by the landing page', () => {
+    const content = (selector: string) => {
+      const tags = all(selector);
+      expect(tags, selector).toHaveLength(1);
+      return attr(tags[0], 'content');
+    };
+    const description = content('meta[name="description"]');
+    expect(content('meta[property="og:title"]')).toBe(
+      'LayerBench — a keyboard layout analyzer that types like your firmware',
+    );
+    expect(content('meta[property="og:description"]')).toBe(description);
+    expect(content('meta[property="og:type"]')).toBe('website');
+    expect(content('meta[property="og:url"]')).toBe('https://rafaelromao.github.io/layerbench/');
+    expect(content('meta[name="twitter:card"]')).toBe('summary_large_image');
+
+    const image = new URL(content('meta[property="og:image"]'));
+    expect(image.href).toBe(
+      'https://rafaelromao.github.io/layerbench/assets/img/analyze-board-light.png',
+    );
+    const path = image.pathname.replace('/layerbench/', '');
+    const size = pngSize(resolve(SITE, path));
+    expect(size.width).toBe(Number(content('meta[property="og:image:width"]')));
+    expect(size.height).toBe(Number(content('meta[property="og:image:height"]')));
+    expect(content('meta[property="og:image:alt"]')).not.toBe('');
   });
 
   it('shares its icon with the app, which is published apart from it', () => {
@@ -148,6 +176,71 @@ describe('the landing page', () => {
     const linked = all('.layouts a').map((a) => new URL(attr(a, 'href'), 'https://app.invalid'));
     expect(new Set(linked.map((u) => u.searchParams.get('layout')))).toEqual(layouts);
     expect(all('.layouts-title')[0]?.textContent).toContain(String(layouts.size));
+  });
+
+  it("names every host the app's own content security policy allows it to talk to", () => {
+    // 'self' is "itself" in the paragraph's prose, not a host named in code, and the sign-in
+    // worker's own origin is parameterized and varies by environment, so the page names it in
+    // prose too ("that worker"), never as a literal domain; passing no auth origin leaves exactly
+    // the fixed hosts the build always allows. Widening the policy is a decision, and must change
+    // this test with it, as apps/web/src/import/policy.test.ts already holds the policy itself to.
+    const connectSrc = contentSecurityPolicy('')
+      .split('; ')
+      .find((directive) => directive.startsWith('connect-src '))!
+      .split(' ')
+      .slice(1);
+    const policyHosts = new Set(
+      connectSrc.filter((source) => source !== "'self'").map((source) => new URL(source).host),
+    );
+    const privacy = [...page.querySelectorAll('h3')]
+      .find((h3) => h3.textContent === 'Private by construction')
+      ?.closest('li');
+    expect(privacy).not.toBeUndefined();
+    const claim = privacy!.querySelector('p:not(.evidence)')!;
+    const namedHosts = new Set([...claim.querySelectorAll('code')].map((c) => c.textContent));
+    expect(namedHosts).toEqual(policyHosts);
+  });
+});
+
+describe('the app page', () => {
+  const app = new DOMParser().parseFromString(
+    readFileSync(resolve(process.cwd(), 'index.html'), 'utf8'),
+    'text/html',
+  );
+  const content = (selector: string) => {
+    const tags = [...app.querySelectorAll(selector)];
+    expect(tags, selector).toHaveLength(1);
+    return attr(tags[0], 'content');
+  };
+
+  it('declares a share preview with an image served by the app', () => {
+    expect(content('meta[name="description"]')).toBe(
+      'LayerBench types a text on your ZMK keymap the way the firmware would — layers, one-shots, adaptive and repeat keys, combos, macros — and measures the key presses that result.',
+    );
+    expect(content('meta[property="og:title"]')).toBe(
+      'LayerBench — a keyboard layout analyzer that types like your firmware',
+    );
+    expect(content('meta[property="og:description"]')).toBe(content('meta[name="description"]'));
+    expect(content('meta[property="og:type"]')).toBe('website');
+    expect(content('meta[property="og:url"]')).toBe('https://layerbench.github.io/');
+    expect(content('meta[name="twitter:card"]')).toBe('summary_large_image');
+
+    const image = new URL(content('meta[property="og:image"]'));
+    expect(image.href).toBe('https://layerbench.github.io/og-preview.png');
+    const file = resolve(process.cwd(), 'public', image.pathname.slice(1));
+    expect(existsSync(file), image.href).toBe(true);
+    const size = pngSize(file);
+    expect(size.width).toBe(Number(content('meta[property="og:image:width"]')));
+    expect(size.height).toBe(Number(content('meta[property="og:image:height"]')));
+    expect(content('meta[property="og:image:alt"]')).not.toBe('');
+  });
+
+  it('publishes a static entry document for every public app route', () => {
+    const expected = Object.keys(router.routesByPath)
+      .filter((path) => path !== '/' && !path.includes('$'))
+      .concat(GUIDE_PAGES.filter(({ slug }) => slug).map(({ slug }) => `/guide/${slug}`))
+      .sort();
+    expect([...staticRoutes].sort()).toEqual(expected);
   });
 });
 

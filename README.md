@@ -215,6 +215,11 @@ pnpm dev          # http://localhost:4011
 
 CI runs `pnpm check`, `pnpm typecheck` and `pnpm build` in one job, and each package's tests in a
 job of its own beside it: the tests on a pull request, `test:coverage` on a push to main.
+Locally, `pnpm test` runs the workspace test scripts in parallel: the core engine and web app suites
+run side by side (the corpora package has no tests). Each Vitest pool is capped at three workers, so
+the full command uses up to six test workers and leaves headroom on an 8-core laptop. Three full runs
+here took 7m32s–8m59s; expect about 8–9 minutes, depending on hardware and background load. This is
+the regular suite, not `pnpm test:coverage`.
 `test:coverage` runs them under Vitest's v8 coverage, about three times slower, and fails when a
 package covers less than 80% of its lines, statements, functions or branches: run it before opening
 a pull request that adds code, as the pull request's own checks do not. The gate is per package

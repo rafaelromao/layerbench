@@ -7,6 +7,9 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['src/test/setup.ts'],
+    // The root test command runs the core suite beside this one; cap both pools below half of an
+    // 8-core laptop to leave room for the test runner and OS.
+    maxWorkers: 3,
     // Analyses run for real in these tests, on a small sample.
     // Coverage slows every test, and the heavy ones run for tens of seconds on a CI runner with
     // dozens of jsdom workers sharing a few cores; one that passes in a minute on a laptop has

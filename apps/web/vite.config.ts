@@ -1,10 +1,11 @@
-import { copyFileSync, existsSync, readFileSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
 import { RAW_ORIGIN } from './src/import/keymap-url.js';
 import { type AuthEnv, handleAuth } from './src/server/github-auth.js';
+import staticRoutes from './static-routes.json' with { type: 'json' };
 
 /**
  * Where the sign-in server is when it is not the page's own origin: the Worker on its own domain
@@ -62,9 +63,8 @@ export function contentSecurityPolicy(authOrigin: string): string {
  *
  * Pages sends no headers a site can choose, so the policy travels as a meta tag, written here so it
  * cannot drift from what the build checks. `frame-ancestors`, which a meta tag cannot carry, is the
- * check at the top of `main.tsx` instead. A deep link such as /analyze has no file behind it, so
- * Pages answers with `404.html`: a copy of the app, which reads the address and shows the view. The
- * status says 404; browsers do not mind.
+ * check at the top of `main.tsx` instead. Each public route gets an entry document so static hosts
+ * return successful responses to shared links; `404.html` remains the fallback for unknown paths.
  */
 function staticHosting(policy: string): Plugin {
   return {
@@ -101,7 +101,13 @@ function staticHosting(policy: string): Plugin {
     },
     closeBundle() {
       const dir = resolve(import.meta.dirname, 'dist');
-      copyFileSync(resolve(dir, 'index.html'), resolve(dir, '404.html'));
+      const index = resolve(dir, 'index.html');
+      copyFileSync(index, resolve(dir, '404.html'));
+      for (const route of staticRoutes) {
+        const routeDir = resolve(dir, route.slice(1));
+        mkdirSync(routeDir, { recursive: true });
+        copyFileSync(index, resolve(routeDir, 'index.html'));
+      }
     },
   };
 }

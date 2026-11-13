@@ -148,6 +148,17 @@ function combosFirst(tier: Producer[]): Producer[][] {
   if (combos.length === 0 || combos.length === tier.length) return [tier];
   return [combos, tier.filter((p) => !pressesCombo(p))];
 }
+
+/**
+ * A tier with its dead keys' ways put last, as a tier of their own: an accented letter that a key,
+ * a macro or a combo types whole is typed that way wherever it works, and the dead key and the
+ * letter only where none does.
+ */
+function deadKeysLast(tier: Producer[]): Producer[][] {
+  const dead = tier.filter((p) => p.kind === 'deadkey');
+  if (dead.length === 0 || dead.length === tier.length) return [tier];
+  return [tier.filter((p) => p.kind !== 'deadkey'), dead];
+}
 /**
  * Text → physical key events → n-gram tables.
  */
@@ -336,7 +347,8 @@ export class Simulator {
    * The ways to type a token, in tiers: the first tier that works is used, and inside it the
    * cheapest way. A typing combo is not weighed against the other ways: where the symbol has no
    * order of its own, the ways it makes the symbol are the first tier, and the rest follow it, for
-   * where the combo does not work. Otherwise one tier, except for a doubled letter of a layout that
+   * where the combo does not work; a dead key's ways go last the same way, for where nothing types
+   * the accented letter whole (`deadKeysLast`). Otherwise one tier, except for a doubled letter of a layout that
    * declared how those are typed, which tries each way that is on in turn: the repeat key's, then
    * tapping the key again.
    */
@@ -347,7 +359,7 @@ export class Simulator {
     const ways = this.doubledWays;
     const handSet = (this.userPaths.get(symbol)?.length ?? 0) > 0;
     const tiers = this.tiersFor(symbol, ordinary, repeats, doubled, ways);
-    return handSet ? tiers : tiers.flatMap(combosFirst);
+    return handSet ? tiers : tiers.flatMap(combosFirst).flatMap(deadKeysLast);
   }
 
   /** Whether the token is the symbol just typed: a doubled letter. */

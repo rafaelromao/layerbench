@@ -38,7 +38,7 @@ jobs:
     # `pnpm languages` measures every bundled layout on every language's text: minutes.
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - id: request
@@ -53,16 +53,16 @@ jobs:
           fi
       # The App writes the result to the branch, and the pull request's title. A token lasts an hour.
       - if: steps.request.outputs.found == 'true'
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
       # No version here: the action reads `packageManager` from package.json.
       - if: steps.request.outputs.found == 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
       - if: steps.request.outputs.found == 'true'
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm
