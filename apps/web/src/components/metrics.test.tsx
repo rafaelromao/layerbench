@@ -46,6 +46,23 @@ describe('a metric card’s name', () => {
   it('is alone for a metric with no code', () => {
     render(<MetricCard result={{ ...result, id: 'effort', label: 'Effort' }} />);
     expect(screen.getByRole('heading', { name: 'Effort' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enlarge Effort' })).toBeInTheDocument();
+  });
+
+  it('follows the name a rule set gives the metric, and is not said twice', () => {
+    // The cyanophage rule set's own name for LSB.
+    const { unmount } = render(
+      <MetricCard result={{ ...result, id: 'lsb', label: 'Lat stretch bigrams (column pairs)' }} />,
+    );
+    expect(
+      screen.getByRole('heading', { name: 'LSB - Lat stretch bigrams (column pairs)' }),
+    ).toBeInTheDocument();
+    unmount();
+    render(<MetricCard result={{ ...result, label: 'SFBs (thumbs excluded)' }} />);
+    expect(screen.getByRole('heading', { name: 'SFBs (thumbs excluded)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Enlarge SFBs (thumbs excluded)' }),
+    ).toBeInTheDocument();
   });
 });
 

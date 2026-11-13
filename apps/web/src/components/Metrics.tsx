@@ -285,7 +285,9 @@ function MetricBody({
   const breakdown = Object.entries(result.breakdown).slice(0, large ? undefined : 12);
   const maxItem = Math.max(0, ...result.items.map((i) => i.percent ?? i.count ?? 0));
   const text = large ? 'text-sm' : 'text-xs';
+  // What goes before the name, in the heading and in the Enlarge button's name alike.
   const code = metricCode(result.id, result.label);
+  const prefix = code === null ? null : `${code} -`;
 
   return (
     <>
@@ -295,9 +297,9 @@ function MetricBody({
         <div className="min-w-0 flex-1">
           <h3 id={titleId} className={`font-semibold ${large ? 'text-lg' : 'text-sm'}`}>
             {/* The code apart from the name, which stays the heading's own text. */}
-            {code && (
+            {prefix && (
               <>
-                <span>{code} -</span>{' '}
+                <span>{prefix}</span>{' '}
               </>
             )}
             {result.label}
@@ -314,7 +316,7 @@ function MetricBody({
           <button
             type="button"
             className="btn btn-ghost btn-xs btn-square -mr-2 -mt-1 opacity-60"
-            aria-label={`Enlarge ${code ? `${code} - ` : ''}${result.label}`}
+            aria-label={`Enlarge ${prefix ? `${prefix} ` : ''}${result.label}`}
             title="Enlarge"
             onClick={onEnlarge}
           >

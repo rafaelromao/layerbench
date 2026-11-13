@@ -103,7 +103,7 @@ describe('metricCode', () => {
     expect(metricCode('sfb_distance', 'SFB distance')).toBeNull();
   });
 
-  it('gives nothing where the name, as a rule set writes it, says the code already', () => {
+  it('gives nothing where the name says the code already, as a custom rule set may', () => {
     expect(metricCode('sfb', 'SFB')).toBeNull();
     expect(metricCode('sfb', 'SFBs (thumbs excluded)')).toBeNull();
     expect(metricCode('sfs', 'Same finger skipgrams (sfs)')).toBeNull();
