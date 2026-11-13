@@ -138,3 +138,26 @@ const SHORT_LABELS: Record<string, string> = {
 export function shortLabel(id: string, fallback: string): string {
   return SHORT_LABELS[id] ?? fallback;
 }
+
+/** The three-letter codes layout analyzers know these metrics by. The others have none. */
+const METRIC_CODES: Record<string, string> = {
+  sfb: 'SFB',
+  sfs: 'SFS',
+  lsb: 'LSB',
+  lss: 'LSS',
+  fsb: 'FSB',
+  fss: 'FSS',
+  hsb: 'HSB',
+  hss: 'HSS',
+};
+
+/**
+ * The code a metric's card shows before its name, as `LSB - Lateral stretch bigrams`: null for a
+ * metric with none, or whose name, as a rule set may write it, says it already.
+ */
+export function metricCode(id: string, label: string): string | null {
+  const code = METRIC_CODES[id];
+  if (!code) return null;
+  // `SFBs` says it too.
+  return new RegExp(`\\b${code}s?\\b`, 'i').test(label) ? null : code;
+}

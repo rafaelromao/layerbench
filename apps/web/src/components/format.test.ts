@@ -1,6 +1,6 @@
 import { bundledLayout, compileLayout, type RuleItem } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import { describeKeys, formatKeyShare } from './format.js';
+import { describeKeys, formatKeyShare, metricCode } from './format.js';
 
 // Magic Romak types a doubled letter with its Repeat key, on the left thumb beside the space bar.
 const compiled = compileLayout(
@@ -92,5 +92,23 @@ describe('formatKeyShare', () => {
     expect(formatKeyShare(1e-9)).toBe('under 0.01%');
     expect(formatKeyShare(0)).toBe('0%');
     expect(formatKeyShare(Number.NaN)).toBe('0%');
+  });
+});
+
+describe('metricCode', () => {
+  it('gives the code of a metric that has one, and nothing for one that has none', () => {
+    expect(metricCode('sfb', 'Same finger bigrams')).toBe('SFB');
+    expect(metricCode('hss', 'Half scissor skipgrams')).toBe('HSS');
+    expect(metricCode('effort', 'Effort')).toBeNull();
+    expect(metricCode('sfb_distance', 'SFB distance')).toBeNull();
+  });
+
+  it('gives nothing where the name says the code already, as a custom rule set may', () => {
+    expect(metricCode('sfb', 'SFB')).toBeNull();
+    expect(metricCode('sfb', 'SFBs (thumbs excluded)')).toBeNull();
+    expect(metricCode('sfs', 'Same finger skipgrams (sfs)')).toBeNull();
+    // The cyanophage rule set's own names for two of them.
+    expect(metricCode('lsb', 'Lat stretch bigrams (column pairs)')).toBe('LSB');
+    expect(metricCode('fsb', 'Scissors (adjacent columns, 2 rows)')).toBe('FSB');
   });
 });

@@ -27,6 +27,45 @@ const result: RuleResult = {
   normalized: null,
 };
 
+describe('a metric card’s name', () => {
+  it('has its code before it, on the card and enlarged', async () => {
+    render(<MetricCard result={result} />);
+    expect(screen.getByRole('heading', { name: 'SFB - Same finger bigrams' })).toBeInTheDocument();
+    // The name is still its own text, apart from the code.
+    expect(screen.getByText('Same finger bigrams')).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Enlarge SFB - Same finger bigrams' }));
+    expect(
+      within(screen.getByRole('dialog')).getByRole('heading', {
+        name: 'SFB - Same finger bigrams',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('is alone for a metric with no code', () => {
+    render(<MetricCard result={{ ...result, id: 'effort', label: 'Effort' }} />);
+    expect(screen.getByRole('heading', { name: 'Effort' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Enlarge Effort' })).toBeInTheDocument();
+  });
+
+  it('follows the name a rule set gives the metric, and is not said twice', () => {
+    // The cyanophage rule set's own name for LSB.
+    const { unmount } = render(
+      <MetricCard result={{ ...result, id: 'lsb', label: 'Lat stretch bigrams (column pairs)' }} />,
+    );
+    expect(
+      screen.getByRole('heading', { name: 'LSB - Lat stretch bigrams (column pairs)' }),
+    ).toBeInTheDocument();
+    unmount();
+    render(<MetricCard result={{ ...result, label: 'SFBs (thumbs excluded)' }} />);
+    expect(screen.getByRole('heading', { name: 'SFBs (thumbs excluded)' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Enlarge SFBs (thumbs excluded)' }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('a metric card’s items', () => {
   it('names the keys of an item in its tooltip, which its label does not', () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
@@ -39,7 +78,7 @@ describe('a metric card’s items', () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
+      .click(screen.getByRole('button', { name: 'Enlarge SFB - Same finger bigrams' }));
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', `⟳␣\n${KEYS}`);
     expect(dialog.queryByText(KEYS)).toBeNull();
