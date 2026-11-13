@@ -49,12 +49,12 @@ describe('the first public release notes', () => {
     expect(WORKFLOW).toContain("steps.release.outputs.release_created == 'true'");
     expect(WORKFLOW).toContain("steps.release.outputs.tag_name == 'v0.3.0'");
     expect(WORKFLOW).toContain("github.event_name == 'workflow_dispatch'");
-    expect(WORKFLOW).toContain(
-      `RELEASE_CREATED: ${expression('steps.release.outputs.release_created')}`,
-    );
+    expect(WORKFLOW).toContain(`EVENT_NAME: ${expression('github.event_name')}`);
     expect(WORKFLOW).toContain(`RELEASE_BODY: ${expression('steps.release.outputs.body')}`);
     expect(WORKFLOW).toContain(`GH_TOKEN: ${expression('steps.app.outputs.token')}`);
-    expect(WORKFLOW).toContain('gh release view v0.3.0');
+    expect(WORKFLOW).toMatch(
+      /if \[ "\$EVENT_NAME" = "workflow_dispatch" \]; then\s+release_notes="\$\(gh release view v0\.3\.0 --json body --jq \.body\)"\s+else\s+release_notes="\$RELEASE_BODY"\s+fi/,
+    );
     expect(WORKFLOW).toContain('gh release edit v0.3.0');
     expect(WORKFLOW).toContain('compose-release-notes.mjs');
   });

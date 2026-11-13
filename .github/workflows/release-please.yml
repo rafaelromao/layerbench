@@ -49,13 +49,13 @@ jobs:
         if: ${{ (steps.release.outputs.release_created == 'true' && steps.release.outputs.tag_name == 'v0.3.0') || github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          EVENT_NAME: ${{ github.event_name }}
           RELEASE_BODY: ${{ steps.release.outputs.body }}
         run: |
-          if [ "$RELEASE_CREATED" = "true" ]; then
-            release_notes="$RELEASE_BODY"
-          else
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             release_notes="$(gh release view v0.3.0 --json body --jq .body)"
+          else
+            release_notes="$RELEASE_BODY"
           fi
 
           RELEASE_NOTES="$release_notes" node .github/scripts/compose-release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
