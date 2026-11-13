@@ -1,0 +1,43 @@
+name: Request
+description: A layout, language or metric you would like LayerBench to support
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a layout you have and want in the app, use **Submit** in the app (beside Save, in
+        Analyze), or
+        [README → Bundled layouts](https://github.com/rafaelromao/layerbench#bundled-layouts) to
+        add one by pull request, instead of this form. For a corpus text, see
+        [README → Bundled corpora](https://github.com/rafaelromao/layerbench#bundled-corpora).
+
+        Use this form to ask LayerBench to support a layout, a language or a metric better, not to
+        hand over one you already have.
+  - type: input
+    id: layout
+    attributes:
+      label: Layout
+      description: The layout this is about, if any, and a link to it or to where it comes from
+    validations:
+      required: false
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: The language this is about, if any
+    validations:
+      required: false
+  - type: input
+    id: metric
+    attributes:
+      label: Metric
+      description: The metric this is about, if any
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What you would like
+      description: What LayerBench should do, and why
+    validations:
+      required: true

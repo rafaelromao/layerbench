@@ -15,7 +15,7 @@
     "check:fix": "biome check --write .",
     "format": "biome format --write .",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
+    "test": "pnpm -r --parallel run test",
     "test:coverage": "pnpm -r run test:coverage",
     "build": "pnpm -r --filter @layerbench/core run build && pnpm --filter @layerbench/web run build",
     "dev": "pnpm --filter @layerbench/web run dev",
@@ -37,6 +37,6 @@
     "@biomejs/biome": "^2.5.12",
     "@types/node": "^26.4.1",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.1.0"
   }
 }

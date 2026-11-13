@@ -207,7 +207,8 @@ These are among the editor's other tiles, under **More** on a phone:
   its accent in a colour of its own, over a dotted line where the letter will go. The analysis types
   through them: an accented letter no key types is typed as its accent, then the letter, and a
   layer held for the accent is let go before the letter. Each accent goes on the letters it is
-  written on. A letter some key types in one press is typed there.
+  written on. A letter some key, macro or combo types whole is typed there, wherever it works,
+  however many presses it takes: the dead key is only for the letters nothing else types.
   **Shifted** gives the key a second accent for when shift is on, as US-International has `¨`
   over `´`; it is drawn at the top of the key. Like a shifted symbol, it is typed only when
   **Shift** is on, since with capitals folded no shift is pressed.

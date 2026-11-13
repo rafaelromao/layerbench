@@ -77,6 +77,55 @@ export async function openPull(gh: GitHub, base: string, branch: string): Promis
   return typeof url === 'string' ? url : null;
 }
 
+/**
+ * How many pull requests of one kind one person may have open at once: changes proposed, or layouts
+ * submitted. Each one's pushes run CI, so one account cannot keep the repository's runners busy.
+ */
+export const OPEN_AT_ONCE = 5;
+
+/**
+ * The branches of the open pull requests that start with one of `prefixes`: branches of this
+ * repository only, which LayerBench opens as the App, so a fork's cannot count against anyone.
+ */
+async function openBranches(gh: GitHub, prefixes: readonly string[]): Promise<string[]> {
+  const ours = (ref: unknown): ref is string =>
+    typeof ref === 'string' && prefixes.some((prefix) => ref.startsWith(prefix));
+  const branches: string[] = [];
+  for (let page = 1; ; page++) {
+    const open = await gh('GET', `/pulls?state=open&per_page=100&page=${page}`);
+    if (open.status !== 200 || !Array.isArray(open.data)) {
+      throw new GitHubRefused(`GitHub answered ${open.status}`);
+    }
+    for (const pull of open.data) {
+      const head = (pull as { head?: { ref?: unknown; repo?: { full_name?: unknown } } }).head;
+      if (head?.repo?.full_name === LIBRARY_REPO && ours(head.ref)) branches.push(head.ref);
+    }
+    if (open.data.length < 100) return branches;
+  }
+}
+
+/**
+ * A refusal when one person has as many pull requests of one kind open as one may, their branches
+ * starting with one of `prefixes`, and `branch` is not one of them: a new version of one that is
+ * open still goes to it. `what` names them, as `changes proposed`.
+ */
+export async function overLimit(
+  gh: GitHub,
+  prefixes: readonly string[],
+  branch: string,
+  what: string,
+): Promise<{ status: number; answer: { error: string; reason: string } } | null> {
+  const open = await openBranches(gh, prefixes);
+  if (open.includes(branch) || open.length < OPEN_AT_ONCE) return null;
+  return {
+    status: 429,
+    answer: {
+      error: 'too many open',
+      reason: `you have ${open.length} ${what} and open already; wait for one to be merged or closed`,
+    },
+  };
+}
+
 /** Whether `path` is on `ref`; anything but yes or no is GitHub refusing. */
 export async function exists(gh: GitHub, path: string, ref: string): Promise<boolean> {
   const found = await gh('GET', `/contents/${path}?ref=${encodeURIComponent(ref)}`);

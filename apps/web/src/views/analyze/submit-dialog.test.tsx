@@ -102,6 +102,20 @@ describe('Submit', () => {
     expect(await screen.findByText(/already has the id "mine"/)).toBeVisible();
   });
 
+  it('says so when as many layouts are submitted and open as one may', async () => {
+    const user = userEvent.setup();
+    const reason =
+      'you have 5 layouts submitted and open already; wait for one to be merged or closed';
+    vi.stubGlobal('fetch', async (input: string) =>
+      String(input).endsWith('/submit')
+        ? reply({ error: 'too many open', reason }, 429)
+        : reply(SIGNED_IN),
+    );
+    open();
+    await user.click(await screen.findByRole('button', { name: 'Open the pull request' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(`Nothing was sent: ${reason}`);
+  });
+
   it('closes with Close', async () => {
     const user = userEvent.setup();
     const onClose = open();

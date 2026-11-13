@@ -9,7 +9,7 @@ name: community index
 on:
   push:
     branches: [layerbench-data]
-    paths: ['community/**']
+    paths: ['community/**', '.github/workflows/community-index.yml']
 # No manual run: GitHub offers one only for a workflow on the default branch, and this one lives
 # here. The push that sets the branch up adds `community/index.json`, so it runs then.
 
@@ -25,7 +25,7 @@ jobs:
   index:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # `index` in any case is the app's reserved id (`isDocumentId`), so no layout file may take it.
       - name: List the community layouts
         run: |

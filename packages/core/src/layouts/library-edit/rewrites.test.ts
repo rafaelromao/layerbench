@@ -94,7 +94,7 @@ describe('the ids of the layouts written in code', () => {
 /** `documents.ts` as written, with one document, so the cases hold whatever the Library has. */
 const DOCUMENTS_TS = [
   "import { toCanonicalJson } from '../layout/json.js';",
-  "import sample from './documents/sample.json';",
+  "import sample from './documents/sample.json' with { type: 'json' };",
   '',
   'const DOCUMENTS: Record<string, unknown> = {',
   '  sample,',
@@ -108,14 +108,18 @@ describe('the documents module', () => {
   it('takes one more as it is, and gives it back', () => {
     const live = read('documents.ts');
     const after = registerDocument(live, 'new-layout');
-    expect(after).toContain("import newLayout from './documents/new-layout.json';\n");
+    expect(after).toContain(
+      "import newLayout from './documents/new-layout.json' with { type: 'json' };\n",
+    );
     expect(after).toMatch(/ {2}'new-layout': newLayout,\n\};/);
     expect(unregisterDocument(after, 'new-layout')).toBe(live);
   });
 
   it('registers a document: its import among the others, its entry last', () => {
     const after = registerDocument(text, 'new-layout');
-    expect(after).toContain("import newLayout from './documents/new-layout.json';\n");
+    expect(after).toContain(
+      "import newLayout from './documents/new-layout.json' with { type: 'json' };\n",
+    );
     expect(after.indexOf('./documents/new-layout.json')).toBeLessThan(
       after.indexOf('./documents/sample.json'),
     );
@@ -129,7 +133,7 @@ describe('the documents module', () => {
 
   it('takes a name a string holds, as Magic Romak registered holds Romak', () => {
     const both = registerDocument(registerDocument(text, 'magic-romak'), 'romak');
-    expect(both).toContain("import romak from './documents/romak.json';");
+    expect(both).toContain("import romak from './documents/romak.json' with { type: 'json' };");
     expect(both).toMatch(/ {2}'magic-romak': magicRomak,\n {2}romak,\n\};/);
     expect(() => registerDocument(both, 'romak')).toThrow(LibraryRequestRefused);
   });
@@ -141,7 +145,9 @@ describe('the documents module', () => {
   });
 
   it('names a document whose id starts with a digit so it is still an identifier', () => {
-    expect(registerDocument(text, '3l')).toContain("import layout3l from './documents/3l.json';");
+    expect(registerDocument(text, '3l')).toContain(
+      "import layout3l from './documents/3l.json' with { type: 'json' };",
+    );
   });
 
   it('unregisters a document it registered, back to the text it had', () => {
@@ -152,5 +158,27 @@ describe('the documents module', () => {
   it('refuses one already there, and one that is not', () => {
     expect(() => registerDocument(text, 'sample')).toThrow(LibraryRequestRefused);
     expect(() => unregisterDocument(text, 'new-layout')).toThrow(LibraryRequestRefused);
+  });
+
+  it('wraps a long import as Biome does, and still unregisters it and adds one after it', () => {
+    // Sorts after `sample`, so it becomes the last document; `zed` then sorts after it too, so
+    // appending `zed` lands right past its closing `};`, where a wrapped import used to corrupt.
+    const id = 'vibranium-extended-community-mod';
+    const name = 'vibraniumExtendedCommunityMod';
+    const long = registerDocument(text, id);
+    expect(long).toContain(
+      [`import ${name} from './documents/${id}.json' with {`, "  type: 'json',", '};'].join('\n'),
+    );
+    expect(long).toContain(`  '${id}': ${name},`);
+    expect(unregisterDocument(long, id)).toBe(text);
+
+    const after = registerDocument(long, 'zed');
+    expect(after).toContain(
+      ['};', "import zed from './documents/zed.json' with { type: 'json' };"].join('\n'),
+    );
+    expect(after.indexOf('./documents/zed.json')).toBeGreaterThan(
+      after.indexOf(`./documents/${id}.json`),
+    );
+    expect(unregisterDocument(unregisterDocument(after, 'zed'), id)).toBe(text);
   });
 });

@@ -28,13 +28,13 @@ jobs:
     if: github.repository == 'rafaelromao/layerbench'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
-      # Pinned by commit: the tag is v5.0.0 (it runs on Node 24, which GitHub's runners provide).
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
+      # It runs on Node 24, which GitHub's runners provide.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json

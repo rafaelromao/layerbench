@@ -22,7 +22,9 @@ layout that is not yours yet, such as one that comes with the app, the first **S
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
 layout, [proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your
 edits to the copy. A layout's link follows its name: rename one already in **Library** and save it,
-and it moves to a link of its new name; a link of the old name opens nothing.
+and it moves to a link of its new name; a link of the old name opens nothing. **Duplicate**, beside
+**Compare**, saves a copy of the layout as it is now under a name you give and opens that copy, on
+any layout, yours or not: see [Duplicating a layout](saving.md#duplicating-a-layout).
 
 The address follows your edits too: a moment after each one, the link holds the layout as it now
 is. Reload the page, or go back to it, in the same tab, and the edits are still there, still
@@ -435,7 +437,8 @@ keeps the page where it is, at either end too:
   combo types its second part when its keys are pressed together twice. **Typing**, ticked by
   default, makes the combo the way to type what it makes, wherever it works: it is not weighed
   against the other ways, it goes first, and the others follow where it cannot work. A dead key on a
-  combo makes no letter, so its letters are weighed like any other way: it types what no key does. Unticked, it is
+  combo makes no letter, so it is not one of those ways: like any dead key, it types only the letters
+  nothing else types whole. Unticked, it is
   a command: on the keyboard, never pressed by the analysis, with *not typed* on its card, and not
   drawn on the board. The board draws it on the gap between its keys, its hold
   small under what it types; one on three or more keys, on keys apart, or with no room on its gap,
@@ -458,6 +461,8 @@ keeps the page where it is, at either end too:
   the cheapest way from where the typist is: the fewest presses, then the one that leaves no layer
   key held, then the one that makes the fewest same-finger pairs with the keys before it in the
   word, then the less effort. A combo used for typing is not weighed in that: its way comes first.
+  A dead key is not weighed either: its way comes last, used only where no key, macro or combo
+  types the accented letter whole.
   Drag or use the arrows to put one way first instead, and that order is kept. Two cards come before them, in the same shape, for rules that hold for the whole layout,
   each with its ways in a list: **Shift kind**, how a capital is typed, with the shift key tapped
   once before the letter (**Sticky (one-shot)**) or held while the letter goes down (**Hold**), and

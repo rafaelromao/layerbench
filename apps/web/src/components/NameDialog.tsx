@@ -12,8 +12,8 @@ export interface TakenLayout {
  * dialogs are, so Escape and a tap on the dimmed page around it are a change of mind and call
  * `onClose`. Mount it while it is open: it opens as it mounts, with the name selected to be typed
  * over, and an empty name is refused. So is a name `taken` says another custom layout has, as
- * saving under it would make a second: it offers instead to overwrite that one, or to type another
- * name.
+ * saving under it would make a second: it offers instead to overwrite that one, where its caller can
+ * (`onOverwrite`), or to type another name.
  */
 export function NameDialog({
   title,
@@ -24,6 +24,7 @@ export function NameDialog({
   taken = () => null,
   onSubmit,
   onOverwrite,
+  neverOverwrites = false,
   onClose,
   children,
 }: {
@@ -40,6 +41,12 @@ export function NameDialog({
   onSubmit: (name: string) => void;
   /** Save under the name, trimmed, in place of the custom layout that has it, as onSubmit does. */
   onOverwrite?: (name: string, taken: TakenLayout) => void;
+  /**
+   * Without `onOverwrite`, a taken name is said to be one that could not be overwritten, as when an
+   * overwrite was refused. Set where overwriting is not on offer at all, as for a duplicate, to only
+   * ask for another name.
+   */
+  neverOverwrites?: boolean;
   onClose: () => void;
   children?: ReactNode;
 }) {
@@ -56,6 +63,9 @@ export function NameDialog({
 
   const trimmed = name.trim();
   const clash = trimmed ? taken(trimmed) : null;
+  let advice = 'It could not be overwritten: type another name.';
+  if (onOverwrite) advice = 'Overwrite it, or type another name.';
+  else if (neverOverwrites) advice = 'Type another name.';
   return (
     <dialog
       ref={dialog}
@@ -94,12 +104,7 @@ export function NameDialog({
         </label>
         {/* Read out as it changes: whoever types hears the name is taken, and when it is not. */}
         <p id={clashId} role="status" className="text-xs text-warning empty:sr-only">
-          {clash &&
-            `A custom layout is already called ${clash.name}. ${
-              onOverwrite
-                ? 'Overwrite it, or type another name.'
-                : 'It could not be overwritten: type another name.'
-            }`}
+          {clash && `A custom layout is already called ${clash.name}. ${advice}`}
         </p>
         {children}
 
