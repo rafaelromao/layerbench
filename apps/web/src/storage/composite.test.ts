@@ -2443,6 +2443,18 @@ describe('a delete made on another browser', () => {
     expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
   });
 
+  it('follows a copy with no version on record that is the very version deleted', async () => {
+    const { laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    // Held as it was saved before versions were recorded: nothing on record, but the same text the
+    // laptop deletes.
+    phoneMarks.forget('layouts', 'lemon');
+    await deleteLemon(laptop);
+    expect(await phone.followDeletions()).toEqual([
+      { collection: 'layouts', id: 'lemon', name: 'Lemon' },
+    ]);
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+  });
+
   it('marks, and asks about, a copy edited on the phone whose mark was lost', async () => {
     const { laptop, phoneLocal, phoneMarks, phone } = await twoBrowsers();
     // Changed in the phone's store with nothing to say so, as a save before edits were marked.

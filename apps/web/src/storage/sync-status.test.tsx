@@ -20,6 +20,7 @@ const BASE: SyncInput = {
   error: null,
   taken: 0,
   conflicts: 0,
+  deletedThere: 0,
   held: null,
   offline: false,
   scheduled: false,
@@ -126,9 +127,21 @@ describe('what the status says', () => {
     });
     expect(summary).toMatchObject({ kind: 'conflict', action: 'review', notable: true });
     expect(summary.text).toBe(
-      '2 documents were changed in this browser and changed or deleted in your GitHub account. Nothing is replaced until you choose which version to keep.',
+      '2 documents were changed in this browser and in your GitHub account. Nothing is replaced until you choose which version to keep.',
     );
     expect(summary.label).toBe(' · conflict');
+  });
+
+  it('says which wait for a choice because the account deleted them, and only those', () => {
+    const asked = { ...BASE, status: 'signed-in' as const, login: 'you', pending: 3 };
+    expect(summarize({ ...asked, conflicts: 1, deletedThere: 1 })).toMatchObject({
+      kind: 'conflict',
+      action: 'review',
+      text: '1 document was deleted from your GitHub account and is still in this browser. Nothing is sent or deleted until you choose whether to keep it.',
+    });
+    expect(summarize({ ...asked, conflicts: 3, deletedThere: 1 }).text).toBe(
+      '3 documents differ between this browser and your GitHub account: 2 changed in both, 1 deleted from your account and still here. Nothing is replaced, sent or deleted until you choose.',
+    );
   });
 
   it('says what is held back for another account, and offers to send it', () => {

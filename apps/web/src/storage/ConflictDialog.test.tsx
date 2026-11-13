@@ -335,7 +335,7 @@ describe('choosing between two versions', () => {
     );
     expect(await description(local, 'gust')).toBe('Gust on the phone');
     // Not sent back unasked: asked about, as a layout the account deleted.
-    await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
     expect(await remote.get('layouts', 'gust')).toBeNull();
     stop();
   });
@@ -392,7 +392,9 @@ describe('choosing whether to keep a layout the account deleted', () => {
   it('says it was deleted from the account, when, and offers to keep it or delete it', async () => {
     const { storage } = await deletedThere();
     show(storage);
-    const dialog = await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Gust was deleted from your GitHub account',
+    });
     expect(
       within(dialog).getByText(
         /was deleted from your GitHub account, and this browser still has it/,
@@ -408,7 +410,7 @@ describe('choosing whether to keep a layout the account deleted', () => {
     const user = userEvent.setup();
     const { storage, remote, marks } = await deletedThere();
     show(storage);
-    await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
     await choose(user, 'Keep mine');
     await waitFor(async () => expect(await description(remote, 'gust')).toBe('Gust on the phone'));
     expect(marks.has('layouts', 'gust')).toBe(false);
@@ -419,7 +421,7 @@ describe('choosing whether to keep a layout the account deleted', () => {
     const user = userEvent.setup();
     const { storage, local, remote, marks } = await deletedThere();
     show(storage);
-    await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
     await choose(user, 'Delete it');
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
@@ -437,7 +439,7 @@ describe('choosing whether to keep a layout the account deleted', () => {
     const user = userEvent.setup();
     const { storage, local, remote } = await deletedThere();
     show(storage);
-    await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
     await remote.put('layouts', 'gust', { name: 'Gust', description: 'Gust made again' });
     await choose(user, 'Delete it');
     await waitFor(() =>

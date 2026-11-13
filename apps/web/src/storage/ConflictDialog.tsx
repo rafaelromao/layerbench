@@ -210,7 +210,9 @@ export function ConflictDialog() {
         <div className="modal-box max-w-lg space-y-3">
           <div>
             <h2 id="conflict-title" className="font-semibold text-base [overflow-wrap:anywhere]">
-              {theirs ? `Two versions of ${current.name}` : `${current.name} was deleted elsewhere`}
+              {theirs
+                ? `Two versions of ${current.name}`
+                : `${current.name} was deleted from your GitHub account`}
             </h2>
             <p className="text-xs opacity-70">
               {conflicts.length > 1

@@ -860,8 +860,8 @@ export class CompositeStorage implements StorageAdapter {
     removed: Removed[],
   ): Promise<void> {
     const remote = this.remote;
-    // A layout this browser does not hold has nothing to follow: one saved new under its id drops
-    // what was recorded of the deleted one (`put`).
+    // A layout this browser does not hold has nothing to follow: one saved new under its id is sent
+    // all the same, as `put` marks it made here new, which a recorded deletion does not count against.
     if (!remote?.deleted || (here.length === 0 && collection === 'layouts')) return;
     let deletions: Deletion[];
     try {

@@ -1043,6 +1043,29 @@ describe('a delete made on another browser', () => {
     stop();
   });
 
+  it('says, after copying everything, which wait because they changed and which because they were deleted', async () => {
+    const mine = { doc: { name: 'X' }, updatedAt: '2026-11-13T09:00:00Z' };
+    const changed = {
+      collection: 'layouts' as const,
+      id: 'gust',
+      name: 'Gust',
+      mine,
+      theirs: { name: 'Gust', doc: { name: 'G2' }, updatedAt: '2026-11-13T10:00:00Z', sha: 's' },
+    };
+    const deleted = { ...changed, id: 'lemon', name: 'Lemon', theirs: null, deleted: { at: '' } };
+    await copyEverything(async () => ({
+      copied: 0,
+      current: 0,
+      conflicts: [changed, deleted],
+      taken: 0,
+      failed: [],
+      removed: [],
+    }));
+    expect(texts()).toContain(
+      'Copied 0 documents to GitHub; 1 was changed here and in GitHub, and waits for you to choose; 1 was deleted from GitHub and is still here, and waits for you to choose',
+    );
+  });
+
   it('keeps asking after copying everything, past the next attempt', async () => {
     const { remote, phone, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
     await laptop.delete('layouts', 'lemon');

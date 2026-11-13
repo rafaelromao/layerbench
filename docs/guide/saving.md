@@ -242,8 +242,8 @@ ignores the two choices for about half a second after it opens by itself, so a t
 on the screen does not land on one.
 
 **Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
-and under the layout's name says *changed in this browser and changed or deleted in your GitHub
-account*, with a
+and under the layout's name says *changed in this browser and in your GitHub account* (or, for one
+deleted there, *deleted from your GitHub account and … still in this browser*), with a
 **Choose** button, for as long as it is so; the dialog does not open again by itself until the next
 visit.
 
@@ -283,14 +283,17 @@ on its next sync, or asked about if the document had edits not sent yet.
   under its new name only.
 - A copy waiting to be sent, or changed here since your account last held it, is neither deleted nor
   put back in your account. It is asked about, in the same dialog as
-  [When both have changed](#when-both-have-changed), titled *… was deleted elsewhere*: **Keep mine**
+  [When both have changed](#when-both-have-changed), titled *… was deleted from your GitHub account*: **Keep mine**
   sends this browser's version back to your account; **Delete it** deletes it from this browser too.
   Nothing is done until you choose, however many times this browser syncs meanwhile. If your account
   holds the document again by then, saved from
   another browser, nothing is deleted and you choose again; if this browser's copy was changed after
   the dialog showed it, nothing is written and you choose again.
 - A save, in **Analyze** or elsewhere, of a document deleted from your account since this browser
-  last held it stays in this browser and is asked about in the same way, rather than putting it back.
+  last held it stays in this browser and is asked about in the same way, rather than putting it back,
+  in this browser's own editors too, where the delete was made here while one was open. A layout's
+  editor says which version it opened, so this holds for as long as it is open; a rule set or a text
+  saved after this browser has followed its delete is taken for a new one, and sent.
 - A copy with no version on record (saved before versions were kept), other than the very version
   deleted, is not taken for the one deleted, nor deleted: the status lists it as missing from your
   account, as above, and sending it from there asks about it as below.

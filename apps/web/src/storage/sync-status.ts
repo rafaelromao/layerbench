@@ -78,8 +78,13 @@ export interface SyncInput {
   error: string | null;
   /** Layouts the last attempt left here because the gists have another of the same name. */
   taken: number;
-  /** Documents the last attempt found changed here and in the gists, for the user to settle. */
+  /**
+   * Documents the last attempt found changed here and in the gists, or deleted from the gists and
+   * still here, for the user to settle.
+   */
   conflicts: number;
+  /** Of those, the ones deleted from the gists. */
+  deletedThere: number;
   /** The account this browser last sent to, while unsent documents are held back from this one. */
   held: string | null;
   /** Whether the browser has no connection. */
@@ -95,6 +100,17 @@ export interface SyncInput {
 }
 
 const waiting = (n: number) => `${n} saved here ${n === 1 ? 'waits' : 'wait'} to be sent.`;
+
+/** What waits for the user to choose: documents changed in both places, deleted there, or both. */
+function conflictText(n: number, deleted: number): string {
+  if (deleted === 0) {
+    return `${n} ${n === 1 ? 'document was' : 'documents were'} changed in this browser and in your GitHub account. Nothing is replaced until you choose which version to keep.`;
+  }
+  if (deleted === n) {
+    return `${n} ${n === 1 ? 'document was' : 'documents were'} deleted from your GitHub account and ${n === 1 ? 'is' : 'are'} still in this browser. Nothing is sent or deleted until you choose whether to keep ${n === 1 ? 'it' : 'them'}.`;
+  }
+  return `${n} documents differ between this browser and your GitHub account: ${n - deleted} changed in both, ${deleted} deleted from your account and still here. Nothing is replaced, sent or deleted until you choose.`;
+}
 
 export function summarize(i: SyncInput): SyncSummary {
   const none = { action: null, notable: false } as const;
@@ -131,10 +147,9 @@ export function summarize(i: SyncInput): SyncSummary {
       };
     }
     if (i.conflicts > 0) {
-      const n = i.conflicts;
       return {
         kind: 'conflict',
-        text: `${n} ${n === 1 ? 'document was' : 'documents were'} changed in this browser and changed or deleted in your GitHub account. Nothing is replaced until you choose which version to keep.`,
+        text: conflictText(i.conflicts, i.deletedThere),
         label: ' · conflict',
         action: 'review',
         notable: true,
@@ -257,6 +272,9 @@ export function useSyncSummary(): SyncSummary {
   const error = useSync((s) => s.error);
   const taken = useSync((s) => s.last?.taken ?? 0);
   const conflicts = useSync((s) => s.last?.conflicts.length ?? 0);
+  const deletedThere = useSync(
+    (s) => s.last?.conflicts.filter((c) => c.theirs === null).length ?? 0,
+  );
   const held = useSync((s) => s.held?.account ?? null);
   const scheduled = useSync((s) => s.scheduled);
   const lacking = useSync((s) => s.missing?.length ?? null);
@@ -272,6 +290,7 @@ export function useSyncSummary(): SyncSummary {
     error,
     taken,
     conflicts,
+    deletedThere,
     held,
     offline: !online,
     scheduled,

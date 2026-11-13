@@ -160,10 +160,16 @@ const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 function copyMessage({ copied, current, conflicts, taken, failed }: CopiedUp): string {
   const parts = [`Copied ${documents(copied)} to GitHub`];
   if (current > 0) parts.push(`${current} ${current === 1 ? 'was' : 'were'} already up to date`);
-  if (conflicts.length > 0) {
-    const n = conflicts.length;
+  const deleted = conflicts.filter((c) => c.theirs === null).length;
+  const changed = conflicts.length - deleted;
+  if (changed > 0) {
     parts.push(
-      `${n} ${n === 1 ? 'was' : 'were'} changed here and changed or deleted in GitHub, and ${n === 1 ? 'waits' : 'wait'} for you to choose`,
+      `${changed} ${changed === 1 ? 'was' : 'were'} changed here and in GitHub, and ${changed === 1 ? 'waits' : 'wait'} for you to choose`,
+    );
+  }
+  if (deleted > 0) {
+    parts.push(
+      `${deleted} ${deleted === 1 ? 'was' : 'were'} deleted from GitHub and ${deleted === 1 ? 'is' : 'are'} still here, and ${deleted === 1 ? 'waits' : 'wait'} for you to choose`,
     );
   }
   if (failed.length > 0) {
