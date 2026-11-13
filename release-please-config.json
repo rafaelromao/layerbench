@@ -6,6 +6,7 @@
       "release-type": "node",
       "include-component-in-tag": false,
       "bump-minor-pre-major": true,
+      "changelog-type": "github",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },

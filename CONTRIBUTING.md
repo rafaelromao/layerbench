@@ -171,11 +171,14 @@ versions.
 
 `.github/workflows/release-please.yml` runs on every push to `main`. It keeps one pull request open,
 titled `chore(main): release X.Y.Z`, that sets the version in the `package.json` files (the root, and
-`packages/core`, `packages/corpora` and `apps/web`, which share it), writes `CHANGELOG.md` from the
-titles merged since the last release, and updates `.release-please-manifest.json`. Merging it
-tags `vX.Y.Z` and publishes a GitHub release with the same notes. There is one version for the whole
-repository, and it is not the app's: the app is deployed on every push to `main`, as before, and
-does not read it.
+`packages/core`, `packages/corpora` and `apps/web`, which share it), writes `CHANGELOG.md` from
+GitHub-generated release notes, and updates `.release-please-manifest.json`. Those notes list merged
+pull requests once, even when the older history contains both a merge commit and the original commit.
+Merging the release pull request tags `vX.Y.Z` and publishes a GitHub release. For the first public
+release, the workflow prepends [`docs/releases/0.3.0.md`](docs/releases/0.3.0.md) to the generated
+notes; dispatch the workflow to retry that edit if publishing succeeded but the notes update failed.
+There is one version for the whole repository, and it is not the app's: the app is deployed on every
+push to `main`, as before, and does not read it.
 
 - Do not edit the release pull request's title: Release Please finds the pull request it merged by
   it, and builds the release's notes from its body.

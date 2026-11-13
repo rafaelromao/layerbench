@@ -28,6 +28,9 @@ jobs:
     if: github.repository == 'rafaelromao/layerbench'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
@@ -35,7 +38,25 @@ jobs:
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
       # It runs on Node 24, which GitHub's runners provide.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      # The first release gets a hand-written introduction. Dispatch this workflow to retry the
+      # edit if publishing succeeded but editing the notes did not; the composer is idempotent.
+      - name: Add the first-release overview
+        if: ${{ (steps.release.outputs.release_created == 'true' && steps.release.outputs.tag_name == 'v0.3.0') || github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RELEASE_CREATED: ${{ steps.release.outputs.release_created }}
+          RELEASE_BODY: ${{ steps.release.outputs.body }}
+        run: |
+          if [ "$RELEASE_CREATED" = "true" ]; then
+            release_notes="$RELEASE_BODY"
+          else
+            release_notes="$(gh release view v0.3.0 --json body --jq .body)"
+          fi
+
+          RELEASE_NOTES="$release_notes" node .github/scripts/compose-release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
+          gh release edit v0.3.0 --notes-file "$RUNNER_TEMP/release-notes.md"

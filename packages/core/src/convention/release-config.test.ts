@@ -12,6 +12,9 @@ const json = (path: string) => JSON.parse(read(path)) as Record<string, unknown>
 interface Package {
   'release-type': string;
   'include-component-in-tag': boolean;
+  'changelog-type'?: string;
+  'bump-minor-pre-major'?: boolean;
+  'release-as'?: string;
   'changelog-sections': { type: string; section: string; hidden?: boolean }[];
   'extra-files': { type: string; path: string; jsonpath: string }[];
 }
@@ -42,6 +45,13 @@ describe('the convention and Release Please', () => {
   it('lists a feature, a fix, a performance gain and a revert, and hides the rest', () => {
     const shown = root['changelog-sections'].filter((s) => !s.hidden).map((s) => s.type);
     expect(shown.sort()).toEqual(['feat', 'fix', 'perf', 'revert']);
+  });
+
+  it('generates release notes from merged pull requests without pinning the next version', () => {
+    expect(root['changelog-type']).toBe('github');
+    expect(root['release-as']).toBeUndefined();
+    expect(root['bump-minor-pre-major']).toBe(true);
+    expect(manifest['.']).toBe('0.2.0');
   });
 
   it("gives every type and every scope a row in CONTRIBUTING.md's tables", () => {
