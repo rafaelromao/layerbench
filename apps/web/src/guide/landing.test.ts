@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { createMemoryHistory } from '@tanstack/react-router';
@@ -148,5 +148,61 @@ describe('the landing page', () => {
     const linked = all('.layouts a').map((a) => new URL(attr(a, 'href'), 'https://app.invalid'));
     expect(new Set(linked.map((u) => u.searchParams.get('layout')))).toEqual(layouts);
     expect(all('.layouts-title')[0]?.textContent).toContain(String(layouts.size));
+  });
+});
+
+/**
+ * The repository's own settings on GitHub, which `gh repo edit` applies (README → Repository
+ * settings): what a search result or a link to the repository shows. They say what the landing page
+ * says, and point at the app.
+ */
+describe('the repository', () => {
+  const ROOT = resolve(process.cwd(), '../..');
+  const settings = JSON.parse(readFileSync(resolve(ROOT, '.github/repository.json'), 'utf8')) as {
+    description: string;
+    homepage: string;
+    topics: string[];
+    socialPreview: string;
+  };
+
+  it('describes itself in one line, in the landing page’s words', () => {
+    const kicker = page.querySelector('.hero .kicker')?.textContent?.trim();
+    const headline = page.querySelector('.hero h1')?.textContent?.trim();
+    expect(settings.description).toBe(`${kicker}. ${headline}`);
+    expect(settings.description).not.toMatch(/\n/);
+    // GitHub's limit.
+    expect(settings.description.length).toBeLessThanOrEqual(350);
+  });
+
+  it('has the app as its homepage, where CI publishes it', () => {
+    const ci = readFileSync(resolve(ROOT, '.github/workflows/ci.yml'), 'utf8');
+    const app = /name: app\s+url: (\S+)/.exec(ci)?.[1];
+    expect(app).toBeDefined();
+    expect(settings.homepage.replace(/\/$/, '')).toBe(app?.replace(/\/$/, ''));
+  });
+
+  it('is found by the topics of what it does and what it reads', () => {
+    expect(settings.topics).toEqual(
+      expect.arrayContaining([
+        'keyboard-layout',
+        'zmk',
+        'layout-analyzer',
+        'ergonomic-keyboard',
+        'keymap-drawer',
+        'typescript',
+      ]),
+    );
+    // GitHub takes at most 20, each lowercase letters, digits and hyphens, up to 50 characters.
+    expect(settings.topics.length).toBeLessThanOrEqual(20);
+    for (const topic of settings.topics) expect(topic).toMatch(/^[a-z0-9][a-z0-9-]{0,49}$/);
+  });
+
+  it('shows the landing page’s own image when a link to it is shared', () => {
+    // Served by the landing page's site, where the link previews take it from too.
+    expect(settings.socialPreview).toMatch(/^docs\/site\/assets\/img\/[\w-]+\.png$/);
+    const file = resolve(ROOT, settings.socialPreview);
+    // The size GitHub asks for, and under its limit of 1 MB.
+    expect(pngSize(file)).toEqual({ width: 1280, height: 640 });
+    expect(statSync(file).size).toBeLessThan(1_000_000);
   });
 });

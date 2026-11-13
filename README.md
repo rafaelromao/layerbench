@@ -323,6 +323,24 @@ Set up once:
 4. Add the repository variable `AUTH_ORIGIN`, the sign-in Worker's address (below). A push to main
    fails without it rather than publishing an app that cannot sign in.
 
+### Repository settings
+
+`.github/repository.json` is the source for this repository's description, homepage and topics. With
+`jq` installed and `gh` authenticated as a repository administrator, apply them with:
+
+```bash
+mapfile -t topics < <(jq -r '.topics[] | "--add-topic=\(.)"' .github/repository.json)
+gh repo edit rafaelromao/layerbench \
+  --description "$(jq -r '.description' .github/repository.json)" \
+  --homepage "$(jq -r '.homepage' .github/repository.json)" \
+  "${topics[@]}"
+```
+
+`--add-topic` does not remove topics. If one is removed from the JSON, remove it from GitHub too,
+for example with `gh repo edit rafaelromao/layerbench --remove-topic old-topic`. Upload
+`docs/site/assets/img/social-preview.png` separately in **Settings** → **General** → **Social
+preview**; GitHub does not expose that image upload through `gh repo edit`.
+
 No other repository in the `layerbench` organization may have a Pages site. It would be served on
 the app's origin, where it could read what the app keeps in the browser, the sign-in session
 included.

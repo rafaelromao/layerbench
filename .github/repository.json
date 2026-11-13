@@ -1,0 +1,15 @@
+{
+  "description": "Keyboard layout analyzer for ZMK keymaps. Scores the keys you actually press.",
+  "homepage": "https://layerbench.github.io",
+  "topics": [
+    "keyboard-layout",
+    "zmk",
+    "layout-analyzer",
+    "ergonomic-keyboard",
+    "keymap-drawer",
+    "typescript",
+    "keyboard",
+    "keymap"
+  ],
+  "socialPreview": "docs/site/assets/img/social-preview.png"
+}
