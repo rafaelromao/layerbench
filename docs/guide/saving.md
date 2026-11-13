@@ -270,7 +270,10 @@ A document deleted while signed in, from **Library**'s **Delete** or by renaming
 saves it under its new name and deletes the old one), is deleted from your account, and your account
 records which document it was, and its version. Each of your other browsers follows that record the
 next time it syncs: when the page is opened or reloaded, when you come back to its tab, and when it
-comes back online, whether or not anything waits to be sent, and before each attempt to send.
+comes back online, whether or not anything waits to be sent, and before each attempt to send; not
+while what waits is held back for another account, as above. The browser that deleted it follows
+the record too, so a delete cut short there, gone from your account and not yet from it, is finished
+on its next sync.
 
 - A copy this browser holds that was not changed here since your account last held it, or that is the
   very version deleted, is deleted from this browser too. A message names what went, and the lists
@@ -287,9 +290,11 @@ comes back online, whether or not anything waits to be sent, and before each att
 - A layout made here new under the name of one deleted, by **New layout**, **Import**, **Save a copy**
   or renaming another to it, is a layout of its own and is sent like any other, whether or not this
   browser had read the deleted one. So is any document this browser never had a version of on record,
-  such as one made here under the same name while signed out. A rule set or a text made again under
-  the name of one this browser read from your account before it was deleted elsewhere cannot be told
-  from an edit of it, so it is asked about.
+  such as one made here under the same name while signed out. A rule set or a text saved under the
+  name of one this browser read from your account, deleted elsewhere since, cannot be told from an
+  edit of it, so it is asked about, until this browser follows the delete; from then on it is sent
+  as a new one, even from an editor left open on the old one, as a rule set or a text is weighed
+  against what this browser last held, not what its editor opened (see [Known limits](#known-limits)).
 
 Only a delete your account records is followed. A document your account lacks with no such record,
 because it was deleted by hand on GitHub or by an older version of LayerBench, or because this
@@ -298,8 +303,9 @@ your account, as above. Your account keeps the latest 500 deletes of each kind o
 not synced since older ones keeps its copies of those, listed the same way.
 
 On a browser signed in to more than one GitHub account, a document this browser holds unchanged from
-one account is deleted when the account signed in records deleting a document with the same name.
-It stays in the other account.
+one account is deleted when the account signed in records deleting one with the same name (or a name
+that differs only in capitals, spaces or punctuation, which LayerBench files under the same id). It
+stays in the other account.
 
 Deleting a layout while you are not signed in is not sent: it comes back from your account the next
 time you sign in, and you delete it again. Renaming one while signed out is a new document and a
@@ -325,8 +331,9 @@ from there. One tab sends at a time.
   account but not listed, and the next send of it writes it again, so it is listed.
 - A rule set or a text is weighed against the version this browser last read or held, which any read
   in another tab moves on, not the version its editor opened, as a layout's is.
-- Documents here that your account lacks stay in the status until you send them or delete them here:
-  one deleted from your account on purpose looks the same as one never sent, but for the note that a
+- Documents here that your account lacks, and does not record as deleted, stay in the status until
+  you send them or delete them here: one deleted from your account with no record (by hand on GitHub,
+  or by an older version of LayerBench) looks the same as one never sent, but for the note that a
   GitHub account held it before, which only a document whose version was recorded has. The list is as
   of the last comparison, so one sent or deleted from another browser since is only taken off when the
   comparison is next made, and what it calls missing is judged by your account's list of documents: one
@@ -343,7 +350,8 @@ from there. One tab sends at a time.
 - A gist takes no conditional write: between the check of a version and its write, one round trip,
   another browser can save the same document, whether by a save, a delete or **Keep mine**. Deleting
   is also not one step: if it is cut short between your account and this browser, the document is gone
-  from the account and still listed here until it is deleted again.
+  from the account and still here until this browser next syncs, when it follows the delete your
+  account recorded, or asks about it if it was changed here meanwhile.
 - Marks are kept in site data as one entry, so two tabs updating them at once can lose an update for a
   moment; it is found again on the next read or comparison, but the check mark is not to be trusted
   until then.

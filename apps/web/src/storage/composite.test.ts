@@ -2571,6 +2571,87 @@ describe('a delete made on another browser', () => {
     ).not.toBeNull();
   });
 
+  it('finishes on the next sync a delete cut short between the account and this browser', async () => {
+    const { remote, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    const real = phoneLocal.delete.bind(phoneLocal);
+    phoneLocal.delete = async () => {
+      throw new Error('the tab was closed');
+    };
+    await expect(phone.delete('layouts', 'lemon')).rejects.toThrow('the tab was closed');
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    phoneLocal.delete = real;
+
+    expect(await phone.followDeletions()).toEqual([
+      { collection: 'layouts', id: 'lemon', name: 'Lemon' },
+    ]);
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+    expect(phoneMarks.base('layouts', 'lemon')).toBeNull();
+  });
+
+  it('deletes only the version it looked at, so a save from another tab in between is never deleted', async () => {
+    const { laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    await deleteLemon(laptop);
+    // The other tab's save lands after the look at the version and before the delete, with its mark
+    // not yet set when the mark was looked for.
+    const real = phoneLocal.delete.bind(phoneLocal);
+    const sha = (await phoneLocal.get('layouts', 'lemon'))?.meta.sha;
+    const deleting = vi.spyOn(phoneLocal, 'delete').mockImplementationOnce(async (c, id, opts) => {
+      await phoneLocal.put('layouts', 'lemon', { name: 'Lemon', note: 'another tab' });
+      return real(c, id, opts);
+    });
+
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(deleting).toHaveBeenCalledWith('layouts', 'lemon', { expectedSha: sha });
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('another tab');
+    expect(phoneMarks.base('layouts', 'lemon')).not.toBeNull();
+  });
+
+  it('keeps what is on record of a save from another tab that lands just after the delete', async () => {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    const opened = await phone.get('layouts', 'lemon');
+    await deleteLemon(laptop);
+    // Another tab's editor saves as the copy is deleted: written where there is none, which is
+    // never refused, after the delete and before what is on record is forgotten.
+    const real = phoneLocal.delete.bind(phoneLocal);
+    const other = new CompositeStorage(phoneLocal, null, phoneMarks);
+    vi.spyOn(phoneLocal, 'delete').mockImplementationOnce(async (c, id, opts) => {
+      await real(c, id, opts);
+      await other.put(
+        'layouts',
+        'lemon',
+        { name: 'Lemon', note: 'another tab' },
+        { basedOn: opened?.meta.sha },
+      );
+    });
+
+    // Not said to be removed, and the save is weighed as the edit of a deleted layout it is.
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+    expect(phoneMarks.base('layouts', 'lemon')).toBe(opened?.meta.sha);
+    expect((await phone.copyUp()).conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('deletes with Delete it only the copy the user was shown, so a save from another tab in between stays', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    const offline = new CompositeStorage(phoneLocal, null, phoneMarks);
+    await offline.put('layouts', 'lemon', { name: 'Lemon', note: 'phone' });
+    await deleteLemon(laptop);
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    const [lemon] = (await phone.copyUp()).conflicts;
+    const real = phoneLocal.delete.bind(phoneLocal);
+    const sha = (await phoneLocal.get('layouts', 'lemon'))?.meta.sha;
+    const deleting = vi.spyOn(phoneLocal, 'delete').mockImplementationOnce(async (c, id, opts) => {
+      await phoneLocal.put('layouts', 'lemon', { name: 'Lemon', note: 'another tab' });
+      return real(c, id, opts);
+    });
+
+    expect(await phone.keepTheirs(lemon)).toBe('edited');
+    expect(deleting).toHaveBeenCalledWith('layouts', 'lemon', { expectedSha: sha });
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('another tab');
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+  });
+
   it('is asked about where the phone saves an edit of the layout after it was deleted', async () => {
     const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
     // Analyze open on the phone, at the version both held.

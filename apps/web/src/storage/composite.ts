@@ -902,6 +902,23 @@ export class CompositeStorage implements StorageAdapter {
       if (e instanceof StorageConflictError) return false;
       throw e;
     }
+    return this.forgetIfGone(collection, id, false);
+  }
+
+  /**
+   * Forget what is on record of a document just deleted here, unless a save from another tab came
+   * meanwhile: a write where there is no copy is never refused, so it may have landed just after the
+   * delete, and one that has not yet marks before it writes. Its record is then kept, so it is
+   * weighed as the edit it is. A document that was marked already, as a conflict is, is looked for
+   * alone. Whether the document is gone.
+   */
+  private async forgetIfGone(
+    collection: Collection,
+    id: string,
+    wasMarked: boolean,
+  ): Promise<boolean> {
+    const back = await this.local.get(collection, id).catch(() => null);
+    if (back || (!wasMarked && this.marks.has(collection, id))) return false;
     this.marks.forget(collection, id);
     return true;
   }
@@ -1179,6 +1196,7 @@ export class CompositeStorage implements StorageAdapter {
   ): Promise<'kept' | 'changed' | 'edited'> {
     const { collection, id } = conflict;
     if (savedThereAgain) return 'changed';
+    const wasMarked = this.marks.has(collection, id);
     const mine = await this.local.get(collection, id);
     if (mine) {
       if (!sameDocument(mine.doc, conflict.mine.doc)) return 'edited';
@@ -1190,7 +1208,6 @@ export class CompositeStorage implements StorageAdapter {
         throw e;
       }
     }
-    this.marks.forget(collection, id);
-    return 'kept';
+    return (await this.forgetIfGone(collection, id, wasMarked)) ? 'kept' : 'edited';
   }
 }
