@@ -65,17 +65,24 @@ export function eagerGzipBytes(bundle: BuildOutputBundle): number {
 
 /** Fail the build if it emits code the page's script-src policy blocks or an oversized chunk. */
 export function assertSafeBuildOutput(bundle: BuildOutputBundle): void {
-  for (const chunk of chunksOf(bundle)) {
-    const offender = /(?<![.\w])eval\(|new Function\(/.exec(chunk.code);
+  for (const output of Object.values(bundle)) {
+    if (output.type === 'asset' && !/\.(?:[cm]?js)$/i.test(output.fileName)) continue;
+    const code =
+      output.type === 'chunk'
+        ? output.code
+        : typeof output.source === 'string'
+          ? output.source
+          : new TextDecoder().decode(output.source);
+    const offender = /(?<![.\w])eval\(|new Function\(/.exec(code);
     if (offender) {
       throw new Error(
-        `${chunk.fileName} contains ${offender[0]}, which "script-src 'self'" blocks. ` +
+        `${output.fileName} contains ${offender[0]}, which "script-src 'self'" blocks. ` +
           'Replace the dependency or relax the policy deliberately.',
       );
     }
-    if (Buffer.byteLength(chunk.code) > CHUNK_WARNING_LIMIT_BYTES) {
+    if (output.type === 'chunk' && Buffer.byteLength(code) > CHUNK_WARNING_LIMIT_BYTES) {
       throw new Error(
-        `${chunk.fileName} exceeds Vite's ${CHUNK_WARNING_LIMIT_KB} kB warning threshold.`,
+        `${output.fileName} exceeds Vite's ${CHUNK_WARNING_LIMIT_KB} kB warning threshold.`,
       );
     }
   }

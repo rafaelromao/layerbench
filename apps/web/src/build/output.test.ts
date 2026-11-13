@@ -77,6 +77,24 @@ describe('production JavaScript output', () => {
     expect(() => assertSafeBuildOutput(output)).toThrow(/index.html has an inline script/);
   });
 
+  it('rejects unsafe JavaScript emitted as an asset, including the analysis worker', () => {
+    const entry = chunk('assets/index.js', 'export {};', { entry: true });
+    const worker: { type: 'asset'; fileName: string; source: string | Uint8Array } = {
+      type: 'asset',
+      fileName: 'assets/analysis.worker.js',
+      source: 'eval("blocked")',
+    };
+    const output = bundle(entry);
+    output[worker.fileName] = worker;
+
+    expect(() => assertSafeBuildOutput(output)).toThrow(/analysis\.worker\.js contains eval\(/);
+
+    worker.source = new TextEncoder().encode('new Function("return 1")');
+    expect(() => assertSafeBuildOutput(output)).toThrow(
+      /analysis\.worker\.js contains new Function\(/,
+    );
+  });
+
   it('rejects an emitted JavaScript chunk above Vite’s 500 kB warning threshold', () => {
     expect(CHUNK_WARNING_LIMIT_KB).toBe(500);
     const entry = chunk('assets/index.js', 'export {};', { entry: true });
