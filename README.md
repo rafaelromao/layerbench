@@ -258,6 +258,9 @@ pnpm --filter @layerbench/web exec playwright install chromium
 pnpm --filter @layerbench/web e2e
 ```
 
+`pnpm --filter @layerbench/web e2e:chunks` builds the production app and checks its deferred views
+and guide pages in a preview, including the loading state, on both phone sizes and desktop.
+
 On a slow network, `PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=120000` gives the download two minutes
 instead of thirty seconds. Playwright's Chromium comes only from `cdn.playwright.dev`, so where that
 host is blocked, run the checks on a browser already installed instead: `E2E_CHANNEL=msedge` for

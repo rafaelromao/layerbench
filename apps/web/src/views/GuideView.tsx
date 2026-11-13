@@ -1,5 +1,14 @@
 import { Link, useLocation, useParams } from '@tanstack/react-router';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   anchorsOf,
   type InlineContext,
@@ -104,8 +113,8 @@ function SectionView({
  * One page of the guide, unfolded as far as the reader asks: its opening is always shown, every
  * section opens on request, and a link to a section opens it and the section around it.
  */
-function GuidePageView({ page, hash }: { page: GuidePage; hash: string }) {
-  const doc = useMemo(() => parseGuide(page.source), [page]);
+function GuidePageView({ page, source, hash }: { page: GuidePage; source: string; hash: string }) {
+  const doc = useMemo(() => parseGuide(source), [source]);
   const anchors = useMemo(() => anchorsOf(doc), [doc]);
   const every = useMemo(
     () => doc.sections.flatMap((s) => [s.heading.id, ...s.subsections.map((x) => x.heading.id)]),
@@ -187,10 +196,28 @@ function GuidePageView({ page, hash }: { page: GuidePage; hash: string }) {
   );
 }
 
+const GUIDE_PAGE_COMPONENTS = new Map(
+  GUIDE_PAGES.map(
+    (page) =>
+      [
+        page.slug,
+        lazy(async () => {
+          const source = await page.load();
+          return {
+            default: ({ hash }: { hash: string }) => (
+              <GuidePageView page={page} source={source} hash={hash} />
+            ),
+          };
+        }),
+      ] as const,
+  ),
+);
+
 export function GuideView() {
   const { page: slug = '' } = useParams({ strict: false }) as { page?: string };
   const { hash } = useLocation();
   const page = guidePage(slug);
+  const Page = page ? GUIDE_PAGE_COMPONENTS.get(page.slug) : undefined;
 
   return (
     <div className="lb-guide">
@@ -203,9 +230,17 @@ export function GuideView() {
           ))}
         </ul>
       </nav>
-      {page ? (
+      {page && Page ? (
         // A page of its own state: what was open on one page means nothing on the next.
-        <GuidePageView key={page.slug} page={page} hash={hash} />
+        <Suspense
+          fallback={
+            <p role="status" className="lb-guide-page">
+              Loading guide page…
+            </p>
+          }
+        >
+          <Page key={page.slug} hash={hash} />
+        </Suspense>
       ) : (
         <article className="lb-guide-page">
           <h1>No such page</h1>

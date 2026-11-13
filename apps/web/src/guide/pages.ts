@@ -1,11 +1,4 @@
 import { GLOSSARY_URL } from '@layerbench/core';
-import analyzing from '../../../../docs/guide/analyzing.md?raw';
-import editing from '../../../../docs/guide/editing.md?raw';
-import importing from '../../../../docs/guide/importing.md?raw';
-import index from '../../../../docs/guide/README.md?raw';
-import saving from '../../../../docs/guide/saving.md?raw';
-import specialKeys from '../../../../docs/guide/special-keys.md?raw';
-import metrics from '../../../../docs/METRICS.md?raw';
 
 /**
  * The guide's pages. They are the Markdown files in `docs/`, read at build time, so the guide in
@@ -18,27 +11,54 @@ export interface GuidePage {
   path: string;
   /** What the page is called in the list of pages. */
   title: string;
-  source: string;
+  /** The Markdown is its own chunk, loaded only when this page is opened. */
+  load: () => Promise<string>;
 }
 
 export const GUIDE_PAGES: readonly GuidePage[] = [
-  { slug: '', path: 'docs/guide/README.md', title: 'Start here', source: index },
-  { slug: 'analyzing', path: 'docs/guide/analyzing.md', title: 'Analyzing', source: analyzing },
-  { slug: 'editing', path: 'docs/guide/editing.md', title: 'Editing', source: editing },
+  {
+    slug: '',
+    path: 'docs/guide/README.md',
+    title: 'Start here',
+    load: () => import('../../../../docs/guide/README.md?raw').then(({ default: page }) => page),
+  },
+  {
+    slug: 'analyzing',
+    path: 'docs/guide/analyzing.md',
+    title: 'Analyzing',
+    load: () => import('../../../../docs/guide/analyzing.md?raw').then(({ default: page }) => page),
+  },
+  {
+    slug: 'editing',
+    path: 'docs/guide/editing.md',
+    title: 'Editing',
+    load: () => import('../../../../docs/guide/editing.md?raw').then(({ default: page }) => page),
+  },
   {
     slug: 'special-keys',
     path: 'docs/guide/special-keys.md',
     title: 'Special keys',
-    source: specialKeys,
+    load: () =>
+      import('../../../../docs/guide/special-keys.md?raw').then(({ default: page }) => page),
   },
   {
     slug: 'importing',
     path: 'docs/guide/importing.md',
     title: 'Importing and exporting',
-    source: importing,
+    load: () => import('../../../../docs/guide/importing.md?raw').then(({ default: page }) => page),
   },
-  { slug: 'saving', path: 'docs/guide/saving.md', title: 'Saving and sharing', source: saving },
-  { slug: 'metrics', path: 'docs/METRICS.md', title: 'Metric glossary', source: metrics },
+  {
+    slug: 'saving',
+    path: 'docs/guide/saving.md',
+    title: 'Saving and sharing',
+    load: () => import('../../../../docs/guide/saving.md?raw').then(({ default: page }) => page),
+  },
+  {
+    slug: 'metrics',
+    path: 'docs/METRICS.md',
+    title: 'Metric glossary',
+    load: () => import('../../../../docs/METRICS.md?raw').then(({ default: page }) => page),
+  },
 ];
 
 export function guidePage(slug: string): GuidePage | undefined {

@@ -21,6 +21,14 @@ export function NotFoundScreen() {
   );
 }
 
+export function RouteLoadingScreen() {
+  return (
+    <p role="status" className="lb-route-screen card bg-base-100 p-4 sm:p-6">
+      Loading view…
+    </p>
+  );
+}
+
 export function RouteErrorScreen({ error }: { error: unknown }) {
   return (
     <Shell>

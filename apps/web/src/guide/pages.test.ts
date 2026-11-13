@@ -1,10 +1,21 @@
 import { GLOSSARY_URL } from '@layerbench/core';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { glossaryHash, HELP } from './help.js';
 import { anchorsOf, type Block, parseBlocks, parseGuide } from './markdown.js';
 import { GUIDE_PAGES, guidePage, resolveLink } from './pages.js';
 
-const anchors = new Map(GUIDE_PAGES.map((p) => [p.slug, anchorsOf(parseGuide(p.source))]));
+const sources = new Map<string, string>();
+const anchors = new Map<string, Map<string, string[]>>();
+
+beforeAll(async () => {
+  await Promise.all(
+    GUIDE_PAGES.map(async (page) => {
+      const source = await page.load();
+      sources.set(page.slug, source);
+      anchors.set(page.slug, anchorsOf(parseGuide(source)));
+    }),
+  );
+});
 
 /** Every link target written in a page, from its paragraphs, lists and tables. */
 function linksOf(blocks: Block[]): string[] {
@@ -22,21 +33,24 @@ function linksOf(blocks: Block[]): string[] {
 
 describe('the guide', () => {
   it('has a title on every page', () => {
-    for (const page of GUIDE_PAGES) expect(parseGuide(page.source).title, page.path).not.toBe('');
+    for (const page of GUIDE_PAGES)
+      expect(parseGuide(sources.get(page.slug)!).title, page.path).not.toBe('');
   });
 
   it('keeps every subsection inside a section, so that nothing before the first one is a heading', () => {
     // What comes before a page's first `##` is its intro, always shown and in no section's outline:
     // a `###` there is a block of the page that cannot be closed and cannot be linked to.
     for (const page of GUIDE_PAGES) {
-      const headings = parseGuide(page.source).intro.filter((b) => b.kind === 'heading');
+      const headings = parseGuide(sources.get(page.slug)!).intro.filter(
+        (b) => b.kind === 'heading',
+      );
       expect(headings, page.path).toEqual([]);
     }
   });
 
   it('only links to pages and sections that exist', () => {
     for (const page of GUIDE_PAGES) {
-      for (const href of linksOf(parseBlocks(page.source))) {
+      for (const href of linksOf(parseBlocks(sources.get(page.slug)!))) {
         const target = resolveLink(href, page);
         if (target.kind === 'external') {
           expect(target.href, `${page.path}: ${href}`).toMatch(/^https:\/\//);

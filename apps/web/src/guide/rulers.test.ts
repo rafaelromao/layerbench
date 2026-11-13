@@ -1,8 +1,14 @@
 import { type Bands, classifyBand, cyanophage, humanBand, layoutsDoc } from '@layerbench/core';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { guidePage } from './pages.js';
 
-const analyzing = guidePage('analyzing')!.source;
+let analyzing = '';
+let metrics = '';
+
+beforeAll(async () => {
+  analyzing = await guidePage('analyzing')!.load();
+  metrics = await guidePage('metrics')!.load();
+});
 
 /** The text of one `###` section of the guide, up to the next heading. */
 function section(heading: string): string {
@@ -67,7 +73,6 @@ describe('the guide’s rulers', () => {
 
   it('are the numbers the glossary gives, row by row', () => {
     // The glossary's table and its Effort rule row write the same bounds as the presets carry.
-    const metrics = guidePage('metrics')!.source;
     const dot = (b: Bands) => b.bounds.join(' · ');
     expect(metrics).toContain(
       `| SFB | lower is better | ${dot(ruleBands(layoutsDoc(), 'sfb'))}; cyanophage-like: ${dot(ruleBands(cyanophage(), 'sfb'))} |`,
