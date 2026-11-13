@@ -885,3 +885,31 @@ describe('when both have changed', () => {
     stop();
   });
 });
+
+describe('a delete made on another browser', () => {
+  it('is followed when the phone opens, though nothing of its own waits to be sent', async () => {
+    const remote = new MemoryStorage('github');
+    const phoneMarks = memoryMarks();
+    const phone = new CompositeStorage(new MemoryStorage('local'), remote, phoneMarks);
+    await phone.put('layouts', 'lemon', { name: 'Lemon' });
+    await phone.put('layouts', 'fusion', { name: 'Fusion' });
+    const laptop = new CompositeStorage(new MemoryStorage('laptop'), remote, memoryMarks());
+    await laptop.get('layouts', 'lemon');
+    await laptop.get('layouts', 'fusion');
+    await laptop.delete('layouts', 'lemon');
+    await laptop.put(
+      'layouts',
+      'magic-caster',
+      { name: 'Magic Caster' },
+      { replacing: ['fusion'] },
+    );
+    await laptop.delete('layouts', 'fusion');
+    expect(phoneMarks.count()).toBe(0);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.waitFor(async () =>
+      expect((await phone.list('layouts')).map((e) => e.name)).toEqual(['Magic Caster']),
+    );
+    stop();
+  });
+});

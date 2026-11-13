@@ -2260,3 +2260,111 @@ describe('sending one document', () => {
     expect(await remote.get('layouts', 'mine')).toBeNull();
   });
 });
+
+describe('a delete made on another browser', () => {
+  /** A laptop and a phone signed in to one account, each with its own browser store and marks. */
+  async function twoBrowsers() {
+    const remote = contentRemote();
+    const laptop = new CompositeStorage(localAdapter(), remote, memoryMarks());
+    const phoneLocal = localAdapter();
+    const phoneMarks = memoryMarks();
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    // Made and saved on the phone, so the phone's browser holds a copy of each; sent to the account.
+    await phone.put('layouts', 'lemon', { name: 'Lemon' });
+    await phone.put('layouts', 'fusion', { name: 'Fusion' });
+    // Opened on the laptop, which records the version it is an edit of.
+    await laptop.get('layouts', 'lemon');
+    await laptop.get('layouts', 'fusion');
+    return { remote, laptop, phone, phoneLocal, phoneMarks };
+  }
+
+  /** Library's Delete on the laptop. */
+  const deleteLemon = (laptop: CompositeStorage) => laptop.delete('layouts', 'lemon');
+
+  /** A rename on the laptop, as Analyze's Save makes one: the new id, then the old one deleted. */
+  async function renameFusion(laptop: CompositeStorage) {
+    await laptop.put(
+      'layouts',
+      'magic-caster',
+      { name: 'Magic Caster' },
+      { replacing: ['fusion'] },
+    );
+    await laptop.delete('layouts', 'fusion');
+  }
+
+  const names = async (storage: CompositeStorage) =>
+    (await storage.list('layouts')).map((e) => e.name);
+
+  it('is followed on the next sync: the phone no longer shows a layout the laptop deleted', async () => {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    await deleteLemon(laptop);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+
+    await phone.copyUp();
+    expect(await names(phone)).toEqual(['Fusion']);
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+    expect(phoneMarks.base('layouts', 'lemon')).toBeNull();
+    // And it is not sent back up by the phone.
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('leaves only the new name on the phone after a rename on the laptop', async () => {
+    const { laptop, phone, phoneLocal } = await twoBrowsers();
+    await deleteLemon(laptop);
+    await renameFusion(laptop);
+
+    await phone.copyUp();
+    expect(await names(phone)).toEqual(['Magic Caster']);
+    expect(await phoneLocal.get('layouts', 'fusion')).toBeNull();
+  });
+
+  it('is not undone by sending everything the phone holds', async () => {
+    const { remote, laptop, phone } = await twoBrowsers();
+    await deleteLemon(laptop);
+
+    await phone.copyUp({ everything: true });
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(await names(phone)).toEqual(['Fusion']);
+  });
+
+  it('is asked about, not followed, where the phone changed the layout offline before it synced', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    // Edited on the phone with no connection: kept there, marked, not sent.
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+      note: 'edited on the phone',
+    });
+    await deleteLemon(laptop);
+
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    const { conflicts, copied } = await phone.copyUp();
+    expect(copied).toBe(0);
+    expect(conflicts.map((c) => c.id)).toEqual(['lemon']);
+    // Neither dropped on the phone nor sent back to the account until the user chooses.
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('edited on the phone');
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('is asked about where the phone saves an edit of the layout after it was deleted', async () => {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    // Analyze open on the phone, at the version both held.
+    const opened = await phone.get('layouts', 'lemon');
+    await deleteLemon(laptop);
+
+    await phone.put(
+      'layouts',
+      'lemon',
+      { name: 'Lemon', note: 'edited on the phone' },
+      { basedOn: opened?.meta.sha },
+    );
+    // Kept on the phone, not put back in the account by the save.
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+
+    const { conflicts } = await phone.copyUp();
+    expect(conflicts.map((c) => c.id)).toEqual(['lemon']);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('edited on the phone');
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+});
