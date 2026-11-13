@@ -30,6 +30,10 @@ describe("main's ruleset", () => {
     for (const key of ['id', 'source', 'source_type', 'node_id']) {
       expect(ruleset, `${key} is the export's, not the request's`).not.toHaveProperty(key);
     }
+    expect(ruleset.rules.map(({ type }) => type)).toEqual([
+      'pull_request',
+      'required_status_checks',
+    ]);
   });
 
   it('merges a pull request by a squash only, which needs no approval', () => {
@@ -40,8 +44,10 @@ describe("main's ruleset", () => {
       required_approving_review_count: 0,
       dismiss_stale_reviews_on_push: false,
       require_code_owner_review: false,
+      require_extra_approval_for_unattributed_changes: false,
       require_last_push_approval: false,
       required_review_thread_resolution: false,
+      required_reviewers: [],
     });
   });
 
@@ -65,12 +71,11 @@ describe('CONTRIBUTING.md on merging', () => {
   it('says the ruleset holds the check and the squash, and how it is made from its file', () => {
     expect(doc).toContain('`.github/rulesets/main.json`');
     expect(doc).toContain('requires `pr-title / title`');
+    expect(doc).toContain('only once `pr-title / title` has passed');
+    expect(read('AGENTS.md')).toContain("`main`'s ruleset (`.github/rulesets/main.json`)");
     expect(doc).not.toMatch(/nothing requires the check/i);
     expect(doc).toContain(
-      'gh api -X PUT "repos/{owner}/{repo}/rulesets/$id" --input .github/rulesets/main.json',
-    );
-    expect(doc).toContain(
-      'gh api -X POST repos/{owner}/{repo}/rulesets --input .github/rulesets/main.json',
+      `id=$(gh api repos/{owner}/{repo}/rulesets --jq '.[] | select(.name == "main") | .id') if [ -n "$id" ]; then gh api -X PUT "repos/{owner}/{repo}/rulesets/$id" --input .github/rulesets/main.json else gh api -X POST repos/{owner}/{repo}/rulesets --input .github/rulesets/main.json fi`,
     );
   });
 
@@ -78,6 +83,11 @@ describe('CONTRIBUTING.md on merging', () => {
     expect(doc).toContain(
       'gh api -X PATCH repos/{owner}/{repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=BLANK',
     );
+    expect(doc).toContain('Release Please reads a body too');
+    expect(doc).toContain('a line of the description that reads as `fix: …`');
+    expect(doc).toContain('a `BREAKING CHANGE:` footer');
+    expect(doc).toContain('Merge commits and rebase merges stay on for the repository');
+    expect(doc).toContain('pull requests into `layerbench-data`');
     expect(doc).not.toMatch(/choose the one that uses/);
   });
 });
