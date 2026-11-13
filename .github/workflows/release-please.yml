@@ -20,7 +20,7 @@ on:
 permissions:
   contents: read
   issues: write
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   # Keep notes-only retries from replacing a queued push run. Push runs may replace one another,

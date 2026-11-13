@@ -198,7 +198,7 @@ describe('the first public release notes', () => {
       'git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs',
     );
     expect(WORKFLOW).toContain('issues: write');
-    expect(WORKFLOW).toContain('pull-requests: read');
+    expect(WORKFLOW).toContain('pull-requests: write');
     expect(WORKFLOW).toContain('fetch-depth: 0');
     expect(WORKFLOW).toContain(`group: release-please-${expression('github.event_name')}`);
     expect(WORKFLOW).toContain(`if: ${expression("github.event_name == 'push'")}`);
@@ -215,6 +215,9 @@ describe('the first public release notes', () => {
     const labelStep = WORKFLOW.slice(labelStepStart, labelStepEnd);
     expect(labelStep).toContain(`if: ${expression("steps.gate.outputs.should_release == 'true'")}`);
     expect(labelStep).not.toContain('workflow_dispatch');
+    expect(labelStep).toContain(`GH_TOKEN: ${expression('github.token')}`);
+    expect(labelStep).toContain('args=(pr edit "$number" --add-label "$label")');
+    expect(labelStep).toContain(`gh "\${args[@]}"`);
     expect(WORKFLOW.indexOf('Label merged pull requests')).toBeLessThan(
       WORKFLOW.indexOf('id: release'),
     );
