@@ -363,6 +363,9 @@ export class CompositeStorage implements StorageAdapter {
     // the other's, and what is waiting is kept.
     // A browser that cannot be read is no copy to decide from: the save is not made blind.
     const before = waiting ? null : await this.local.get(collection, id);
+    // Recorded again once read: a delete followed meanwhile, in another tab, forgets what is on record
+    // of the document, which this save, not marked yet, is still an edit of.
+    if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
     // A layout saved new, of no copy here and of no version (an edit of a layout says which, with
     // `basedOn`), is a layout of its own: not an edit of the version recorded from reading another
     // of its id from the gists, which may have been deleted there since. It is not weighed against it.
@@ -759,7 +762,9 @@ export class CompositeStorage implements StorageAdapter {
    * they last held it, or that they lack. A document edited here and in the gists since is a
    * conflict: it is left as it is in both and returned, for the user to settle with `keepMine` or
    * `keepTheirs`. One saved in the gists while copying is left as it is, as a conflict if it was
-   * edited here, and nothing is deleted or comes down. A document that cannot be sent is reported
+   * edited here, and nothing comes down. What the gists record as deleted, by another browser, is
+   * followed first (`follow`): a copy here not edited since goes, and one edited is asked about
+   * rather than sent back. A document that cannot be sent is reported
    * with why, and the rest go on; several in a row end it, as the gists are then out of reach,
    * keeping what went up. What it sends, or finds the gists hold already, is no longer marked as
    * unsent; a layout left for its name, a conflict, and one that could not be sent, are.
@@ -767,7 +772,8 @@ export class CompositeStorage implements StorageAdapter {
    * With `everything`, the documents never marked are weighed too, as those saved before edits
    * were marked have to be: each that differs is marked, and sent only if the gists hold the version
    * it was an edit of, never by when each was saved, and asked about otherwise. That is for the user
-   * to ask for, as a document the gists lack may be one another browser deleted.
+   * to ask for, as a document the gists lack, with no record of its deletion, may still be one
+   * another browser deleted.
    */
   async copyUp(opts: { everything?: boolean; signal?: AbortSignal } = {}): Promise<CopiedUp> {
     const everything = opts.everything === true;
@@ -846,7 +852,9 @@ export class CompositeStorage implements StorageAdapter {
     removed: Removed[],
   ): Promise<void> {
     const remote = this.remote;
-    if (!remote?.deleted || here.length === 0) return;
+    // A layout this browser does not hold has nothing to follow: one saved new under its id drops
+    // what was recorded of the deleted one (`put`).
+    if (!remote?.deleted || (here.length === 0 && collection === 'layouts')) return;
     let deletions: Deletion[];
     try {
       deletions = await remote.deleted(collection);
@@ -868,6 +876,24 @@ export class CompositeStorage implements StorageAdapter {
       } catch (e) {
         if (e instanceof Stopped) throw e;
         // This one is looked at again next time; the others are not held up by it.
+      }
+    }
+    if (collection === 'layouts') return;
+    // A rule set or a text this browser only read, deleted since: what was recorded of it goes, so
+    // one made again under its name is a new one, as where this browser held a copy. Their saves
+    // record no version, so nothing an editor recorded is undone by it.
+    const held = new Set(here.map((e) => e.id));
+    for (const { id } of deletions) {
+      if (held.has(id) || this.marks.base(collection, id) === null) continue;
+      try {
+        await this.exclusive(async () => {
+          stopped();
+          if (this.marks.has(collection, id)) return;
+          if ((await this.local.get(collection, id)) || (await remote.get(collection, id))) return;
+          if (!this.marks.has(collection, id)) this.marks.clearBase(collection, id);
+        });
+      } catch (e) {
+        if (e instanceof Stopped) throw e;
       }
     }
   }
@@ -987,13 +1013,26 @@ export class CompositeStorage implements StorageAdapter {
       return;
     }
     if (!seen) {
-      // Deleted from the gists since this copy was a version they held, or this copy is the very
-      // version deleted: not sent back unasked. Marked, it is asked about.
       const deletion = await this.deletionOf(collection, id);
-      if (
-        deletion &&
-        (this.marks.base(collection, id) !== null || stored.meta.sha === deletion.sha)
-      ) {
+      if (deletion && stored.meta.sha === deletion.sha) {
+        // The very version deleted, marked only as its send was never confirmed, or never weighed:
+        // nothing of it was changed here since, so it goes, as an unchanged copy does.
+        const wasMarked = this.marks.has(collection, id);
+        try {
+          await this.local.delete(collection, id, { expectedSha: stored.meta.sha });
+        } catch (e) {
+          // Saved here again meanwhile: weighed at the next attempt, as it now is.
+          if (e instanceof StorageConflictError) return;
+          throw e;
+        }
+        if (await this.forgetIfGone(collection, id, wasMarked)) {
+          done.removed.push({ collection, id, name: entry.name });
+        }
+        return;
+      }
+      // Deleted from the gists since this copy was a version they held: not sent back unasked.
+      // Marked, it is asked about.
+      if (deletion && this.marks.base(collection, id) !== null) {
         this.marks.mark(collection, id);
         this.leaveDeleted(collection, entry, stored.doc, deletion, done);
         return;

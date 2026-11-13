@@ -351,7 +351,10 @@ from there. One tab sends at a time.
   another browser can save the same document, whether by a save, a delete or **Keep mine**. Deleting
   is also not one step: if it is cut short between your account and this browser, the document is gone
   from the account and still here until this browser next syncs, when it follows the delete your
-  account recorded, or asks about it if it was changed here meanwhile.
+  account recorded, or asks about it if it was changed here meanwhile. The record of deletes is
+  rewritten whole with each delete, and with each save of a document deleted before, so two browsers
+  doing so at the same moment can drop one of them: your other browsers then keep their copies of that
+  one, listed as missing from your account, rather than deleting them.
 - Marks are kept in site data as one entry, so two tabs updating them at once can lose an update for a
   moment; it is found again on the next read or comparison, but the check mark is not to be trusted
   until then.

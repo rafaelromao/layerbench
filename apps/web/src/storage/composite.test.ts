@@ -2551,6 +2551,63 @@ describe('a delete made on another browser', () => {
     expect(phoneMarks.has('rulesets', 'my-rules')).toBe(true);
   });
 
+  it('sends a rule set made again under the name of one it read, once it has followed the delete', async () => {
+    const { remote, laptop, phone, phoneMarks } = await twoBrowsers();
+    await laptop.put('rulesets', 'my-rules', { name: 'My rules' });
+    await phone.get('rulesets', 'my-rules');
+    await laptop.delete('rulesets', 'my-rules');
+
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(phoneMarks.base('rulesets', 'my-rules')).toBeNull();
+    await phone.put('rulesets', 'my-rules', { name: 'My rules', note: 'new on the phone' });
+    expect((await remote.get('rulesets', 'my-rules'))?.doc.note).toBe('new on the phone');
+    expect(phoneMarks.has('rulesets', 'my-rules')).toBe(false);
+  });
+
+  it('follows a copy waiting to be sent that is the very version deleted, rather than asking', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    // Saved on the phone, and sent, but the answer never came: it is still marked there.
+    const v2 = { name: 'Lemon', note: 'v2' };
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', v2);
+    await remote.put('layouts', 'lemon', v2);
+    // The laptop opens that version and deletes it.
+    await laptop.get('layouts', 'lemon');
+    await deleteLemon(laptop);
+
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    expect(await phone.copyUp()).toMatchObject({
+      copied: 0,
+      conflicts: [],
+      removed: [{ collection: 'layouts', id: 'lemon', name: 'Lemon' }],
+    });
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(false);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('keeps what an edit is of when another tab follows the delete while it is being saved', async () => {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    const opened = await phone.get('layouts', 'lemon');
+    await deleteLemon(laptop);
+    // Another tab forgets what is on record of it, having followed the delete, while this save reads
+    // the copy, before it is marked.
+    const get = phoneLocal.get.bind(phoneLocal);
+    vi.spyOn(phoneLocal, 'get').mockImplementationOnce(async (c, id) => {
+      phoneMarks.forget('layouts', 'lemon');
+      return get(c, id);
+    });
+
+    await phone.put(
+      'layouts',
+      'lemon',
+      { name: 'Lemon', note: 'edited on the phone' },
+      { basedOn: opened?.meta.sha },
+    );
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+    expect(phoneMarks.base('layouts', 'lemon')).toBe(opened?.meta.sha);
+  });
+
   it('says what it deleted before it was told to stop', async () => {
     const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
     await deleteLemon(laptop);

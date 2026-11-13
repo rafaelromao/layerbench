@@ -184,7 +184,7 @@ export function ConflictDialog() {
       }
     } catch (e) {
       toast.error(
-        `Could not keep ${kept} version of ${current.name}: ${e instanceof Error ? e.message : String(e)}`,
+        `${deletedThere && choice === 'theirs' ? `Could not delete ${current.name} from this browser` : `Could not keep ${kept} version of ${current.name}`}: ${e instanceof Error ? e.message : String(e)}`,
       );
     } finally {
       setBusy(false);
