@@ -19,11 +19,11 @@ const compose = (releaseNotes: string) =>
     env: { ...process.env, RELEASE_NOTES: releaseNotes },
   });
 
-const shouldRunReleasePlease = (commitMessage: string) =>
+const shouldRunReleasePlease = (commitMessages: string[]) =>
   execFileSync(process.execPath, [RELEASE_GATE], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, COMMIT_MESSAGE: commitMessage },
+    input: `${commitMessages.join('\n')}\n`,
   });
 
 const labelPullRequests = (since: string, pullRequests: unknown) =>
@@ -147,7 +147,24 @@ describe('the first public release notes', () => {
     }
   });
 
-  it('runs Release Please only for release-worthy merges or its release PR', () => {
+  it('recovers a release-worthy merge when a later housekeeping push replaces its queued run', () => {
+    expect(
+      shouldRunReleasePlease([
+        'feat(web): add a capability',
+        'chore(main): release 0.3.0',
+        'docs(guide): explain a capability',
+      ]),
+    ).toBe('true');
+    expect(
+      shouldRunReleasePlease([
+        'docs(guide): explain a capability',
+        'ci(ci): update a workflow',
+        'chore(deps): update tooling',
+      ]),
+    ).toBe('false');
+  });
+
+  it('runs Release Please for a release-worthy title or its release PR', () => {
     for (const title of [
       'feat(web): add a capability',
       'fix(analysis): correct a result',
@@ -156,7 +173,7 @@ describe('the first public release notes', () => {
       'docs(guide)!: remove an old contract',
       'chore(main): release 0.3.0',
     ]) {
-      expect(shouldRunReleasePlease(title), title).toBe('true');
+      expect(shouldRunReleasePlease([title]), title).toBe('true');
     }
 
     for (const title of [
@@ -165,7 +182,7 @@ describe('the first public release notes', () => {
       'ci(ci): update a workflow',
       'chore(deps): update tooling',
     ]) {
-      expect(shouldRunReleasePlease(title), title).toBe('false');
+      expect(shouldRunReleasePlease([title]), title).toBe('false');
     }
   });
 
@@ -177,13 +194,27 @@ describe('the first public release notes', () => {
     expect(WORKFLOW).toContain('should-run-release-please.mjs');
     expect(WORKFLOW).toContain('release-note-labels.mjs');
     expect(WORKFLOW).toContain(`steps.gate.outputs.should_release == 'true'`);
+    expect(WORKFLOW).toContain(
+      'git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs',
+    );
     expect(WORKFLOW).toContain('issues: write');
     expect(WORKFLOW).toContain('pull-requests: read');
     expect(WORKFLOW).toContain('fetch-depth: 0');
+    expect(WORKFLOW).toContain(`group: release-please-${expression('github.event_name')}`);
     expect(WORKFLOW).toContain(`if: ${expression("github.event_name == 'push'")}`);
-    expect(WORKFLOW).toContain(
-      `if: ${expression("github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true'")}`,
+    expect(WORKFLOW).toContain(`if: ${expression("steps.gate.outputs.should_release == 'true'")}`);
+    const releaseStepStart = WORKFLOW.lastIndexOf('      - uses:', WORKFLOW.indexOf('id: release'));
+    const releaseStepEnd = WORKFLOW.indexOf('\n        with:', releaseStepStart);
+    const releaseStep = WORKFLOW.slice(releaseStepStart, releaseStepEnd);
+    expect(releaseStep).toContain(
+      `if: ${expression("steps.gate.outputs.should_release == 'true'")}`,
     );
+    expect(releaseStep).not.toContain('workflow_dispatch');
+    const labelStepStart = WORKFLOW.indexOf('- name: Label merged pull requests');
+    const labelStepEnd = WORKFLOW.indexOf('# It runs on Node 24', labelStepStart);
+    const labelStep = WORKFLOW.slice(labelStepStart, labelStepEnd);
+    expect(labelStep).toContain(`if: ${expression("steps.gate.outputs.should_release == 'true'")}`);
+    expect(labelStep).not.toContain('workflow_dispatch');
     expect(WORKFLOW.indexOf('Label merged pull requests')).toBeLessThan(
       WORKFLOW.indexOf('id: release'),
     );

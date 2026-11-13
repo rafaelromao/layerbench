@@ -5,9 +5,10 @@ name: release-please
 # package.json files and writes CHANGELOG.md. Merging that pull request tags the version
 # (`vX.Y.Z`) and publishes a GitHub release. Nothing here builds or deploys: the merge is a push to
 # main, which the `ci` workflow deploys as it does any other. This workflow gates Release Please on
-# release-worthy Conventional Commit titles; GitHub-generated notes are categorized by labels that
-# this workflow assigns from those same titles. The config is release-please-config.json, the last
-# released version .release-please-manifest.json.
+# release-worthy Conventional Commit titles since the latest version tag; GitHub-generated notes
+# are categorized by labels assigned from those same titles. Scanning the full unreleased history
+# also recovers a release-worthy merge if a later push replaces its queued workflow run. The config
+# is release-please-config.json, the last released version .release-please-manifest.json.
 on:
   push:
     branches: [main]
@@ -22,7 +23,9 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: release-please
+  # Keep notes-only retries from replacing a queued push run. Push runs may replace one another,
+  # but each scans all commits since the latest tag before deciding whether to run Release Please.
+  group: release-please-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -39,14 +42,20 @@ jobs:
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
-      - name: Check whether this merge can release
+      - name: Check whether unreleased history can release
         id: gate
         if: ${{ github.event_name == 'push' }}
-        env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: echo "should_release=$(node .github/scripts/should-run-release-please.mjs)" >> "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release gating." >&2
+            exit 1
+          fi
+          should_release="$(git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs)"
+          printf 'should_release=%s\n' "$should_release" >> "$GITHUB_OUTPUT"
       - name: Label merged pull requests for release notes
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true' }}
+        if: ${{ steps.gate.outputs.should_release == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -81,7 +90,7 @@ jobs:
       # It runs on Node 24, which GitHub's runners provide.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
-        if: ${{ github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true' }}
+        if: ${{ steps.gate.outputs.should_release == 'true' }}
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
