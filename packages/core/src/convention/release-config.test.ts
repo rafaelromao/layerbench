@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PULL_SCOPES, PULL_TYPES } from './pr-title.js';
 
-// The rule's lists are in four places that must not drift: here, the changelog's sections in
-// Release Please's config, the tables of CONTRIBUTING.md, and the version every package carries.
+// The title convention, Release Please's changelog sections, the contributor tables and package
+// versions are checked together here. GitHub API categories are checked in release-notes.test.ts.
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const read = (path: string) => readFileSync(`${ROOT}${path}`, 'utf8');
 const json = (path: string) => JSON.parse(read(path)) as Record<string, unknown>;
@@ -12,6 +12,9 @@ const json = (path: string) => JSON.parse(read(path)) as Record<string, unknown>
 interface Package {
   'release-type': string;
   'include-component-in-tag': boolean;
+  'changelog-type'?: string;
+  'bump-minor-pre-major'?: boolean;
+  'release-as'?: string;
   'changelog-sections': { type: string; section: string; hidden?: boolean }[];
   'extra-files': { type: string; path: string; jsonpath: string }[];
 }
@@ -42,6 +45,13 @@ describe('the convention and Release Please', () => {
   it('lists a feature, a fix, a performance gain and a revert, and hides the rest', () => {
     const shown = root['changelog-sections'].filter((s) => !s.hidden).map((s) => s.type);
     expect(shown.sort()).toEqual(['feat', 'fix', 'perf', 'revert']);
+  });
+
+  it('uses GitHub release notes and permits Release Please to advance the manifest version', () => {
+    expect(root['changelog-type']).toBe('github');
+    expect(root['release-as']).toBeUndefined();
+    expect(root['bump-minor-pre-major']).toBe(true);
+    expect(manifest['.']).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it("gives every type and every scope a row in CONTRIBUTING.md's tables", () => {

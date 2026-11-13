@@ -1,0 +1,27 @@
+changelog:
+  exclude:
+    labels:
+      - "release-note: hidden"
+  categories:
+    - title: Breaking Changes
+      labels:
+        - "release-note: breaking"
+    - title: Features
+      labels:
+        - "release-note: feature"
+    - title: Bug Fixes
+      labels:
+        - "release-note: fix"
+    - title: Performance Improvements
+      labels:
+        - "release-note: performance"
+    - title: Reverts
+      labels:
+        - "release-note: revert"
+    - title: Other Changes
+      labels:
+        - "release-note: other"
+        - "*"
+      exclude:
+        labels:
+          - "release-note: hidden"

@@ -4,23 +4,28 @@ name: release-please
 # title: CONTRIBUTING.md) and keeps one pull request open that sets the next version in the
 # package.json files and writes CHANGELOG.md. Merging that pull request tags the version
 # (`vX.Y.Z`) and publishes a GitHub release. Nothing here builds or deploys: the merge is a push to
-# main, which the `ci` workflow deploys as it does any other. A merge with nothing in it that is a
-# feat, fix, perf or revert, or breaking (docs, ci, chore, ...), opens no release pull request.
-# The config is release-please-config.json, the last released version .release-please-manifest.json.
+# main, which the `ci` workflow deploys as it does any other. This workflow gates Release Please on
+# release-worthy Conventional Commit titles since the latest version tag; GitHub-generated notes
+# are categorized by labels assigned from those same titles. Scanning the full unreleased history
+# also recovers a release-worthy merge if a later push replaces its queued workflow run. The config
+# is release-please-config.json, the last released version .release-please-manifest.json.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# The job token never writes: the GitHub App does, because a pull request opened with the job token
-# starts no workflow, so the release pull request would never be checked. The App's token also
-# needs no change to the repository's Actions settings (repository variable LAYERBENCH_APP_ID,
-# secret LAYERBENCH_APP_PRIVATE_KEY, as in `library-edit` and `ci`).
+# The job token labels merged pull requests for GitHub's release-note categories. The GitHub App
+# creates the release pull request because one opened with the job token starts no workflow, so its
+# checks would never run. The App token uses the existing repository variable and secret.
 permissions:
   contents: read
+  issues: write
+  pull-requests: write
 
 concurrency:
-  group: release-please
+  # Keep notes-only retries from replacing a queued push run. Push runs may replace one another,
+  # but each scans all commits since the latest tag before deciding whether to run Release Please.
+  group: release-please-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
@@ -28,14 +33,110 @@ jobs:
     if: github.repository == 'rafaelromao/layerbench'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
-      # It runs on Node 24, which GitHub's runners provide.
+      - name: Check whether unreleased history can release
+        id: gate
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release gating." >&2
+            exit 1
+          fi
+          should_release="$(git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs)"
+          printf 'should_release=%s\n' "$should_release" >> "$GITHUB_OUTPUT"
+      - name: Label merged pull requests for release notes
+        if: ${{ steps.gate.outputs.should_release == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release-note labels." >&2
+            exit 1
+          fi
+          base_date="$(git log -1 --format=%cI "$base_tag")"
+
+          gh label create "release-note: breaking" --color B60205 --description "Breaking change" --force
+          gh label create "release-note: feature" --color 1D76DB --description "Release feature" --force
+          gh label create "release-note: fix" --color D93F0B --description "Release bug fix" --force
+          gh label create "release-note: performance" --color 0E8A16 --description "Release performance improvement" --force
+          gh label create "release-note: revert" --color FBCA04 --description "Release revert" --force
+          gh label create "release-note: other" --color C2E0C6 --description "Other release change" --force
+          gh label create "release-note: hidden" --color EDEDED --description "Exclude from release notes" --force
+
+          gh pr list --state merged --base main --limit 1000 --json number,title,labels,mergedAt |
+            node .github/scripts/release-note-labels.mjs --since "$base_date" > "$RUNNER_TEMP/release-note-labels.json"
+
+          while IFS= read -r update; do
+            number="$(jq -r '.number' <<< "$update")"
+            label="$(jq -r '.label' <<< "$update")"
+            args=(pr edit "$number" --add-label "$label")
+            while IFS= read -r old_label; do
+              args+=(--remove-label "$old_label")
+            done < <(jq -r '.removeLabels[]?' <<< "$update")
+            gh "${args[@]}"
+          done < <(jq -c '.[]' "$RUNNER_TEMP/release-note-labels.json")
+      # Publish merged Release Please PRs first. PR creation runs separately, after refreshing tags
+      # and checking only the commits after the release this step may have just published.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: publish
+        if: ${{ steps.gate.outputs.should_release == 'true' }}
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-pull-request: true
+      # The first release gets a hand-written introduction. Dispatch this workflow to retry the
+      # edit if publishing succeeded but editing the notes did not; the composer is idempotent.
+      - name: Add the first-release overview
+        if: ${{ (steps.publish.outputs.release_created == 'true' && steps.publish.outputs.tag_name == 'v0.3.0') || github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_BODY: ${{ steps.publish.outputs.body }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            release_notes="$(gh release view v0.3.0 --json body --jq .body)"
+          else
+            release_notes="$RELEASE_BODY"
+          fi
+
+          RELEASE_NOTES="$release_notes" node .github/scripts/compose-release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
+          gh release edit v0.3.0 --notes-file "$RUNNER_TEMP/release-notes.md"
+      - name: Refresh tags after release publication
+        if: ${{ github.event_name == 'push' }}
+        run: git fetch --tags origin
+      - name: Check whether post-release history can open a pull request
+        id: pull-request-gate
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release PR gating." >&2
+            exit 1
+          fi
+          should_release="$(git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs)"
+          printf 'should_release=%s\n' "$should_release" >> "$GITHUB_OUTPUT"
+      # Opening the next release PR is separate from publishing a merged one. In particular, any
+      # housekeeping commits after a newly published tag cannot become a new release PR.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release-pr
+        if: ${{ steps.pull-request-gate.outputs.should_release == 'true' }}
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
