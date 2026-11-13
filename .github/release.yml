@@ -20,6 +20,7 @@ changelog:
         - "release-note: revert"
     - title: Other Changes
       labels:
+        - "release-note: other"
         - "*"
       exclude:
         labels:

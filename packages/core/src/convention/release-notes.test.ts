@@ -131,20 +131,49 @@ describe('the first public release notes', () => {
       { number: 145, label: 'release-note: breaking', removeLabels: [] },
     ]);
     expect(RELEASE_CONFIG).toContain('release-note: hidden');
+    expect(RELEASE_CONFIG).toContain('title: Breaking Changes');
     expect(RELEASE_CONFIG).toContain('title: Features');
     expect(RELEASE_CONFIG).toContain('title: Bug Fixes');
     expect(RELEASE_CONFIG).toContain('title: Performance Improvements');
     expect(RELEASE_CONFIG).toContain('title: Reverts');
+    expect(WORKFLOW).toContain('gh label create "release-note: other"');
     for (const label of [
       'release-note: breaking',
       'release-note: feature',
       'release-note: fix',
       'release-note: performance',
       'release-note: revert',
+      'release-note: other',
       'release-note: hidden',
     ]) {
       expect(RELEASE_CONFIG).toContain(label);
     }
+  });
+
+  it('keeps historical non-conventional changes in the generated release notes', () => {
+    const since = '2026-11-10T00:00:00Z';
+    const pullRequests = [
+      {
+        number: 144,
+        title: 'Repeat key: two taps on two fingers beat one finger tapping a key twice',
+        mergedAt: '2026-11-11T15:11:11Z',
+        labels: [],
+      },
+      {
+        number: 153,
+        title: 'Upgrade Enthium to v15',
+        mergedAt: '2026-11-11T19:59:38Z',
+        labels: [],
+      },
+    ];
+
+    expect(JSON.parse(labelPullRequests(since, pullRequests))).toEqual([
+      { number: 144, label: 'release-note: other', removeLabels: [] },
+      { number: 153, label: 'release-note: other', removeLabels: [] },
+    ]);
+    const otherChangesCategory = RELEASE_CONFIG.split('title: Other Changes')[1] ?? '';
+    expect(otherChangesCategory).toContain('release-note: other');
+    expect(otherChangesCategory).toContain('release-note: hidden');
   });
 
   it('publishes a merged release but ignores later housekeeping when preparing the next PR', () => {

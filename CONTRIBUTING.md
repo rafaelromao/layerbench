@@ -178,9 +178,10 @@ keeps one pull request open, titled `chore(main): release X.Y.Z`, that sets the 
 `packages/core`, `packages/corpora` and `apps/web`, which share it), writes `CHANGELOG.md` from
 GitHub-generated release notes, and updates `.release-please-manifest.json`. GitHub groups notes by
 merged pull request, so a squash and its older merge commit appear once. The workflow labels merged
-pull requests from their Conventional Commit title; [`.github/release.yml`](.github/release.yml)
-keeps the visible Features, Bug Fixes, Performance Improvements and Reverts categories and excludes
-the types hidden by `changelog-sections`. Release Please runs for a feature, fix, performance gain,
+pull requests from their Conventional Commit title; historical titles that predate the convention
+appear under Other Changes. [`.github/release.yml`](.github/release.yml) keeps the visible Breaking
+Changes, Features, Bug Fixes, Performance Improvements, Reverts and Other Changes categories, and
+excludes the types hidden by `changelog-sections`. Release Please runs for a feature, fix, performance gain,
 revert, breaking change, or its own release pull request; non-breaking docs, tests and workflow-only
 changes do not create releases. Merging the release pull request tags `vX.Y.Z` and publishes a
 GitHub release.

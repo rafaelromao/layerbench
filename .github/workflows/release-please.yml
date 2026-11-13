@@ -73,6 +73,7 @@ jobs:
           gh label create "release-note: fix" --color D93F0B --description "Release bug fix" --force
           gh label create "release-note: performance" --color 0E8A16 --description "Release performance improvement" --force
           gh label create "release-note: revert" --color FBCA04 --description "Release revert" --force
+          gh label create "release-note: other" --color C2E0C6 --description "Other release change" --force
           gh label create "release-note: hidden" --color EDEDED --description "Exclude from release notes" --force
 
           gh pr list --state merged --base main --limit 1000 --json number,title,labels,mergedAt |

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 const LABEL_PREFIX = 'release-note: ';
 const HIDDEN_LABEL = `${LABEL_PREFIX}hidden`;
+const OTHER_LABEL = `${LABEL_PREFIX}other`;
 const labelsByType = {
   feat: `${LABEL_PREFIX}feature`,
   fix: `${LABEL_PREFIX}fix`,
@@ -11,6 +12,7 @@ const labelsByType = {
 
 function releaseLabel({ title = '' }) {
   const parsed = /^(?<type>[a-z]+)(?:\([^()\r\n]+\))?(?<breaking>!)?:\s+\S/.exec(title);
+  if (!parsed) return OTHER_LABEL;
   if (parsed?.groups?.breaking === '!') {
     return `${LABEL_PREFIX}breaking`;
   }
