@@ -192,7 +192,7 @@
         <div class="wrap">
           <h2 id="only-title">What no other analyzer we checked does</h2>
           <p class="section-lede">
-            Five other analyzers, checked against their documentation and code on 7 October
+            Five other analyzers, checked against their documentation and code on 11 November
             2026. <a href="#compare">The comparison</a> has each of them, row by row, with sources.
           </p>
           <ul class="cards">
@@ -206,8 +206,8 @@
             <li>
               <h3>Repeat and alternate repeat</h3>
               <p>
-                Pressed as your keymap presses them, rather than rewritten into the text before it
-                is scored.
+                Pressed as your keymap presses them. Elsewhere the text is rewritten before it is
+                scored, or a magic key is put in for each pair of letters it types.
               </p>
             </li>
             <li>
@@ -669,7 +669,7 @@
         <div class="wrap">
           <h2 id="compare-title">How it compares</h2>
           <p class="section-lede">
-            Checked on 7 October 2026 against each tool's documentation and code.
+            Checked on 11 November 2026 against each tool's documentation and code.
             <strong>Not found</strong> means we didn't find the feature in what we checked;
             <strong>Claimed</strong> means the tool's own description says so and we couldn't confirm
             it. <strong>No</strong> is only said of LayerBench, and of a tool whose sources show it
@@ -725,7 +725,7 @@
                   <td><span class="partial">Partial</span> one, on its magic page<sup><a href="#n1">1</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                   <td><span class="nf">Not found</span></td>
-                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="partial">Partial</span> one, in its experimental engine<sup><a href="#n7">7</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                 </tr>
                 <tr>
@@ -779,7 +779,7 @@
                   <td><span class="partial">Partial</span> weights in its optimiser<sup><a href="#n2">2</a></sup></td>
                   <td><span class="partial">Partial</span> weights, in the app or a config file<sup><a href="#n3">3</a></sup></td>
                   <td><span class="partial">Partial</span> parameters; new metrics need Rust<sup><a href="#n6">6</a></sup></td>
-                  <td><span class="claimed">Claimed</span> user-definable stats<sup><a href="#n7">7</a></sup></td>
+                  <td><span class="partial">Partial</span> weights in a file; a new stat means writing Go<sup><a href="#n7">7</a></sup></td>
                   <td><span class="nf">Not found</span></td>
                 </tr>
                 <tr>
@@ -797,7 +797,7 @@
                   <td>14, mixable<sup><a href="#n2">2</a></sup></td>
                   <td>5 ready; rules for about 30 with your own text<sup><a href="#n3">3</a></sup></td>
                   <td>German, English; Ukrainian outside the web app<sup><a href="#n6">6</a></sup></td>
-                  <td><span class="nf">Not found</span></td>
+                  <td>7 to download<sup><a href="#n7">7</a></sup></td>
                   <td>a fixed list of corpora<sup><a href="#n8">8</a></sup></td>
                 </tr>
                 <tr>
@@ -815,7 +815,7 @@
                   <td><span class="partial">Partial</span> an optimiser page, not linked from the site<sup><a href="#n2">2</a></sup></td>
                   <td><span class="yes">Yes</span><sup><a href="#n3">3</a></sup></td>
                   <td><span class="yes">Yes</span><sup><a href="#n5">5</a></sup></td>
-                  <td><span class="claimed">Claimed</span><sup><a href="#n7">7</a></sup></td>
+                  <td><span class="yes">Yes</span> without magic<sup><a href="#n7">7</a></sup></td>
                   <td><span class="partial">Partial</span> constrained random<sup><a href="#n8">8</a></sup></td>
                 </tr>
                 <tr>
@@ -824,7 +824,7 @@
                   <td>a stats page of 20 and more<sup><a href="#n2">2</a></sup></td>
                   <td>about 800 bundled, 146 for English<sup><a href="#n3">3</a></sup></td>
                   <td>a database of results<sup><a href="#n5">5</a></sup></td>
-                  <td>about 130 bundled<sup><a href="#n7">7</a></sup></td>
+                  <td>76 bundled<sup><a href="#n7">7</a></sup></td>
                   <td>about 4,100<sup><a href="#n8">8</a></sup></td>
                 </tr>
                 <tr>
@@ -894,13 +894,37 @@
             </li>
             <li id="n7">
               Mana2 is a terminal app. Its description claims combo-, layer- and magic-aware analyses,
-              user-definable stats and layout generation with magic; it loads a corpus from a file,
-              its layouts carry hold keys, and one-shots aren't mentioned. About 130 layouts come
-              with it, one of them with a repeat key written as magic rules. Version 0.1.0 is MIT
-              licensed.
+              user-definable stats and layout generation with magic. Its code reads combos and layers
+              from a layout file and gives a key a second letter on hold, but no engine uses the
+              combos, the layers aren't placed, hold and layer use isn't counted, and one-shots
+              aren't mentioned. Its experimental engine takes one magic key, with rules on the letter
+              before it; 13 of its 76 layouts carry magic rules, a repeat key among them. It generates
+              and improves layouts with its standard engine, which leaves magic out. Weights are set
+              in a file, and a new stat is written in Go. Corpora in 7 languages can be downloaded,
+              or your own loaded from a file. Version 0.1.0 is MIT licensed.
               <a href="https://pkg.go.dev/codeberg.org/zakkkk/mana2">pkg.go.dev</a>,
-              <a href="https://pkg.go.dev/codeberg.org/zakkkk/mana2/core">core API</a>,
-              <a href="https://codeberg.org/zakkkk/mana2">repository</a>
+              <a href="https://codeberg.org/zakkkk/mana2">repository</a>,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/data/layouts">layouts</a>,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/core/load_layout.go"
+                >load_layout.go</a
+              >,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/core/stats.go"
+                >stats.go</a
+              >,
+              <a
+                href="https://codeberg.org/zakkkk/mana2/src/branch/main/engines/extended_engine/main.go"
+                >extended engine</a
+              >,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/internal/commands/improve.go"
+                >improve.go</a
+              >,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/weights.toml">weights.toml</a>,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/stats/example.go"
+                >example.go</a
+              >,
+              <a href="https://codeberg.org/zakkkk/mana2/src/branch/main/internal/commands/corpus.go"
+                >corpus.go</a
+              >
             </li>
             <li id="n8">
               cmini is a bot on the alt-layouts Discord with about 4,100 layouts, a fixed list of
@@ -918,8 +942,8 @@
               <ul class="plain">
                 <li>
                   <strong>You want a layout generated for you.</strong> LayerBench analyzes; it
-                  doesn't optimize. Oxeylyzer, Dario Götz's optimizer, Jalo and keycraft do, and
-                  Mana2 says it does.
+                  doesn't optimize. Oxeylyzer, Dario Götz's optimizer, Jalo, keycraft and Mana2
+                  do.
                 </li>
                 <li>
                   <strong>Your layout is one layer of 30 keys.</strong> cyanophage's playground is
