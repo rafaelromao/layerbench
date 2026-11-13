@@ -25,7 +25,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Dependency install scripts, tests and the build run after this; none of them needs a token.
           persist-credentials: false
@@ -64,8 +64,8 @@ jobs:
           exit 1
       # No version here: the action reads `packageManager` from package.json, and specifying both
       # makes it fail with "Multiple versions of pnpm specified".
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -89,7 +89,7 @@ jobs:
           AUTH_ORIGIN: ${{ vars.AUTH_ORIGIN }}
         run: test -n "$AUTH_ORIGIN" || { echo "Set the AUTH_ORIGIN repository variable first."; exit 1; }
       - if: github.event_name == 'push'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: app
           path: apps/web/dist
@@ -106,11 +106,11 @@ jobs:
         package: ['@layerbench/core', '@layerbench/web']
     name: test (${{ matrix.package }})
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -132,11 +132,11 @@ jobs:
       name: app
       url: https://layerbench.github.io/
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: app
           path: dist
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: layerbench/layerbench.github.io
           ref: main
@@ -175,21 +175,21 @@ jobs:
     if: github.event_name == 'push' && github.repository == 'rafaelromao/layerbench'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: layerbench-data
           path: data
           persist-credentials: false
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 22
           cache: pnpm

@@ -5,7 +5,10 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { describe, expect, it, vi } from 'vitest';
+import { setCommunitySource } from '../community/community.js';
+import { proposalOf, recordProposal } from '../proposals/proposals.js';
 import { CompositeStorage } from '../storage/composite.js';
+import { branchWith, communityDoc } from '../test/community.js';
 import { MemoryLink } from '../test/memory-link.js';
 import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
@@ -799,6 +802,327 @@ describe('Saving', () => {
     expect(a).toMatchObject({ ok: true, id: 'qwerty' });
     expect(b).toMatchObject({ ok: true, id: 'qwerty' });
     expect(await ids(storage)).toEqual(['qwerty']);
+  });
+});
+
+describe('Duplicating', () => {
+  it('stores the layout as a custom layout of its own, opens it, and leaves the one it came from as it was', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'the original' });
+    const { s, link } = session('custom:mine', { storage });
+    const state = await opened(s);
+    s.edited(state.layout, false);
+    const original = JSON.stringify((await storage.get('layouts', 'mine'))?.doc);
+
+    expect(await s.duplicate({ ...state.layout, name: 'Mine copy' })).toEqual({
+      ok: true,
+      id: 'mine-copy',
+    });
+
+    expect(await ids(storage)).toEqual(['mine', 'mine-copy']);
+    expect((await storage.get('layouts', 'mine-copy'))?.doc).toMatchObject({
+      id: 'mine-copy',
+      name: 'Mine copy',
+      description: 'the original',
+    });
+    expect(JSON.stringify((await storage.get('layouts', 'mine'))?.doc)).toBe(original);
+    // The session is on the duplicate now, as a custom layout of its own with nothing unsaved: a
+    // layout picked, and the link carries it whole.
+    expect(s.getState()).toMatchObject({
+      status: 'open',
+      layout: { name: 'Mine copy' },
+      storedId: 'mine-copy',
+      pickedRef: 'custom:mine-copy',
+      startsUnsaved: false,
+    });
+    expect(link.writes).toContainEqual({ ref: 'custom:mine-copy', how: 'open' });
+    expect((await carried(link.current()))?.id).toBe('mine-copy');
+  });
+
+  it('is the layout it is given: edits nobody saved go with it, and not into the one it came from', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const edited = withCedilla(state.layout);
+    s.edited(edited, true);
+
+    expect(await s.duplicate({ ...edited, name: 'Mine copy' })).toMatchObject({ ok: true });
+
+    expect(JSON.stringify((await storage.get('layouts', 'mine-copy'))?.doc)).toContain('ç');
+    expect(JSON.stringify((await storage.get('layouts', 'mine'))?.doc)).not.toContain('ç');
+    // Opened, the duplicate has them too, and nothing in it is waiting to be saved.
+    expect(JSON.stringify(s.getState())).toContain('ç');
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy', startsUnsaved: false });
+  });
+
+  it('makes a custom layout of a bundled one, which is stored nowhere', async () => {
+    const storage = new MemoryStorage();
+    const { s } = session('qwerty', { storage });
+    const state = await opened(s);
+    expect(state.storedId).toBeNull();
+
+    expect(await s.duplicate({ ...state.layout, name: 'Qwerty copy' })).toEqual({
+      ok: true,
+      id: 'qwerty-copy',
+    });
+
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    // It is a custom layout of its own, whatever it was made from.
+    expect(s.getState()).toMatchObject({ storedId: 'qwerty-copy', source: null });
+  });
+
+  it('makes a custom layout of a community one', async () => {
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    try {
+      const storage = new MemoryStorage();
+      const { s } = session('community:night-owl', { storage });
+      const state = await opened(s);
+      expect(state.source).toEqual({ kind: 'community', id: 'night-owl' });
+
+      expect(await s.duplicate({ ...state.layout, name: 'Night owl copy' })).toEqual({
+        ok: true,
+        id: 'night-owl-copy',
+      });
+
+      expect(await ids(storage)).toEqual(['night-owl-copy']);
+      expect(s.getState()).toMatchObject({ storedId: 'night-owl-copy', source: null });
+    } finally {
+      setCommunitySource(branchWith());
+    }
+  });
+
+  it('makes a custom layout of one a link carries whole, and leaves the sender’s alone', async () => {
+    const owner = new MemoryStorage();
+    await seed(owner, 'qwerty', 'mine', { name: 'Mine', author: 'Me' });
+    const sender = session('custom:mine', { storage: owner });
+    await opened(sender.s);
+    const sent = sender.link.current();
+    const theirs = new MemoryStorage();
+    const { s } = session(sent, { storage: theirs });
+    const state = await opened(s);
+    expect(state.storedId).toBeNull();
+
+    expect(await s.duplicate({ ...state.layout, name: 'Mine copy' })).toEqual({
+      ok: true,
+      id: 'mine-copy',
+    });
+
+    expect(await ids(theirs)).toEqual(['mine-copy']);
+    expect((await theirs.get('layouts', 'mine-copy'))?.doc).toMatchObject({ author: 'Me' });
+    expect(await ids(owner)).toEqual(['mine']);
+  });
+
+  it('makes a custom layout of a draft reopened from its own link, and leaves the layout it edits as saved', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const drafts = webDrafts(mapStore());
+    const first = session('custom:mine', { storage, drafts });
+    first.s.edited(withCedilla((await opened(first.s)).layout), true);
+    const draft = await first.s.link();
+    first.s.dispose();
+
+    const { s } = session(draft, { storage, drafts });
+    const reopened = await opened(s);
+    expect(reopened).toMatchObject({ startsUnsaved: true, storedId: 'mine' });
+
+    expect(await s.duplicate({ ...reopened.layout, name: 'Mine copy' })).toEqual({
+      ok: true,
+      id: 'mine-copy',
+    });
+
+    expect(JSON.stringify((await storage.get('layouts', 'mine-copy'))?.doc)).toContain('ç');
+    expect(JSON.stringify((await storage.get('layouts', 'mine'))?.doc)).not.toContain('ç');
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy', startsUnsaved: false });
+  });
+
+  it('refuses a name another custom layout has, capitals and spacing aside and its own included, and changes nothing', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    await seed(storage, 'colemak', 'gust', { name: 'Gust' });
+    const { s, link } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const writes = link.writes.length;
+    const stored = JSON.stringify((await storage.get('layouts', 'gust'))?.doc);
+
+    expect(await s.duplicate({ ...state.layout, name: 'gust' })).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'gust', name: 'Gust' },
+    });
+    // A layout is no exception to the rule for its own name: the duplicate would be a second.
+    expect(await s.duplicate({ ...state.layout, name: '  MINE ' })).toMatchObject({
+      ok: false,
+      reason: 'name-taken',
+      taken: { id: 'mine', name: 'Mine' },
+    });
+
+    expect(await ids(storage)).toEqual(['gust', 'mine']);
+    expect(JSON.stringify((await storage.get('layouts', 'gust'))?.doc)).toBe(stored);
+    // Nothing opened: the session is on the layout it was, and the link was not written.
+    expect(link.writes).toHaveLength(writes);
+    expect(s.getState()).toMatchObject({
+      opening: state.opening,
+      storedId: 'mine',
+      pickedRef: 'custom:mine',
+      saving: false,
+    });
+  });
+
+  it('says when it could not be stored, and opens nothing', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s, link } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const writes = link.writes.length;
+    storage.put = async () => {
+      throw new Error('offline');
+    };
+
+    expect(await s.duplicate({ ...state.layout, name: 'Mine copy' })).toEqual({
+      ok: false,
+      reason: 'failed',
+      error: 'offline',
+    });
+
+    expect(await ids(storage)).toEqual(['mine']);
+    expect(link.writes).toHaveLength(writes);
+    expect(s.getState()).toMatchObject({ opening: state.opening, storedId: 'mine', saving: false });
+  });
+
+  it('finds the layout the browser wrote when storing it failed after that, and makes no second', async () => {
+    // With a repository as well, the browser's copy is written first and the repository can fail.
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const copy = { ...state.layout, name: 'Mine copy' };
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await put(...args);
+      throw new Error('offline');
+    };
+    expect(await s.duplicate(copy)).toMatchObject({
+      ok: false,
+      reason: 'failed',
+      error: 'offline',
+    });
+    expect(s.getState()).toMatchObject({ storedId: 'mine' });
+
+    storage.put = put;
+    expect(await s.duplicate(copy)).toEqual({ ok: true, id: 'mine-copy' });
+    expect(await ids(storage)).toEqual(['mine', 'mine-copy']);
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy' });
+  });
+
+  /** Make the next writes wait until `release` is called. */
+  function held(storage: MemoryStorage) {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      await gate;
+      return put(...args);
+    };
+    return release;
+  }
+
+  it('says it is saving while the duplicate is being stored', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    expect(state.saving).toBe(false);
+    const release = held(storage);
+
+    const duplicating = s.duplicate({ ...state.layout, name: 'Mine copy' });
+    await vi.waitFor(() => expect(s.getState()).toMatchObject({ saving: true }));
+    release();
+
+    expect(await duplicating).toMatchObject({ ok: true });
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy', saving: false });
+  });
+
+  it('runs after a save in flight, not alongside it', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const order: string[] = [];
+    const put = storage.put.bind(storage);
+    storage.put = async (...args) => {
+      order.push(`start ${args[1]}`);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const written = await put(...args);
+      order.push(`end ${args[1]}`);
+      return written;
+    };
+
+    await Promise.all([s.save(state.layout), s.duplicate({ ...state.layout, name: 'Mine copy' })]);
+
+    expect(order).toEqual(['start mine', 'end mine', 'start mine-copy', 'end mine-copy']);
+  });
+
+  it('does not take over a layout the user opened meanwhile, though the duplicate is stored all the same', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const release = held(storage);
+
+    const duplicating = s.duplicate({ ...state.layout, name: 'Mine copy' });
+    await vi.waitFor(() => expect(s.getState()).toMatchObject({ saving: true }));
+    await s.open('colemak');
+    release();
+
+    expect(await duplicating).toEqual({ ok: true, id: 'mine-copy' });
+    expect(await ids(storage)).toEqual(['mine', 'mine-copy']);
+    expect(s.getState()).toMatchObject({
+      status: 'open',
+      layout: { name: 'Colemak' },
+      storedId: null,
+    });
+  });
+
+  it('is no proposal’s copy: one kept under the id it is stored by, left by a layout since gone, is not its', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    await recordProposal(storage, 'mine-copy', {
+      name: 'Mine copy',
+      target: { kind: 'bundled', id: 'qwerty' },
+      url: null,
+    });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+
+    expect(await s.duplicate({ ...state.layout, name: 'Mine copy' })).toMatchObject({
+      ok: true,
+      id: 'mine-copy',
+    });
+
+    expect(await proposalOf(storage, 'mine-copy')).toBeNull();
+  });
+
+  it('is still stored and opened when the proposals cannot be read', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', { name: 'Mine' });
+    const { s } = session('custom:mine', { storage });
+    const state = await opened(s);
+    const get = storage.get.bind(storage);
+    storage.get = async (collection, id) => {
+      if (collection === 'proposals') throw new Error('proposals unreadable');
+      return get(collection, id);
+    };
+
+    expect(await s.duplicate({ ...state.layout, name: 'Mine copy' })).toEqual({
+      ok: true,
+      id: 'mine-copy',
+    });
+
+    expect(await ids(storage)).toEqual(['mine', 'mine-copy']);
+    expect(s.getState()).toMatchObject({ storedId: 'mine-copy' });
   });
 });
 

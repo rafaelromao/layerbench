@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the app, the analysis or the editor is wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a new layout, use **Submit** in the app (beside Save, in Analyze), or
+        [README → Bundled layouts](https://github.com/rafaelromao/layerbench#bundled-layouts) to
+        add one by pull request. For a new corpus text, see
+        [README → Bundled corpora](https://github.com/rafaelromao/layerbench#bundled-corpora).
+        Neither is a bug; use this form only for something that is wrong.
+
+        For a vulnerability, use **Report a vulnerability** instead, in private (see
+        [SECURITY.md](https://github.com/rafaelromao/layerbench/security/policy)), not this form.
+  - type: input
+    id: layout
+    attributes:
+      label: Layout
+      description: A link to the layout open when it happened, copied from the app's address bar
+      placeholder: https://layerbench.github.io/#layout=...
+    validations:
+      required: false
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: The browser and OS, and its version if you know it
+      placeholder: Firefox 131 on Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should have happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: What happened instead, and the steps that lead to it
+    validations:
+      required: true

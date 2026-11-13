@@ -11,3 +11,8 @@ minimumReleaseAgeExclude:
 # Advisory GHSA-68fv-2mgg-jv7q: a build-time dependency of Vite and Vitest, see docs/security-scan-2026-10-08.md.
 overrides:
   source-map-js: ">=1.2.2"
+  # undici is a transitive dependency of jsdom (an apps/web devDependency, through vitest); it is
+  # not a direct dependency anywhere in the workspace, so bumping jsdom's own version does not move
+  # it and `pnpm update` cannot target it. Several advisories (DoS, cache poisoning, TLS bypass;
+  # see `pnpm audit`) are patched at 8.12.2.
+  undici: ">=8.12.2"

@@ -1289,8 +1289,8 @@ export function PathsPanel({
       </Carousel>
       <CarouselHint>
         Left alone, a character is typed the cheapest way: the fewest presses, then the fewest
-        same-finger pairs with the keys before it, then the least effort. Drag an alternative or use
-        the arrows to set an order, and that order is tried instead.
+        same-finger pairs with the keys before it, then the least effort. A dead key comes last.
+        Drag an alternative or use the arrows to set an order, and that order is tried instead.
       </CarouselHint>
     </div>
   );
