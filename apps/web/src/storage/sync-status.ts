@@ -134,7 +134,7 @@ export function summarize(i: SyncInput): SyncSummary {
       const n = i.conflicts;
       return {
         kind: 'conflict',
-        text: `${n} ${n === 1 ? 'document was' : 'documents were'} changed in this browser and in your GitHub account. Nothing is replaced until you choose which version to keep.`,
+        text: `${n} ${n === 1 ? 'document was' : 'documents were'} changed in this browser and changed or deleted in your GitHub account. Nothing is replaced until you choose which version to keep.`,
         label: ' · conflict',
         action: 'review',
         notable: true,

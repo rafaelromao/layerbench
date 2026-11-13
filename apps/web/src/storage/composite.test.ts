@@ -2494,6 +2494,83 @@ describe('a delete made on another browser', () => {
     expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone, again');
   });
 
+  /** "My layout", made on the laptop and only read on the phone, then deleted on the laptop. */
+  async function readThenDeleted() {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    await laptop.put('layouts', 'my-layout', { name: 'My layout' });
+    // Shown in the phone's Library, which reads it: its version is on record there, with no copy.
+    const read = await phone.get('layouts', 'my-layout');
+    expect(phoneMarks.base('layouts', 'my-layout')).toBe(read?.meta.sha);
+    expect(await phoneLocal.get('layouts', 'my-layout')).toBeNull();
+    await laptop.delete('layouts', 'my-layout');
+    return { remote, phone, phoneLocal, phoneMarks, read };
+  }
+
+  it('sends a new layout made on the phone under the name of one it had only read, deleted since', async () => {
+    const { remote, phone, phoneMarks } = await readThenDeleted();
+    // New layout, on the phone: no version of anything is what it is an edit of.
+    await phone.put('layouts', 'my-layout', { name: 'My layout', note: 'new on the phone' });
+    expect((await remote.get('layouts', 'my-layout'))?.doc.note).toBe('new on the phone');
+    expect(phoneMarks.has('layouts', 'my-layout')).toBe(false);
+    // Saved again, it is no longer recorded as deleted.
+    expect((await remote.deleted?.('layouts'))?.map((d) => d.id)).not.toContain('my-layout');
+  });
+
+  it('sends such a layout made with no connection once it can, without asking', async () => {
+    const { remote, phoneLocal, phoneMarks } = await readThenDeleted();
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'my-layout', {
+      name: 'My layout',
+      note: 'new on the phone',
+    });
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    expect(await phone.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+    expect((await remote.get('layouts', 'my-layout'))?.doc.note).toBe('new on the phone');
+  });
+
+  it('still asks about an edit of the layout the phone had only read, saved after it was deleted', async () => {
+    const { remote, phone, phoneMarks, read } = await readThenDeleted();
+    // Analyze open on it on the phone: the save says which version it is an edit of.
+    await phone.put(
+      'layouts',
+      'my-layout',
+      { name: 'My layout', note: 'edited on the phone' },
+      { basedOn: read?.meta.sha },
+    );
+    expect(await remote.get('layouts', 'my-layout')).toBeNull();
+    expect(phoneMarks.has('layouts', 'my-layout')).toBe(true);
+    expect((await phone.copyUp()).conflicts).toMatchObject([{ id: 'my-layout', theirs: null }]);
+  });
+
+  it('asks about a rule set saved under the id of one it read, deleted since: it cannot tell an edit', async () => {
+    const { remote, laptop, phone, phoneMarks } = await twoBrowsers();
+    await laptop.put('rulesets', 'my-rules', { name: 'My rules' });
+    await phone.get('rulesets', 'my-rules');
+    await laptop.delete('rulesets', 'my-rules');
+    await phone.put('rulesets', 'my-rules', { name: 'My rules', note: 'phone' });
+    expect(await remote.get('rulesets', 'my-rules')).toBeNull();
+    expect(phoneMarks.has('rulesets', 'my-rules')).toBe(true);
+  });
+
+  it('says what it deleted before it was told to stop', async () => {
+    const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
+    await deleteLemon(laptop);
+    await laptop.delete('layouts', 'fusion');
+    const given = new AbortController();
+    const get = remote.get.bind(remote);
+    // Given up on while the first one is being looked at: that one goes, the next is not reached.
+    remote.get = async (collection, id) => {
+      given.abort();
+      return get(collection, id);
+    };
+    const removed = await phone.followDeletions({ signal: given.signal });
+    expect(removed).toHaveLength(1);
+    const [gone] = removed;
+    expect(await phoneLocal.get('layouts', gone.id)).toBeNull();
+    expect(
+      await phoneLocal.get('layouts', gone.id === 'lemon' ? 'fusion' : 'lemon'),
+    ).not.toBeNull();
+  });
+
   it('is asked about where the phone saves an edit of the layout after it was deleted', async () => {
     const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
     // Analyze open on the phone, at the version both held.

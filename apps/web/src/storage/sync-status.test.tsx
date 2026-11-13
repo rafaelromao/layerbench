@@ -126,7 +126,7 @@ describe('what the status says', () => {
     });
     expect(summary).toMatchObject({ kind: 'conflict', action: 'review', notable: true });
     expect(summary.text).toBe(
-      '2 documents were changed in this browser and in your GitHub account. Nothing is replaced until you choose which version to keep.',
+      '2 documents were changed in this browser and changed or deleted in your GitHub account. Nothing is replaced until you choose which version to keep.',
     );
     expect(summary.label).toBe(' · conflict');
   });

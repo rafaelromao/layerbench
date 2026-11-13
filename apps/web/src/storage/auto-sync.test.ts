@@ -977,6 +977,43 @@ describe('a delete made on another browser', () => {
     stop();
   });
 
+  it('tells the lists, and names each once, when copying everything deletes what was deleted elsewhere', async () => {
+    const { phone, phoneMarks } = await phoneAndLaptop();
+    const removed = vi.fn();
+    const stop = startAutoSync(phone, phoneMarks, TIMING, null, removed);
+    await vi.advanceTimersByTimeAsync(1_000);
+    useToasts.setState({ toasts: [] });
+
+    // A layout and the change proposed from it, which goes with it.
+    const gone = [
+      { collection: 'layouts' as const, id: 'lemon', name: 'Lemon' },
+      { collection: 'proposals' as const, id: 'lemon', name: 'Lemon' },
+    ];
+    await copyEverything(async () => ({
+      copied: 0,
+      current: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+      removed: gone,
+    }));
+    expect(removed).toHaveBeenCalledWith(gone);
+    expect(texts()).toContain(
+      'Removed Lemon from this browser: it was deleted from your GitHub account',
+    );
+
+    // And when it stops partway, for what it deleted before.
+    removed.mockClear();
+    await copyEverything(async () => {
+      throw new CopyUpError(
+        { copied: 0, current: 0, conflicts: [], taken: 0, failed: [], removed: gone.slice(0, 1) },
+        new Error('GitHub did not answer in time'),
+      );
+    });
+    expect(removed).toHaveBeenCalledWith(gone.slice(0, 1));
+    stop();
+  });
+
   it('follows nothing while what waits is held back for another account', async () => {
     const { remote, phoneLocal, phoneMarks, deleteAndRename } = await phoneAndLaptop();
     await deleteAndRename();

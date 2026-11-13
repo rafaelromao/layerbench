@@ -240,7 +240,8 @@ ignores the two choices for about half a second after it opens by itself, so a t
 on the screen does not land on one.
 
 **Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
-and under the layout's name says *changed in this browser and in your GitHub account*, with a
+and under the layout's name says *changed in this browser and changed or deleted in your GitHub
+account*, with a
 **Choose** button, for as long as it is so; the dialog does not open again by itself until the next
 visit.
 
@@ -260,7 +261,8 @@ from your account's is not deleted either; open it first. If your account cannot
 deleted, edits not sent yet included. Your account records the delete, so your other browsers delete
 their copies too: see [Deleted on another browser](#deleted-on-another-browser). If you chose **Keep
 theirs** for one that has since been deleted there, nothing is thrown away: your version stays, and
-you are asked whether to keep it, as below.
+you are asked whether to keep it, as below, where your account recorded the delete; where it did
+not, your version is sent again.
 
 ### Deleted on another browser
 
@@ -282,8 +284,12 @@ comes back online, whether or not anything waits to be sent, and before each att
   the dialog showed it, nothing is written and you choose again.
 - A save, in **Analyze** or elsewhere, of a document deleted from your account since this browser
   last held it stays in this browser and is asked about in the same way, rather than putting it back.
-- A copy this browser never had a version of on record, such as one made here under the same name
-  while signed out, is not taken for the one deleted: it stays, and is sent like any other.
+- A layout made here new under the name of one deleted, by **New layout**, **Import**, **Save a copy**
+  or renaming another to it, is a layout of its own and is sent like any other, whether or not this
+  browser had read the deleted one. So is any document this browser never had a version of on record,
+  such as one made here under the same name while signed out. A rule set or a text made again under
+  the name of one this browser read from your account before it was deleted elsewhere cannot be told
+  from an edit of it, so it is asked about.
 
 Only a delete your account records is followed. A document your account lacks with no such record,
 because it was deleted by hand on GitHub or by an older version of LayerBench, or because this

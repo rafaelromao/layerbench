@@ -358,16 +358,26 @@ export class CompositeStorage implements StorageAdapter {
     // save is then refused or fails, the version recorded before it is put back.
     const recorded = !waiting && typeof opts.basedOn === 'string';
     if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
-    const restoreBase = () => {
-      if (!recorded) return;
-      if (previousBase === null) this.marks.clearBase(collection, id);
-      else this.marks.setBase(collection, id, previousBase);
-    };
     // Edits waiting to be sent are the latest work, and a save of them is written over exactly the
     // version the editor read: a tab opened before another saved them is refused, not written over
     // the other's, and what is waiting is kept.
     // A browser that cannot be read is no copy to decide from: the save is not made blind.
     const before = waiting ? null : await this.local.get(collection, id);
+    // A layout saved new, of no copy here and of no version (an edit of a layout says which, with
+    // `basedOn`), is a layout of its own: not an edit of the version recorded from reading another
+    // of its id from the gists, which may have been deleted there since. It is not weighed against it.
+    const fresh =
+      collection === 'layouts' &&
+      !waiting &&
+      before === null &&
+      typeof opts.basedOn !== 'string' &&
+      previousBase !== null;
+    if (fresh) this.marks.clearBase(collection, id);
+    const restoreBase = () => {
+      if (!recorded && !fresh) return;
+      if (previousBase === null) this.marks.clearBase(collection, id);
+      else this.marks.setBase(collection, id, previousBase);
+    };
     // Unsent edits whose mark was lost are the same: a copy that is neither the version recorded nor
     // the one the editor read has been edited here since, and is not written over by an editor that
     // did not see it.
@@ -774,7 +784,7 @@ export class CompositeStorage implements StorageAdapter {
         const here = await this.local.list(collection);
         await this.prune(collection, new Set(here.map((e) => e.id)));
         // What another browser deleted goes from here first, rather than being sent back.
-        done.removed.push(...(await this.follow(collection, here, stopped)));
+        await this.follow(collection, here, stopped, done.removed);
         let inARow = 0;
         for (const entry of here) {
           try {
@@ -799,6 +809,7 @@ export class CompositeStorage implements StorageAdapter {
   /**
    * Follow what was deleted from the gists, by another browser, in every collection: see `follow`. It
    * sends nothing. What it cannot read is left for the next time, said nowhere: nothing is lost by it.
+   * Told to stop, it stops at the next document, and says what it deleted before.
    */
   async followDeletions(opts: { signal?: AbortSignal } = {}): Promise<Removed[]> {
     const removed: Removed[] = [];
@@ -806,10 +817,14 @@ export class CompositeStorage implements StorageAdapter {
     const stopped = () => {
       if (opts.signal?.aborted) throw new Stopped();
     };
-    for (const collection of COLLECTIONS) {
-      stopped();
-      const here = await this.local.list(collection).catch(() => null);
-      if (here) removed.push(...(await this.follow(collection, here, stopped)));
+    try {
+      for (const collection of COLLECTIONS) {
+        stopped();
+        const here = await this.local.list(collection).catch(() => null);
+        if (here) await this.follow(collection, here, stopped, removed);
+      }
+    } catch (e) {
+      if (!(e instanceof Stopped)) throw e;
     }
     return removed;
   }
@@ -821,22 +836,23 @@ export class CompositeStorage implements StorageAdapter {
    * marked if it was not, to be asked about when it is sent: it is neither dropped nor sent back
    * unasked. One with no version on record is not known to be the one deleted, and stays. Only a
    * deletion the gists record is followed: a document they merely lack (deleted by hand, or by an
-   * older version of the app) is not deleted here. The documents deleted.
+   * older version of the app) is not deleted here. Each document deleted is added to `removed` as
+   * it goes, so one stopped partway still says what it did.
    */
   private async follow(
     collection: Collection,
     here: readonly IndexEntry[],
     stopped: () => void,
-  ): Promise<Removed[]> {
+    removed: Removed[],
+  ): Promise<void> {
     const remote = this.remote;
-    const removed: Removed[] = [];
-    if (!remote?.deleted || here.length === 0) return removed;
+    if (!remote?.deleted || here.length === 0) return;
     let deletions: Deletion[];
     try {
       deletions = await remote.deleted(collection);
     } catch {
       // Not known now, so nothing is followed: the next attempt looks again.
-      return removed;
+      return;
     }
     const byId = new Map(deletions.map((d) => [d.id, d]));
     for (const entry of here) {
@@ -854,7 +870,6 @@ export class CompositeStorage implements StorageAdapter {
         // This one is looked at again next time; the others are not held up by it.
       }
     }
-    return removed;
   }
 
   /** One copy's turn in following a deletion: whether it was deleted here. */

@@ -69,13 +69,20 @@ function named(names: readonly string[]): string {
   return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
 }
 
-/** Tell the user what went from this browser because it was deleted from their account elsewhere. */
+/**
+ * Tell the user what went from this browser because it was deleted from their account elsewhere,
+ * and the lists that show it. A proposed change goes unsaid: it is a layout's, which is named, or
+ * the account's own bookkeeping of a change merged or closed.
+ */
 function announceRemoved(removed: readonly Removed[]): void {
   if (removed.length === 0) return;
-  const they = removed.length === 1 ? 'it was' : 'they were';
-  toast.info(
-    `Removed ${named(removed.map((r) => r.name))} from this browser: ${they} deleted from your GitHub account`,
-  );
+  active?.removed([...removed]);
+  const names = [
+    ...new Set(removed.filter((r) => r.collection !== 'proposals').map((r) => r.name)),
+  ];
+  if (names.length === 0) return;
+  const they = names.length === 1 ? 'it was' : 'they were';
+  toast.info(`Removed ${named(names)} from this browser: ${they} deleted from your GitHub account`);
 }
 
 /** What to tell the user an attempt did, if it did anything they would not see for themselves. */
@@ -156,7 +163,7 @@ function copyMessage({ copied, current, conflicts, taken, failed }: CopiedUp): s
   if (conflicts.length > 0) {
     const n = conflicts.length;
     parts.push(
-      `${n} ${n === 1 ? 'was' : 'were'} changed here and in GitHub, and ${n === 1 ? 'waits' : 'wait'} for you to choose`,
+      `${n} ${n === 1 ? 'was' : 'were'} changed here and changed or deleted in GitHub, and ${n === 1 ? 'waits' : 'wait'} for you to choose`,
     );
   }
   if (failed.length > 0) {
@@ -186,7 +193,10 @@ export async function copyEverything(copy: () => Promise<CopiedUp>): Promise<voi
     toast.info(copyMessage(result));
     announceRemoved(result.removed);
   } catch (e) {
-    if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
+    if (e instanceof CopyUpError) {
+      noteResult(mergedWithShown(e.result));
+      announceRemoved(e.result.removed);
+    }
     const copied = e instanceof CopyUpError ? e.copied : 0;
     toast.error(`Copying stopped after ${documents(copied)}: ${messageOf(e)}`);
   } finally {
@@ -212,6 +222,8 @@ let active: {
   release: () => void;
   audit: () => void;
   everything: () => Promise<void>;
+  /** Hears of documents deleted from this browser because another deleted them. */
+  removed: (removed: Removed[]) => void;
 } | null = null;
 
 /** Try sending now, rather than waiting for the next attempt; nothing while storage is this browser's alone. */
@@ -428,7 +440,6 @@ export function startAutoSync(
       if (login) marks.setAccount(login);
       noteResult(result);
       announce(result);
-      if (result.removed.length > 0) onRemoved(result.removed);
       const first = result.failed[0];
       if (first) {
         // Some could not be sent: it says which, and why, and tries again later.
@@ -447,7 +458,6 @@ export function startAutoSync(
       if (e instanceof CopyUpError) {
         noteResult(mergedWithShown(e.result));
         announceRemoved(e.result.removed);
-        if (e.result.removed.length > 0) onRemoved(e.result.removed);
       }
       useSync.setState({ phase: 'failed', error: e instanceof Error ? e.message : String(e) });
       later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
@@ -521,7 +531,6 @@ export function startAutoSync(
       const removed = await storage.followDeletions({ signal: given.signal });
       if (stopped) return;
       announceRemoved(removed);
-      if (removed.length > 0) onRemoved(removed);
     } catch {
       // Looked at again on the next visit, or when the tab is shown again.
     } finally {
@@ -555,6 +564,7 @@ export function startAutoSync(
     release,
     audit: () => void audit(true),
     everything: () => copyEverything(() => storage.copyUp({ everything: true })),
+    removed: onRemoved,
   };
   active = handle;
 
