@@ -9,7 +9,8 @@ import { branchWith, communityDoc } from '../test/community.js';
 import { layerCounter, layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
-import { decodeInline } from '../url/inline.js';
+import { decodeInline, encodeInline } from '../url/inline.js';
+import { inlineRef } from '../url/params.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -333,6 +334,23 @@ describe('Compare, sent', () => {
         'custom:mine',
         'custom:mine',
       ]),
+    );
+  }, 30_000);
+
+  it('picks edits not saved as their own entry, so the saved layout can be picked against them', async () => {
+    const storage = freshStorage();
+    const mine = { ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' };
+    await storage.put('layouts', 'mine', toCanonicalJson(mine));
+    // Mine with an edit, as a draft link carries it: its id inside, its contents not those saved.
+    const edited = inlineRef(await encodeInline({ ...mine, description: 'edited' }));
+    const search = new URLSearchParams({ layout: edited, b: 'custom:mine' });
+    renderRoute(`/compare?${search}&corpus=en-general&sample=20000`, {
+      client: new RecordingClient(),
+      storage,
+    });
+    const pickers = await screen.findAllByRole('combobox', { name: /Layout/ }, { timeout: 25_000 });
+    await waitFor(() =>
+      expect(pickers.map((p) => (p as HTMLSelectElement).value)).toEqual([edited, 'custom:mine']),
     );
   }, 30_000);
 });

@@ -120,7 +120,10 @@ export async function compareLink(conflict: Conflict): Promise<string | null> {
   const mine = safeParseLayout(conflict.mine.doc);
   const theirs = safeParseLayout(conflict.theirs.doc);
   if (!mine.ok || !theirs.ok) return null;
-  const named = (layout: Layout, where: string): Layout => ({
+  // Each version is a view of the conflict, not the layout: with the layout's id inside, Analyze
+  // would open it as the custom layout, and saving it under its new name would move that layout
+  // there, the other version gone with it. Without the id, saving one makes a copy.
+  const named = ({ id: _id, ...layout }: Layout, where: string): Layout => ({
     ...layout,
     name: `${layout.name} (${where})`,
   });

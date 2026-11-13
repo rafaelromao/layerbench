@@ -50,8 +50,8 @@ _Avoid_: saved document, stored document, saved item
 
 **Custom layout**:
 A custom document that is a layout. Besides `custom:<id>`, a link can name it by its id alone, or
-carry it whole with its id inside, which opens as the custom layout wherever it is saved with the
-same contents.
+carry it whole with its id inside, which opens as the custom layout wherever it is saved, as one
+not saved where its contents differ, so that Save saves over it (the owner's decision, 2026-11-13).
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:
@@ -66,13 +66,15 @@ _Avoid_: standard layers, common layers, shared layers
 **Draft**:
 A layout's unsaved edits, carried whole in its link after the `#`. The tab that made a draft knows
 which custom layout its edits were made on, so saving it saves that layout, or which bundled or
-community layout, so saving it offers to propose the change; anywhere else it is a layout of its
-own.
+community layout, so saving it offers to propose the change. Anywhere else the draft is known by
+the id it carries, its custom layout's: where that is saved, the draft is it with edits not saved,
+and saving it saves over it; elsewhere, and for a draft of a layout never saved, it is a layout of
+its own.
 _Avoid_: unsaved copy, working copy
 
 **Duplicate**:
 A layout in Analyze copied as a custom layout of its own, under a name asked for, and opened: the
-button of that name in the Layout bar. The copy is the layout as the editor shows it, unsaved edits
+Layout bar's **Save as copy**, beside Save. The copy is the layout as the editor shows it, unsaved edits
 included, and the layout it was made from is left as it was last saved. Two custom layouts never
 share a name, so a name another has is refused and there is no overwriting it. Save makes a copy
 too, of a layout that is not stored here, but keeps the editor on it. A layer, and a step of a

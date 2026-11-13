@@ -22,8 +22,8 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
- * change proposed from it is open, and the way to save it, the way to submit a custom layout to the Library, which layout this is, what the
- * numbers are made with, the way to compare it, and the way to duplicate it.
+ * change proposed from it is open, and the ways to save it, over itself or as a copy, the way to submit a custom layout to the Library, which layout this is, what the
+ * numbers are made with, and the way to compare it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
  */
@@ -36,7 +36,7 @@ export function LayoutBar({
   onSave,
   onCancel,
   onSubmit,
-  onDuplicate,
+  onSaveAsCopy,
   copiesOnSave,
   proposal,
   proposalMerged,
@@ -71,7 +71,7 @@ export function LayoutBar({
   /** Propose it as a community layout; absent for a layout that is not a custom one. */
   onSubmit?: () => void;
   /** Save a copy of it, as it is now, under a name asked for, and open that. */
-  onDuplicate: () => void;
+  onSaveAsCopy: () => void;
   /** Saving makes a copy, as this layout is not one of the user's custom layouts yet. */
   copiesOnSave: boolean;
   /** The pull request of the change proposed from this custom layout, while it is open. */
@@ -97,34 +97,38 @@ export function LayoutBar({
       className="lb-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
       aria-label="Layout"
     >
-      {/* One line at every width: on a narrow phone the name gives the badge its room, rather than
-          the bar taking a line more and the board jumping down on the first edit. */}
-      <div className="flex items-center gap-1 sm:gap-2">
-        <TextField
-          label="Name"
-          value={layout.name}
-          mono={false}
-          className="input-ghost font-semibold text-base flex-1 min-w-0 px-1"
-          onCommit={(name) => {
-            if (name.trim()) onMeta({ name: name.trim() });
-          }}
-        />
-        {proposal && <ProposedBadge href={proposal} size="sm" merged={proposalMerged} />}
-        {dirty && (
-          <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
-        )}
-        {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
-        {dirty && onCancel && (
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost shrink-0 max-sm:px-2"
-            title="Discard the unsaved changes; Undo brings them back"
-            disabled={saving}
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-        )}
+      {/* One line at a desk. A phone has no room for the name beside four buttons: the name, its
+          badges and Cancel take a line, and Save, Save as copy and Submit one of their own under it,
+          at its end. The bar is as tall before the first edit as after, on the narrowest phone too,
+          and what comes with an edit takes room from the name, never moving a button. */}
+      <div className="flex items-center justify-end gap-1 sm:gap-2 max-sm:flex-wrap">
+        <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0 max-sm:basis-full">
+          <TextField
+            label="Name"
+            value={layout.name}
+            mono={false}
+            className="input-ghost font-semibold text-base flex-1 min-w-0 px-1"
+            onCommit={(name) => {
+              if (name.trim()) onMeta({ name: name.trim() });
+            }}
+          />
+          {proposal && <ProposedBadge href={proposal} size="sm" merged={proposalMerged} />}
+          {dirty && (
+            <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
+          )}
+          {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
+          {dirty && onCancel && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost shrink-0 max-sm:px-2"
+              title="Discard the unsaved changes; Undo brings them back"
+              disabled={saving}
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
         <button
           type="button"
           className={`btn btn-sm shrink-0 max-sm:px-2 ${dirty ? 'btn-primary' : ''}`}
@@ -133,6 +137,16 @@ export function LayoutBar({
           onClick={onSave}
         >
           Save
+        </button>
+        {/* Second to Save, which keeps the edits in the layout itself. */}
+        <button
+          type="button"
+          className="btn btn-sm btn-outline shrink-0 max-sm:px-2"
+          title="Save a copy of it under a new name, and open the copy"
+          disabled={saving}
+          onClick={onSaveAsCopy}
+        >
+          Save as copy
         </button>
         {onSubmit && (
           <button
@@ -234,15 +248,6 @@ export function LayoutBar({
           </div>
           <button type="button" className="btn btn-sm btn-outline shrink-0" onClick={onCompare}>
             Compare
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline shrink-0"
-            title="Save a copy of it under a new name, and open the copy"
-            disabled={saving}
-            onClick={onDuplicate}
-          >
-            Duplicate
           </button>
         </div>
       </div>

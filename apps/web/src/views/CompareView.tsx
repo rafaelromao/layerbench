@@ -144,10 +144,13 @@ export function CompareView() {
 
   const nameA = a.layout?.name ?? params.layoutRef;
   const nameB = b.layout?.name ?? refB;
-  // A layout carried whole that is a custom one here is picked as that custom layout.
+  // A layout carried whole that is a custom one here, as saved, is picked as that custom layout;
+  // with changes not saved there, it is its own entry, so the saved one can be picked against it.
   const pickedA =
-    a.ref === params.layoutRef && a.storedId ? customRef(a.storedId) : params.layoutRef;
-  const pickedB = b.ref === refB && b.storedId ? customRef(b.storedId) : refB;
+    a.ref === params.layoutRef && a.storedId && !a.unsaved
+      ? customRef(a.storedId)
+      : params.layoutRef;
+  const pickedB = b.ref === refB && b.storedId && !b.unsaved ? customRef(b.storedId) : refB;
 
   // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
   const [layerA, setLayerA] = useState(0);

@@ -36,12 +36,19 @@ describe('Opening a reference', () => {
     expect(await opened('mine', storage)).toMatchObject({ storedId: 'mine', source: null });
   });
 
-  it('opens a layout carried whole as the custom one only where that is saved with the same contents', async () => {
+  it('opens a layout carried whole as the custom one of its id, with what differs from it unsaved', async () => {
     const ref = inlineRef(await encodeInline(mine));
-    expect((await opened(ref, await storageWith(mine))).storedId).toBe('mine');
+    const same = await opened(ref, await storageWith(mine));
+    expect(same.storedId).toBe('mine');
+    expect(same.unsaved).toBeUndefined();
     expect((await opened(ref, await storageWith())).storedId).toBeNull();
+    // Saved here otherwise, by an edit made elsewhere or by another device since: saving goes over it.
     const changed = { ...mine, name: 'Mine, changed' };
-    expect((await opened(ref, await storageWith(changed))).storedId).toBeNull();
+    expect(await opened(ref, await storageWith(changed))).toMatchObject({
+      storedId: 'mine',
+      unsaved: true,
+      layout: { name: 'Mine' },
+    });
     expect(
       (await opened(inlineRef(await encodeInline(qwerty)), await storageWith())).storedId,
     ).toBeNull();

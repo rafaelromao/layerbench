@@ -22,17 +22,19 @@ layout that is not yours yet, such as one that comes with the app, the first **S
 in your custom layouts and asks what to call it, or, on one that comes with the app or a community
 layout, [proposes your change](saving.md#proposing-a-change) to it; after that, **Save** keeps your
 edits to the copy. A layout's link follows its name: rename one already in **Library** and save it,
-and it moves to a link of its new name; a link of the old name opens nothing. **Duplicate**, beside
-**Compare**, saves a copy of the layout as it is now under a name you give and opens that copy, on
-any layout, yours or not: see [Duplicating a layout](saving.md#duplicating-a-layout).
+and it moves to a link of its new name; a link of the old name opens nothing. **Save as copy**,
+beside **Save**, saves a copy of the layout as it is now under a name you give and opens that copy,
+on any layout, yours or not: see [Saving as a copy](saving.md#saving-as-a-copy).
 
 The address follows your edits too: a moment after each one, the link holds the layout as it now
 is. Reload the page, or go back to it, in the same tab, and the edits are still there, still
 unsaved, and saving them saves the layout they are edits of rather than a copy beside it. Opened in
-another tab or browser, the same link is a layout of its own: it is not marked *unsaved*, and saving
-it makes a copy. Once saved, the link still carries the layout whole, so it can be sent; opened
-where that layout is saved and unchanged, it is the custom layout again. A layout opened from
-**Open in analyzer**, or from someone's link, is not in **Library** until you save it, and its first **Save** asks for a name. Picking another layout from **Layout** asks first when there is
+another tab or browser where that layout is saved, the same link is that layout with its edits,
+marked *unsaved*, and **Save** saves over it. Once saved, the link still carries the layout whole,
+so it can be sent; opened where that layout is saved and unchanged, it is the custom layout again.
+A layout opened from **Open in analyzer**, or from someone's link, is not in **Library** until you
+save it, and its first **Save** asks for a name, unless it is one of your custom layouts: a link or
+JSON that carries the id of one saves over it. Picking another layout from **Layout** asks first when there is
 something unsaved.
 
 **Settings**, in the bar at the top, holds the layout's author and description, its **Link** to

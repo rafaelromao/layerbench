@@ -28,6 +28,11 @@ export type Opened =
       source: LayoutSource | null;
       /** The version of the custom layout that was read, which an edit of it is made on. */
       sha?: string;
+      /**
+       * The layout carried is the custom layout `storedId` with changes not saved there: edits made
+       * in another tab or browser, or the saved one changed since the link was made.
+       */
+      unsaved?: true;
     }
   | { ok: false; error: string };
 
@@ -38,10 +43,11 @@ const same = (a: Layout, b: Layout) =>
  * Open a reference: a bundled layout's id, `custom:<id>`, `community:<id>`, an id alone, which names a custom layout when
  * no bundled one has it (how short links work), or `inline:` and the layout itself. Each says which
  * custom layout it is: a custom one is itself, and a layout carried whole is the one saved here under
- * the id it carries when that has the same contents — its owner's link, opened in another tab,
- * browser or device. Anything else, someone else's layout or one changed since the link was made, is
- * a layout of its own, so nothing saved here is ever overwritten by a link. Storage that cannot be
- * read leaves it a layout of its own too. Drafts are the layout session's to know: this does not.
+ * the id it carries — its owner's link, opened in another tab, browser or device. Where the contents
+ * differ, edits not saved or the saved one changed since, it is that layout with changes not saved,
+ * and saving it saves over that layout (the owner's decision, 2026-11-13). A layout carried whole
+ * whose id names nothing saved here, or that has none, is a layout of its own, as is one when storage
+ * cannot be read. Drafts are the layout session's to know: this does not.
  */
 export async function openLayout(ref: string, storage: StorageAdapter): Promise<Opened> {
   const parsed = parseLayoutRef(ref);
@@ -53,13 +59,15 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
     const id = layout.id;
     if (!id || !isDocumentId(id)) return { ok: true, layout, storedId: null, source: null };
     const stored = await readCustom(storage, 'layouts', id);
-    const saved = stored.status === 'read' && same(stored.doc, layout);
+    if (stored.status !== 'read') return { ok: true, layout, storedId: null, source: null };
     return {
       ok: true,
       layout,
-      storedId: saved ? id : null,
+      storedId: id,
       source: null,
-      ...(saved && stored.sha && { sha: stored.sha }),
+      // The version read is the one a save goes over: a change saved after it is still a conflict.
+      ...(stored.sha && { sha: stored.sha }),
+      ...(!same(stored.doc, layout) && { unsaved: true as const }),
     };
   }
 
