@@ -135,11 +135,12 @@ git ls-remote https://github.com/OWNER/REPOSITORY.git \
 
 For an annotated tag, use the 40-character commit SHA on the `^{}` line; for a lightweight tag, use
 the SHA on the direct tag line. Verify the repository and release tag before updating the pin. Update
-all workflow uses, including secret-bearing jobs and `.github/workflows/community-index.yml` on the
-`layerbench-data` branch, with the same SHA and version comment; keep its test mirror at
-`packages/core/fixtures/community-index.workflow.yml` in sync too. Run
-`pnpm --filter @layerbench/core exec vitest run src/convention/workflow-pins.test.ts` to check the
-main workflow inventory, pin format, version comments and consistent GitHub-owned action versions.
+all workflow uses, including secret-bearing jobs and `data-branch/.github/workflows/community-index.yml`,
+the starting tree copied to the `layerbench-data` branch. Keep that workflow's path filter pointed at
+itself so an update runs the community index check. The pin test reads this starting-tree workflow
+directly. Run `pnpm --filter @layerbench/core exec vitest run src/convention/workflow-pins.test.ts`
+to check the main workflow inventory, pin format, version comments and consistent GitHub-owned action
+versions.
 
 ## Releases
 

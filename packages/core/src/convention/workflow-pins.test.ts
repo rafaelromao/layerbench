@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const WORKFLOWS = `${ROOT}.github/workflows`;
-// Kept in lockstep with `.github/workflows/community-index.yml` on `layerbench-data`.
-const COMMUNITY_WORKFLOW = `${ROOT}packages/core/fixtures/community-index.workflow.yml`;
+// This is the starting tree copied to `layerbench-data` (`README.md` → Community layouts).
+const COMMUNITY_WORKFLOW = `${ROOT}data-branch/.github/workflows/community-index.yml`;
 const EXPECTED_WORKFLOWS = [
   'ci.yml',
   'corpora.yml',
