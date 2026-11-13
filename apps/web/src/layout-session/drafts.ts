@@ -4,8 +4,9 @@ import type { LayoutSource } from './open.js';
  * The drafts this tab made: each inline link of unsaved edits it wrote, and the custom layout it is an
  * edit of, or null for a layout never saved. Saving a draft saves that layout rather than a copy
  * beside it, and opening the link again — a reload, Back — still shows the edits as unsaved. Only
- * this tab knows, and it keeps knowing across a reload: the same link opened anywhere else is a
- * layout of its own.
+ * this tab knows, and it keeps knowing across a reload. Anywhere else the link is known by the id
+ * it carries, the custom layout's (`writeDraft`): where that layout is saved, it is that layout
+ * with edits not saved; elsewhere, a layout of its own.
  */
 export interface Drafts {
   /** The custom layout a draft is an edit of, null for one never saved; undefined if not a draft. */

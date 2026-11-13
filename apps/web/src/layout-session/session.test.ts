@@ -272,6 +272,36 @@ describe('A custom layout sent by its link', () => {
     expect(JSON.stringify((await mine.get('layouts', 'mine'))?.doc)).toContain('ç');
   });
 
+  it('drafts the id a first save gave a layout, so its edits open elsewhere as it', async () => {
+    const storage = new MemoryStorage();
+    const first = session('qwerty', { storage });
+    const state = await opened(first.s);
+    first.s.edited(state.layout, true);
+    expect(await first.s.save({ ...state.layout, name: 'Qwerty copy' })).toMatchObject({
+      ok: true,
+      id: 'qwerty-copy',
+    });
+    // The editor's layout still carries the bundled id; the draft carries the saved one.
+    first.s.edited(withCedilla(state.layout), true);
+    const draft = await first.s.link();
+    expect((await carried(draft))?.id).toBe('qwerty-copy');
+    const elsewhere = await opened(session(draft, { storage }).s);
+    expect(elsewhere).toMatchObject({ storedId: 'qwerty-copy', startsUnsaved: true });
+  });
+
+  it('drafts no id for a layout never saved here, so it opens as no custom layout', async () => {
+    // A custom layout may have a bundled layout's id: a draft of the bundled one is not it.
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'qwerty', { name: 'QWERTY!', description: 'mine' });
+    const first = session('qwerty', { storage });
+    first.s.edited(withCedilla((await opened(first.s)).layout), true);
+    const draft = await first.s.link();
+    expect((await carried(draft))?.id).toBeUndefined();
+    const elsewhere = await opened(session(draft, { storage }).s);
+    expect(elsewhere).toMatchObject({ storedId: null, source: null });
+    expect((await storage.get('layouts', 'qwerty'))?.doc.description).toBe('mine');
+  });
+
   // The owner's decision (2026-11-13): a layout carried whole is the custom layout of the id it
   // carries, however it differs, so Save saves over it rather than asking for a copy's name.
   it('opens as the custom layout of its id where that differs, unsaved, and saves over it', async () => {

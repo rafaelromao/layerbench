@@ -94,7 +94,7 @@ export interface LayoutSession {
   save(layout: Layout, opts?: SaveOptions): Promise<SaveResult>;
   /**
    * Store `layout` as a new custom layout of its own, under the name it has, and open it in place of
-   * this one: Analyze's Duplicate. Unlike `save`, which moves a layout it has stored to its new
+   * this one: Analyze's Save as copy. Unlike `save`, which moves a layout it has stored to its new
    * name, this leaves whatever this layout is stored as where it is. Where another custom layout has
    * the name nothing is stored and it says which: a duplicate never overwrites.
    */
@@ -251,9 +251,16 @@ export function createLayoutSession(
     pending = null;
   };
 
-  /** Write the layout in the editor as a draft of the custom layout it is an edit of. */
+  /**
+   * Write the layout in the editor as a draft of the custom layout it is an edit of. The draft
+   * carries that layout's id, and no other: opened in another tab or browser, a link with a custom
+   * layout's id is that layout, and Save there saves over it. The editor's own may be an id a
+   * first save or a rename has since changed, or a bundled or community layout's, which a custom
+   * layout may have too, so a layout never saved here carries none.
+   */
   const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
-    const ref = inlineRef(await encodeInline(layout));
+    const { id: _own, ...rest } = layout;
+    const ref = inlineRef(await encodeInline(storedId === null ? rest : { ...rest, id: storedId }));
     if (state.opening === opening && !disposed) {
       drafts.remember(ref, storedId, source, basedOn);
       write(ref);

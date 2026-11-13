@@ -47,6 +47,23 @@ describe('Save as copy', () => {
     expect((await storage.list('layouts')).map((e) => e.id)).toEqual(['qwerty-copy']);
   }, 60_000);
 
+  it('sits between Save and Submit, on a custom layout with an edit as on any', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    await seed(storage, qwertyWithDefaults(), 'mine', { name: 'Mine' });
+    renderRoute('/analyze?layout=custom%3Amine&corpus=en-general&sample=1000', { storage });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    // An edit brings Cancel, before Save.
+    key('Key LHM: d').focus();
+    await user.keyboard('{Delete}');
+    await within(bar()).findByRole('button', { name: 'Cancel' });
+    const order = within(bar())
+      .getAllByRole('button')
+      .map((b) => b.textContent?.trim())
+      .filter((t) => ['Cancel', 'Save', 'Save as copy', 'Submit'].includes(t ?? ''));
+    expect(order).toEqual(['Cancel', 'Save', 'Save as copy', 'Submit']);
+  }, 60_000);
+
   it('opens the duplicate on its first layer, wherever the layout was', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();

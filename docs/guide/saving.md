@@ -32,10 +32,11 @@ browser where the layout is saved, the same link is that layout with your edits,
 *unsaved*, and **Save** there saves over it. Opened where it is not saved, it is a layout of its
 own, and saving it makes a copy.
 
-While edits are unsaved, **Cancel** sits beside **Save**: it gives the layout back as it was opened
-or last saved, all the edits at once. It does not ask, because **Undo** brings them back, unsaved as
-they were. A layout opened from a link whose edits were unsaved from the start has no saved state to
-go back to, and no **Cancel**; to leave it, pick another layout.
+While edits are unsaved, **Cancel** sits beside the *unsaved* mark: it gives the layout back as it
+was opened or last saved, all the edits at once. It does not ask, because **Undo** brings them back,
+unsaved as they were. A layout opened from a link whose edits were unsaved from the start has no
+**Cancel**: the editor did not open it as saved. To go back to what is saved, pick the layout in
+**Layout**; to leave it, pick another.
 
 ### Saving a layout that is not yours
 

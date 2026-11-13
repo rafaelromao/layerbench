@@ -152,7 +152,8 @@ export function Workbench({
 }: WorkbenchProps) {
   const [state, send] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
-    // A draft this tab made is still unsaved: the layout stored, if any, is not this one yet.
+    // A draft this tab made, or a custom layout's link with edits not saved in it, is still
+    // unsaved: the layout stored, if any, is not this one yet.
     return session.startsUnsaved ? { ...start, dirty: true, saved: null } : start;
   });
   const keyboard = useRef<KeyboardHandle>(null);

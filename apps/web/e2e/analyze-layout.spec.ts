@@ -250,7 +250,9 @@ test.describe('at a desk', () => {
     await expect(page.getByRole('group', { name: 'Edit LHI' })).toBeVisible();
   });
 
-  test('Save as copy sits between Save and Submit, and the picker beside Compare', async ({
+  // Its place between Save and Submit, which a custom layout alone has, is a unit test's
+  // (analyze-duplicate.test.tsx): this one is of where it is drawn.
+  test('Save as copy follows Save on one row, and the picker sits beside Compare', async ({
     page,
   }) => {
     await openEdit(page);
@@ -269,11 +271,6 @@ test.describe('at a desk', () => {
     const named = [await centre(save), await centre(copy)];
     for (const y of named) expect(Math.abs(y - named[0])).toBeLessThanOrEqual(2);
     expect((await box(copy)).x).toBeGreaterThan((await box(save)).x);
-    // Submit is there for a custom layout only; where it is, it comes after.
-    const submit = bar.getByRole('button', { name: 'Submit' });
-    if (await submit.isVisible()) {
-      expect((await box(submit)).x).toBeGreaterThan((await box(copy)).x);
-    }
     const row = [
       await centre(bar.getByRole('combobox', { name: 'Layout' })),
       await centre(bar.getByRole('button', { name: 'Compare' })),

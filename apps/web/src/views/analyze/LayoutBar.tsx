@@ -97,9 +97,10 @@ export function LayoutBar({
       className="lb-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
       aria-label="Layout"
     >
-      {/* One line at a desk. A phone has no room for the name beside four buttons: the name and its
-          badges take a line, and the buttons one of their own under it, at its end, so the bar is
-          as tall before the first edit as after, and Cancel comes without moving the others. */}
+      {/* One line at a desk. A phone has no room for the name beside four buttons: the name, its
+          badges and Cancel take a line, and Save, Save as copy and Submit one of their own under it,
+          at its end. The bar is as tall before the first edit as after, on the narrowest phone too,
+          and what comes with an edit takes room from the name, never moving a button. */}
       <div className="flex items-center justify-end gap-1 sm:gap-2 max-sm:flex-wrap">
         <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0 max-sm:basis-full">
           <TextField
@@ -115,19 +116,19 @@ export function LayoutBar({
           {dirty && (
             <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
           )}
+          {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
+          {dirty && onCancel && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost shrink-0 max-sm:px-2"
+              title="Discard the unsaved changes; Undo brings them back"
+              disabled={saving}
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          )}
         </div>
-        {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
-        {dirty && onCancel && (
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost shrink-0 max-sm:px-2"
-            title="Discard the unsaved changes; Undo brings them back"
-            disabled={saving}
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-        )}
         <button
           type="button"
           className={`btn btn-sm shrink-0 max-sm:px-2 ${dirty ? 'btn-primary' : ''}`}
