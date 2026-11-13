@@ -2349,13 +2349,60 @@ describe('a delete made on another browser', () => {
     expect(await phoneLocal.get('layouts', 'fusion')).toBeNull();
   });
 
-  it('is not undone by sending everything the phone holds', async () => {
-    const { remote, laptop, phone } = await twoBrowsers();
+  it('is neither undone nor followed by sending everything the phone holds: it is asked about', async () => {
+    const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
     await deleteLemon(laptop);
 
-    await phone.copyUp({ everything: true });
+    // The user asked to send all: what the account deleted is not deleted here, nor sent back.
+    const { conflicts, removed, copied } = await phone.copyUp({ everything: true });
+    expect(removed).toEqual([]);
+    expect(copied).toBe(0);
+    expect(conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
     expect(await remote.get('layouts', 'lemon')).toBeNull();
-    expect(await names(phone)).toEqual(['Fusion']);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+  });
+
+  it('asks about one the user sends alone, whichever version it is, and deletes nothing', async () => {
+    const { remote, laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    await deleteLemon(laptop);
+    // Unchanged here, the very version deleted: following would delete it, but the user asked to
+    // send it, from the list of what the account lacks.
+    expect(await phone.copyOne('layouts', 'lemon')).toMatchObject({
+      copied: 0,
+      removed: [],
+      conflicts: [{ id: 'lemon', theirs: null }],
+    });
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+
+    // One with no version on record, made before versions were: asked about too, not sent back.
+    phoneMarks.forget('layouts', 'fusion');
+    await phoneLocal.put('layouts', 'fusion', { name: 'Fusion', note: 'old copy' });
+    await laptop.delete('layouts', 'fusion');
+    expect(await phone.copyOne('layouts', 'fusion')).toMatchObject({
+      copied: 0,
+      conflicts: [{ id: 'fusion', theirs: null }],
+    });
+    expect(await remote.get('layouts', 'fusion')).toBeNull();
+  });
+
+  it('weighs an overwrite against the version read, as ever, rather than writing over a newer one', async () => {
+    const { remote, laptop, phone, phoneMarks } = await twoBrowsers();
+    await laptop.put('layouts', 'gust', { name: 'Gust' });
+    // Read on the phone, then edited on the laptop.
+    await phone.get('layouts', 'gust');
+    const opened = await laptop.get('layouts', 'gust');
+    await laptop.put(
+      'layouts',
+      'gust',
+      { name: 'Gust', note: 'laptop' },
+      { basedOn: opened?.meta.sha },
+    );
+    // A new layout of that name on the phone, which the user chose to put in its place.
+    await phone.put('layouts', 'gust', { name: 'Gust', note: 'phone' }, { overwriting: true });
+    expect((await remote.get('layouts', 'gust'))?.doc.note).toBe('laptop');
+    expect(phoneMarks.has('layouts', 'gust')).toBe(true);
   });
 
   it('is asked about, not followed, where the phone changed the layout offline before it synced', async () => {

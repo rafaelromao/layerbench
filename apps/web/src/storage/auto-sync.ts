@@ -288,8 +288,15 @@ export async function sendMissing(
       toast.info(`${name} is not in this browser any more`);
       return true;
     }
+    if (result.removed.length > 0) {
+      // Gone from here, as the account recorded deleting it: not sent, and said so.
+      announceRemoved(result.removed);
+      dropMissing([keyOf(document)], marks);
+      return true;
+    }
     if (result.conflicts.length > 0) {
-      // The account has one under that id now: asked about, as any other, and no longer lacking.
+      // The account has one under that id now, or recorded deleting it: asked about, as any other,
+      // and no longer lacking.
       noteResult(mergedWithShown(result));
       dropMissing([keyOf(document)], marks);
       return true;
@@ -396,16 +403,26 @@ export function startAutoSync(
     const work = (): Promise<CopiedUp> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       const given = new AbortController();
+      let late = false;
       const limit = new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           // Stopped, not only given up on: it ends at the next document, keeping what went up.
+          late = true;
           given.abort();
           reject(new Error('GitHub did not answer in time'));
         }, attemptMs);
       });
       const copying = storage.copyUp({ signal: given.signal });
-      // One that finishes after the limit has been given up on is nobody's to hear about.
-      copying.catch(() => {});
+      // One that finishes after the limit has been given up on is nobody's to hear about, but for
+      // what it deleted here, which the lists must not go on showing.
+      copying.then(
+        (r) => {
+          if (late && !stopped) announceRemoved(r.removed);
+        },
+        (e: unknown) => {
+          if (late && !stopped && e instanceof CopyUpError) announceRemoved(e.result.removed);
+        },
+      );
       return Promise.race([copying, limit]).finally(() => clearTimeout(timer));
     };
     // One tab at a time. null: another tab is sending.
@@ -591,6 +608,10 @@ export function startAutoSync(
       void pruneGone();
       return;
     }
+    // What another browser deleted goes first, as on a visit: asked for again, the look would
+    // otherwise list it as missing from the account, to be sent back.
+    if (force) await follow();
+    if (stopped) return;
     const given = new AbortController();
     const timer = setTimeout(() => given.abort(), attemptMs);
     useSync.setState({ auditing: true });

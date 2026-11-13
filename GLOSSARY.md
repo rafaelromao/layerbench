@@ -38,7 +38,8 @@ _Avoid_: contributed layout, user layout
 **Copy up**:
 Sending GitHub the custom documents this browser holds that GitHub lacks, or holds an older copy of.
 Where both hold a document, GitHub's copy is the one opened. Before it sends, it deletes here the
-unchanged copies of documents GitHub records as deleted, by another browser, and asks about changed ones.
+unchanged copies of documents GitHub records as deleted, by another browser, and asks about changed ones;
+a copy up the user asks for, of everything or of one document, asks about each of those instead.
 _Avoid_: sync, push, upload
 
 **Custom document**:

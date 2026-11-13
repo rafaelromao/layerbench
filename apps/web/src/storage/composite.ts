@@ -374,6 +374,7 @@ export class CompositeStorage implements StorageAdapter {
       !waiting &&
       before === null &&
       typeof opts.basedOn !== 'string' &&
+      opts.overwriting !== true &&
       previousBase !== null;
     if (fresh) this.marks.clearBase(collection, id);
     const restoreBase = () => {
@@ -773,7 +774,8 @@ export class CompositeStorage implements StorageAdapter {
    * were marked have to be: each that differs is marked, and sent only if the gists hold the version
    * it was an edit of, never by when each was saved, and asked about otherwise. That is for the user
    * to ask for, as a document the gists lack, with no record of its deletion, may still be one
-   * another browser deleted.
+   * another browser deleted. Deletions are not followed then: each document the gists record as
+   * deleted is asked about, kept or deleted here as the user chooses.
    */
   async copyUp(opts: { everything?: boolean; signal?: AbortSignal } = {}): Promise<CopiedUp> {
     const everything = opts.everything === true;
@@ -789,8 +791,10 @@ export class CompositeStorage implements StorageAdapter {
         stopped();
         const here = await this.local.list(collection);
         await this.prune(collection, new Set(here.map((e) => e.id)));
-        // What another browser deleted goes from here first, rather than being sent back.
-        await this.follow(collection, here, stopped, done.removed);
+        // What another browser deleted goes from here first, rather than being sent back; but not
+        // when the user asks for everything to be sent: what the gists record as deleted is asked
+        // about then, as the user said to keep it.
+        if (!everything) await this.follow(collection, here, stopped, done.removed);
         let inARow = 0;
         for (const entry of here) {
           try {
@@ -1014,9 +1018,10 @@ export class CompositeStorage implements StorageAdapter {
     }
     if (!seen) {
       const deletion = await this.deletionOf(collection, id);
-      if (deletion && stored.meta.sha === deletion.sha) {
-        // The very version deleted, marked only as its send was never confirmed, or never weighed:
-        // nothing of it was changed here since, so it goes, as an unchanged copy does.
+      if (deletion && !everything && stored.meta.sha === deletion.sha) {
+        // The very version deleted, marked only as its send was never confirmed: nothing of it was
+        // changed here since, so it goes, as an unchanged copy does. Never on a send the user asked
+        // for, which is asked about instead, below.
         const wasMarked = this.marks.has(collection, id);
         try {
           await this.local.delete(collection, id, { expectedSha: stored.meta.sha });
@@ -1031,8 +1036,9 @@ export class CompositeStorage implements StorageAdapter {
         return;
       }
       // Deleted from the gists since this copy was a version they held: not sent back unasked.
-      // Marked, it is asked about.
-      if (deletion && this.marks.base(collection, id) !== null) {
+      // Marked, it is asked about. So is any of theirs the user asks to send (`everything`), which
+      // is neither deleted here nor put back in the account without their saying which.
+      if (deletion && (everything || this.marks.base(collection, id) !== null)) {
         this.marks.mark(collection, id);
         this.leaveDeleted(collection, entry, stored.doc, deletion, done);
         return;

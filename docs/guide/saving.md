@@ -191,16 +191,18 @@ browser last held.
 When you sign in, and at most every twelve hours for each account, this browser's documents are also
 compared with your account's by their **contents**, never by when each was saved: the same in both
 is recorded as such; one this browser holds an unedited older copy of is brought up to your
-account's; any other that differs is marked, and sent or asked about like the rest. A document your
-account lacks, and does not record as deleted (see
-[Deleted on another browser](#deleted-on-another-browser)), is not sent by itself, since it may have
-been deleted all the same, but is listed: the
+account's; any other that differs is marked, and sent or asked about like the rest. What another
+browser deleted is followed first (see [Deleted on another browser](#deleted-on-another-browser)),
+when the comparison is made by itself and when you run it again. A document your account lacks is
+not sent by itself, since it may have been deleted all the same, but is listed: the
 status, above the editor and in **Storage**, names each one, with its kind, and says if a GitHub
 account held it before (a recorded version is what tells it; on a browser that has been signed in to
 more than one account it may have been another). Each row has **Send**, which sends that one and no
-other, and **Delete**, which asks first, in the row, and then deletes it from this browser alone:
+other (one your account records as deleted is asked about instead, and neither sent nor deleted until
+you choose, as below), and **Delete**, which asks first, in the row, and then deletes it from this browser alone:
 nothing is asked of your account, and one it holds under the same id stays there. A document saved
-again since, or deleted elsewhere in the app, comes off the list. **Send them** sends all of them.
+again since, or deleted elsewhere in the app, comes off the list. **Send them** sends all of them, in
+the same way.
 **Storage** does not show a ✓ until the list is empty. If the comparison cannot finish, it says so,
 with a button to run it again.
 
@@ -273,7 +275,7 @@ next time it syncs: when the page is opened or reloaded, when you come back to i
 comes back online, whether or not anything waits to be sent, and before each attempt to send; not
 while what waits is held back for another account, as above. The browser that deleted it follows
 the record too, so a delete cut short there, gone from your account and not yet from it, is finished
-on its next sync.
+on its next sync, or asked about if the document had edits not sent yet.
 
 - A copy this browser holds that was not changed here since your account last held it, or that is the
   very version deleted, is deleted from this browser too. A message names what went, and the lists
@@ -290,11 +292,10 @@ on its next sync.
 - A layout made here new under the name of one deleted, by **New layout**, **Import**, **Save a copy**
   or renaming another to it, is a layout of its own and is sent like any other, whether or not this
   browser had read the deleted one. So is any document this browser never had a version of on record,
-  such as one made here under the same name while signed out. A rule set or a text saved under the
-  name of one this browser read from your account, deleted elsewhere since, cannot be told from an
-  edit of it, so it is asked about, until this browser follows the delete; from then on it is sent
-  as a new one, even from an editor left open on the old one, as a rule set or a text is weighed
-  against what this browser last held, not what its editor opened (see [Known limits](#known-limits)).
+  such as one made here under the same name while signed out.
+- What you ask to send yourself, with **Send** or **Send them** in the status or with **Copy this
+  browser's documents up**, is not followed: a document your account records as deleted is asked
+  about, in the same dialog, whichever version this browser has.
 
 Only a delete your account records is followed. A document your account lacks with no such record,
 because it was deleted by hand on GitHub or by an older version of LayerBench, or because this
@@ -316,7 +317,8 @@ deletion, so only the new one goes up, and the old name stays in your account un
 **Copy this browser's documents up**, in **Storage** once you are signed in, weighs every layout,
 rule set and text this browser holds, whether or not it is marked. It is for what was saved before
 edits were marked, and for anything that looks missing; you should not need it otherwise. A document
-your account lacks is sent, so use it only for what you want in your account. One that differs from
+your account lacks is sent, so use it only for what you want in your account; one your account
+records as deleted is asked about instead, neither sent nor deleted here until you choose. One that differs from
 your account's is never sent over it by the clocks: it is marked, and sent only if your account still
 holds the version it was an edit of, and otherwise asked about. It says how many it sent, how many
 are the same, how many are waiting for you to choose, how many it left for their names, and which
