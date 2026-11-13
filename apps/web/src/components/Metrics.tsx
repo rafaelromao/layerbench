@@ -314,7 +314,7 @@ function MetricBody({
           <button
             type="button"
             className="btn btn-ghost btn-xs btn-square -mr-2 -mt-1 opacity-60"
-            aria-label={`Enlarge ${result.label}`}
+            aria-label={`Enlarge ${code ? `${code} - ` : ''}${result.label}`}
             title="Enlarge"
             onClick={onEnlarge}
           >

@@ -158,5 +158,6 @@ const METRIC_CODES: Record<string, string> = {
 export function metricCode(id: string, label: string): string | null {
   const code = METRIC_CODES[id];
   if (!code) return null;
-  return new RegExp(`\\b${code}\\b`, 'i').test(label) ? null : code;
+  // `SFBs` says it too.
+  return new RegExp(`\\b${code}s?\\b`, 'i').test(label) ? null : code;
 }

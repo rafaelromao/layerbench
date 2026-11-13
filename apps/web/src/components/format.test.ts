@@ -105,7 +105,10 @@ describe('metricCode', () => {
 
   it('gives nothing where the name, as a rule set writes it, says the code already', () => {
     expect(metricCode('sfb', 'SFB')).toBeNull();
+    expect(metricCode('sfb', 'SFBs (thumbs excluded)')).toBeNull();
     expect(metricCode('sfs', 'Same finger skipgrams (sfs)')).toBeNull();
-    expect(metricCode('lsb', 'Lateral stretches')).toBe('LSB');
+    // The cyanophage rule set's own names for two of them.
+    expect(metricCode('lsb', 'Lat stretch bigrams (column pairs)')).toBe('LSB');
+    expect(metricCode('fsb', 'Scissors (adjacent columns, 2 rows)')).toBe('FSB');
   });
 });

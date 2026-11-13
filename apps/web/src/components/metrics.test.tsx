@@ -35,7 +35,7 @@ describe('a metric card’s name', () => {
     expect(screen.getByText('Same finger bigrams')).toBeInTheDocument();
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
+      .click(screen.getByRole('button', { name: 'Enlarge SFB - Same finger bigrams' }));
     expect(
       within(screen.getByRole('dialog')).getByRole('heading', {
         name: 'SFB - Same finger bigrams',
@@ -61,7 +61,7 @@ describe('a metric card’s items', () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
+      .click(screen.getByRole('button', { name: 'Enlarge SFB - Same finger bigrams' }));
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.getByRole('button', { name: '⟳␣' })).toHaveAttribute('title', `⟳␣\n${KEYS}`);
     expect(dialog.queryByText(KEYS)).toBeNull();
