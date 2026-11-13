@@ -341,9 +341,12 @@ can open it, without signing in. A link that names a custom layout by its id alo
 it is saved, and there it is that layout; Analyze and Compare put the layout itself in its place as
 soon as it opens. Opened by
 someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
-copy. Opened where it is saved and unchanged, in this browser or your GitHub account, it is your
-custom layout, and saving changes that one. A link never saves over a different layout someone has
-under the same name unless they choose to: saving asks to overwrite it or for another name. A
+copy. Opened where it is saved, in this browser or your GitHub account, it is your custom layout,
+marked *unsaved* if it differs from what is saved, and **Save** saves over that one. A layout is
+known by its id, which comes from its name: someone else's link to a layout whose name makes the
+same id as one of yours opens as yours too, and **Save** there saves over it; **Save as copy**
+keeps yours. Edits to a layout that is not saved here, such as one that comes with the app, travel
+in a link with no id. A
 custom text and a custom rule set do not travel the same way: the link only names them, so they
 open only where they are saved. Anywhere else nothing
 opens in their place: the page says the text or rule set is not saved there, and shows no numbers.

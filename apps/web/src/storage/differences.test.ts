@@ -1,5 +1,6 @@
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
+import { decodeInline } from '../url/inline.js';
 import type { Conflict } from './composite.js';
 import { compareLink, describeDifferences } from './differences.js';
 
@@ -116,6 +117,17 @@ describe('a link to compare the two versions', () => {
       conflict('layouts', qwerty, { ...qwerty, name: 'Qwerty, edited' }),
     );
     expect(link).toMatch(/\/compare#layout=inline%3A.+&b=inline%3A/);
+  });
+
+  it('carries no id: saving a version from it makes a copy, never moving the layout', async () => {
+    const gust = { ...qwerty, id: 'gust', name: 'Gust' };
+    const link = await compareLink(conflict('layouts', gust, { ...gust, author: 'Elsewhere' }));
+    const fragment = new URLSearchParams((link ?? '').split('#')[1]);
+    for (const side of ['layout', 'b']) {
+      const decoded = await decodeInline((fragment.get(side) ?? '').slice('inline:'.length));
+      expect(decoded.ok && decoded.layout.id).toBeUndefined();
+      expect(decoded.ok && decoded.layout.name).toMatch(/^Gust \((this browser|GitHub)\)$/);
+    }
   });
 
   it('is only for layouts that read as layouts', async () => {

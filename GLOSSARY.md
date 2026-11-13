@@ -50,8 +50,8 @@ _Avoid_: saved document, stored document, saved item
 
 **Custom layout**:
 A custom document that is a layout. Besides `custom:<id>`, a link can name it by its id alone, or
-carry it whole with its id inside, which opens as the custom layout wherever it is saved with the
-same contents.
+carry it whole with its id inside, which opens as the custom layout wherever it is saved, as one
+not saved where its contents differ, so that Save saves over it (the owner's decision, 2026-11-13).
 _Avoid_: saved layout, stored layout, my layout
 
 **Default layers**:

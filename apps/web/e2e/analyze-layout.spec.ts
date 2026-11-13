@@ -188,6 +188,51 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
+  test("the bar's buttons take a line under the name, which an edit leaves as it is", async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const bar = page.getByRole('region', { name: 'Layout' });
+    const box = async (control: Locator) => {
+      const b = await control.boundingBox();
+      if (!b) throw new Error('not drawn');
+      return b;
+    };
+    const name = bar.getByRole('textbox', { name: 'Name', exact: true });
+    const save = bar.getByRole('button', { name: 'Save', exact: true });
+    const copy = bar.getByRole('button', { name: 'Save as copy' });
+    const height = async () => (await box(bar)).height;
+    const before = await height();
+    const named = await box(name);
+    for (const button of [save, copy]) {
+      const b = await box(button);
+      // Under the name, and big enough to tap (WCAG 2.5.8).
+      expect(b.y).toBeGreaterThanOrEqual(named.y + named.height);
+      expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(24);
+    }
+
+    // An edit brings the unsaved mark and Cancel to the name's line: no button moves, and the bar
+    // is as tall as it was, on the narrowest phone too. Places are taken from the bar's corner, as
+    // focusing the key may scroll the page.
+    const inBar = async (control: Locator) => {
+      const [b, at] = [await box(control), await box(bar)];
+      return { x: b.x - at.x, y: b.y - at.y, width: b.width, height: b.height };
+    };
+    const saveAt = await inBar(save);
+    const nameAt = await inBar(name);
+    await page.getByRole('button', { name: /^Key LHI:/ }).press('Delete');
+    const cancel = bar.getByRole('button', { name: 'Cancel' });
+    await expect(cancel).toBeVisible();
+    const c = await inBar(cancel);
+    expect(Math.abs(c.y + c.height / 2 - (nameAt.y + nameAt.height / 2))).toBeLessThanOrEqual(4);
+    expect(Math.min(c.width, c.height)).toBeGreaterThanOrEqual(24);
+    const saveNow = await inBar(save);
+    expect(Math.abs(saveNow.x - saveAt.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(saveNow.y - saveAt.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs((await height()) - before)).toBeLessThanOrEqual(1);
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {
     await openEdit(page);
     const nav = page.getByRole('group', { name: 'Layers' });

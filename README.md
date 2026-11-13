@@ -49,8 +49,10 @@ you sign in with GitHub to keep it in your own account.
 `#layout=inline:…`: after the `#`, which the browser keeps to itself, so a long one cannot make the
 request too long for GitHub Pages to answer (`apps/web/src/url/fragment.ts`). Analyze writes every
 layout it has open into its link that way, a custom one too, with its id inside, so the link can be
-sent: opened where that id is saved with the same contents, it is the custom layout again, and
-anywhere else a layout of its own, saved as a copy. Links name a custom document as `custom:<id>`.
+sent: opened where that id is saved, it is the custom layout again, marked unsaved where its
+contents differ, and Save saves over it; anywhere else it is a layout of its own, saved as a copy. A
+draft carries the id of the custom layout it is an edit of, or none for one never saved. Links name
+a custom document as `custom:<id>`.
 
 ## Storage in the code
 

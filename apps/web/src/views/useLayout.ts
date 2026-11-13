@@ -14,6 +14,8 @@ export interface LayoutState {
   compiled: CompiledLayout | null;
   /** The custom layout it is, if any (`openLayout`). */
   storedId: string | null;
+  /** It is that custom layout with changes not saved there, so it is not the one saved. */
+  unsaved: boolean;
   error: string | null;
   /**
    * The reference the layout and error belong to, null until one resolves. While another one is
@@ -48,18 +50,21 @@ export function useLayout(ref: string): LayoutState {
         layout: null,
         compiled: null,
         storedId: null,
+        unsaved: false,
         error: opened?.error ?? null,
         ref: of,
       };
     }
     const { layout, storedId } = opened;
+    const unsaved = opened.unsaved === true;
     try {
-      return { layout, compiled: compileLayout(layout), storedId, error: null, ref: of };
+      return { layout, compiled: compileLayout(layout), storedId, unsaved, error: null, ref: of };
     } catch (e) {
       return {
         layout,
         compiled: null,
         storedId,
+        unsaved,
         error: e instanceof Error ? e.message : String(e),
         ref: of,
       };
