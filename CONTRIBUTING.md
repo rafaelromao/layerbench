@@ -184,6 +184,9 @@ the types hidden by `changelog-sections`. Release Please runs for a feature, fix
 revert, breaking change, or its own release pull request; non-breaking docs, tests and workflow-only
 changes do not create releases. Merging the release pull request tags `vX.Y.Z` and publishes a
 GitHub release.
+Publishing a merged release PR and opening the next release PR are separate action calls: after
+publishing, the workflow refreshes tags and only opens the next PR for release-worthy commits after
+the new tag. This prevents housekeeping commits merged after a release from creating another PR.
 For the first public release, the workflow prepends [`docs/releases/0.3.0.md`](docs/releases/0.3.0.md)
 to the generated notes; dispatch the workflow to retry that edit if publishing succeeded but the
 notes update failed. A manual dispatch only reconciles the existing release notes; it does not run

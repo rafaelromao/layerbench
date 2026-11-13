@@ -87,22 +87,24 @@ jobs:
             done < <(jq -r '.removeLabels[]?' <<< "$update")
             gh "${args[@]}"
           done < <(jq -c '.[]' "$RUNNER_TEMP/release-note-labels.json")
-      # It runs on Node 24, which GitHub's runners provide.
+      # Publish merged Release Please PRs first. PR creation runs separately, after refreshing tags
+      # and checking only the commits after the release this step may have just published.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        id: release
+        id: publish
         if: ${{ steps.gate.outputs.should_release == 'true' }}
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-pull-request: true
       # The first release gets a hand-written introduction. Dispatch this workflow to retry the
       # edit if publishing succeeded but editing the notes did not; the composer is idempotent.
       - name: Add the first-release overview
-        if: ${{ (steps.release.outputs.release_created == 'true' && steps.release.outputs.tag_name == 'v0.3.0') || github.event_name == 'workflow_dispatch' }}
+        if: ${{ (steps.publish.outputs.release_created == 'true' && steps.publish.outputs.tag_name == 'v0.3.0') || github.event_name == 'workflow_dispatch' }}
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           EVENT_NAME: ${{ github.event_name }}
-          RELEASE_BODY: ${{ steps.release.outputs.body }}
+          RELEASE_BODY: ${{ steps.publish.outputs.body }}
         run: |
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             release_notes="$(gh release view v0.3.0 --json body --jq .body)"
@@ -112,3 +114,28 @@ jobs:
 
           RELEASE_NOTES="$release_notes" node .github/scripts/compose-release-notes.mjs > "$RUNNER_TEMP/release-notes.md"
           gh release edit v0.3.0 --notes-file "$RUNNER_TEMP/release-notes.md"
+      - name: Refresh tags after release publication
+        if: ${{ github.event_name == 'push' }}
+        run: git fetch --tags origin
+      - name: Check whether post-release history can open a pull request
+        id: pull-request-gate
+        if: ${{ github.event_name == 'push' }}
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release PR gating." >&2
+            exit 1
+          fi
+          should_release="$(git log --format=%s "$base_tag..HEAD" | node .github/scripts/should-run-release-please.mjs)"
+          printf 'should_release=%s\n' "$should_release" >> "$GITHUB_OUTPUT"
+      # Opening the next release PR is separate from publishing a merged one. In particular, any
+      # housekeeping commits after a newly published tag cannot become a new release PR.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release-pr
+        if: ${{ steps.pull-request-gate.outputs.should_release == 'true' }}
+        with:
+          token: ${{ steps.app.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true

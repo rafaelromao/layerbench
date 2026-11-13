@@ -147,7 +147,7 @@ describe('the first public release notes', () => {
     }
   });
 
-  it('recovers a release-worthy merge when a later housekeeping push replaces its queued run', () => {
+  it('publishes a merged release but ignores later housekeeping when preparing the next PR', () => {
     expect(
       shouldRunReleasePlease([
         'feat(web): add a capability',
@@ -155,13 +155,13 @@ describe('the first public release notes', () => {
         'docs(guide): explain a capability',
       ]),
     ).toBe('true');
+    expect(shouldRunReleasePlease(['docs(guide): explain a capability'])).toBe('false');
     expect(
       shouldRunReleasePlease([
         'docs(guide): explain a capability',
-        'ci(ci): update a workflow',
-        'chore(deps): update tooling',
+        'feat(web): add a later capability',
       ]),
-    ).toBe('false');
+    ).toBe('true');
   });
 
   it('runs Release Please for a release-worthy title or its release PR', () => {
@@ -187,9 +187,10 @@ describe('the first public release notes', () => {
   });
 
   it('updates only v0.3.0 releases and can recover through manual dispatch', () => {
-    expect(WORKFLOW).toContain('id: release');
-    expect(WORKFLOW).toContain("steps.release.outputs.release_created == 'true'");
-    expect(WORKFLOW).toContain("steps.release.outputs.tag_name == 'v0.3.0'");
+    expect(WORKFLOW).toContain('id: publish');
+    expect(WORKFLOW).toContain('id: release-pr');
+    expect(WORKFLOW).toContain("steps.publish.outputs.release_created == 'true'");
+    expect(WORKFLOW).toContain("steps.publish.outputs.tag_name == 'v0.3.0'");
     expect(WORKFLOW).toContain("github.event_name == 'workflow_dispatch'");
     expect(WORKFLOW).toContain('should-run-release-please.mjs');
     expect(WORKFLOW).toContain('release-note-labels.mjs');
@@ -203,15 +204,38 @@ describe('the first public release notes', () => {
     expect(WORKFLOW).toContain(`group: release-please-${expression('github.event_name')}`);
     expect(WORKFLOW).toContain(`if: ${expression("github.event_name == 'push'")}`);
     expect(WORKFLOW).toContain(`if: ${expression("steps.gate.outputs.should_release == 'true'")}`);
-    const releaseStepStart = WORKFLOW.lastIndexOf('      - uses:', WORKFLOW.indexOf('id: release'));
-    const releaseStepEnd = WORKFLOW.indexOf('\n        with:', releaseStepStart);
-    const releaseStep = WORKFLOW.slice(releaseStepStart, releaseStepEnd);
-    expect(releaseStep).toContain(
+    const publishStepStart = WORKFLOW.lastIndexOf('      - uses:', WORKFLOW.indexOf('id: publish'));
+    const publishStepEnd = WORKFLOW.indexOf('\n      - ', publishStepStart);
+    const publishStep = WORKFLOW.slice(publishStepStart, publishStepEnd);
+    expect(publishStep).toContain(
       `if: ${expression("steps.gate.outputs.should_release == 'true'")}`,
     );
-    expect(releaseStep).not.toContain('workflow_dispatch');
+    expect(publishStep).toContain('skip-github-pull-request: true');
+    expect(publishStep).not.toContain('workflow_dispatch');
+    const releasePrStepStart = WORKFLOW.lastIndexOf(
+      '      - uses:',
+      WORKFLOW.indexOf('id: release-pr'),
+    );
+    const nextStepStart = WORKFLOW.indexOf('\n      - ', releasePrStepStart);
+    const releasePrStepEnd = nextStepStart < 0 ? WORKFLOW.length : nextStepStart;
+    const releasePrStep = WORKFLOW.slice(releasePrStepStart, releasePrStepEnd);
+    expect(releasePrStep).toContain(
+      `if: ${expression("steps.pull-request-gate.outputs.should_release == 'true'")}`,
+    );
+    expect(releasePrStep).toContain('skip-github-release: true');
+    expect(releasePrStep).not.toContain('workflow_dispatch');
+    const postReleaseGateStart = WORKFLOW.indexOf('id: pull-request-gate');
+    const postReleaseGateEnd = WORKFLOW.indexOf('      - uses:', postReleaseGateStart);
+    const postReleaseGate = WORKFLOW.slice(postReleaseGateStart, postReleaseGateEnd);
+    expect(postReleaseGate).toContain(`if: ${expression("github.event_name == 'push'")}`);
+    expect(postReleaseGate).toContain('git log --format=%s "$base_tag..HEAD"');
+    expect(WORKFLOW.indexOf('id: publish')).toBeLessThan(
+      WORKFLOW.indexOf('git fetch --tags origin'),
+    );
+    expect(WORKFLOW.indexOf('git fetch --tags origin')).toBeLessThan(postReleaseGateStart);
+    expect(postReleaseGateStart).toBeLessThan(WORKFLOW.indexOf('id: release-pr'));
     const labelStepStart = WORKFLOW.indexOf('- name: Label merged pull requests');
-    const labelStepEnd = WORKFLOW.indexOf('# It runs on Node 24', labelStepStart);
+    const labelStepEnd = WORKFLOW.indexOf('id: publish', labelStepStart);
     const labelStep = WORKFLOW.slice(labelStepStart, labelStepEnd);
     expect(labelStep).toContain(`if: ${expression("steps.gate.outputs.should_release == 'true'")}`);
     expect(labelStep).not.toContain('workflow_dispatch');
@@ -222,7 +246,7 @@ describe('the first public release notes', () => {
       WORKFLOW.indexOf('id: release'),
     );
     expect(WORKFLOW).toContain(`EVENT_NAME: ${expression('github.event_name')}`);
-    expect(WORKFLOW).toContain(`RELEASE_BODY: ${expression('steps.release.outputs.body')}`);
+    expect(WORKFLOW).toContain(`RELEASE_BODY: ${expression('steps.publish.outputs.body')}`);
     expect(WORKFLOW).toContain(`GH_TOKEN: ${expression('steps.app.outputs.token')}`);
     expect(WORKFLOW).toMatch(
       /if \[ "\$EVENT_NAME" = "workflow_dispatch" \]; then\s+release_notes="\$\(gh release view v0\.3\.0 --json body --jq \.body\)"\s+else\s+release_notes="\$RELEASE_BODY"\s+fi/,
