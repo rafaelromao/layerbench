@@ -194,3 +194,38 @@ test.describe('on a phone', () => {
     await page.screenshot({ path: file('phone'), animations: 'disabled' });
   });
 });
+
+/**
+ * The image a link to the repository, or to the landing page, is shown with: the landing page's
+ * first screen, its words and the app's own screenshots under them, at the 1280×640 GitHub asks for
+ * (`socialPreview` in `.github/repository.json`). The lede, the buttons and the line under them make
+ * way for the screenshots, which a card that small would otherwise cut off.
+ */
+test('social preview: the landing page, as a card', async ({ browser }) => {
+  test.skip(test.info().project.name !== 'desk-dark', 'one image, in the dark theme');
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 640 },
+    deviceScaleFactor: 1,
+    colorScheme: 'dark',
+    reducedMotion: 'reduce',
+    // The page's policy allows no inline style, and the card needs one.
+    bypassCSP: true,
+  });
+  const page = await context.newPage();
+  await page.goto(`${test.info().project.use.baseURL}/about/`);
+  await page.addStyleTag({
+    content: `
+      .site-header nav, .site-header .button, .hero .lede, .hero .actions, .hero .proof {
+        display: none !important;
+      }
+      .hero { padding-top: 2rem !important; }
+    `,
+  });
+  await expect(page.locator('.hero-shot img').first()).toBeVisible();
+  // The hero's own images only: the page loads the rest lazily, and they are out of the card.
+  await page
+    .locator('.hero-shot img')
+    .evaluateAll((imgs) => Promise.all(imgs.map((img) => (img as HTMLImageElement).decode())));
+  await page.screenshot({ path: `${OUT}social-preview.png`, animations: 'disabled' });
+  await context.close();
+});
