@@ -1,7 +1,14 @@
 import { humanBand, type RuleItem, type RuleResult } from '@layerbench/core';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { type HelpTopic, helpHref } from '../guide/help.js';
-import { formatItem, formatValue, qualityBadge, qualityBorder, shortLabel } from './format.js';
+import {
+  formatItem,
+  formatValue,
+  metricCode,
+  qualityBadge,
+  qualityBorder,
+  shortLabel,
+} from './format.js';
 import { RuleSources } from './RuleSources.js';
 
 /**
@@ -278,6 +285,7 @@ function MetricBody({
   const breakdown = Object.entries(result.breakdown).slice(0, large ? undefined : 12);
   const maxItem = Math.max(0, ...result.items.map((i) => i.percent ?? i.count ?? 0));
   const text = large ? 'text-sm' : 'text-xs';
+  const code = metricCode(result.id, result.label);
 
   return (
     <>
@@ -286,6 +294,12 @@ function MetricBody({
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h3 id={titleId} className={`font-semibold ${large ? 'text-lg' : 'text-sm'}`}>
+            {/* The code apart from the name, which stays the heading's own text. */}
+            {code && (
+              <>
+                <span>{code} -</span>{' '}
+              </>
+            )}
             {result.label}
           </h3>
           {result.note && <p className={`${text} opacity-60`}>{result.note}</p>}

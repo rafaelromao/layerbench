@@ -27,6 +27,28 @@ const result: RuleResult = {
   normalized: null,
 };
 
+describe('a metric card’s name', () => {
+  it('has its code before it, on the card and enlarged', async () => {
+    render(<MetricCard result={result} />);
+    expect(screen.getByRole('heading', { name: 'SFB - Same finger bigrams' })).toBeInTheDocument();
+    // The name is still its own text, apart from the code.
+    expect(screen.getByText('Same finger bigrams')).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Enlarge Same finger bigrams' }));
+    expect(
+      within(screen.getByRole('dialog')).getByRole('heading', {
+        name: 'SFB - Same finger bigrams',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('is alone for a metric with no code', () => {
+    render(<MetricCard result={{ ...result, id: 'effort', label: 'Effort' }} />);
+    expect(screen.getByRole('heading', { name: 'Effort' })).toBeInTheDocument();
+  });
+});
+
 describe('a metric card’s items', () => {
   it('names the keys of an item in its tooltip, which its label does not', () => {
     render(<MetricCard result={result} describeItem={() => KEYS} />);
