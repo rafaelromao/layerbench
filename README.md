@@ -473,3 +473,7 @@ those links to name it.
 The code is under the [MIT licence](LICENSE). The corpus texts, in `packages/corpora/raw` and in
 the samples built from them in `apps/web/public/corpora`, keep their own licences, recorded with
 their sources in `packages/corpora/raw/sources.json`.
+
+<a href="https://github.com/rafaelromao/sandman">
+  <img src="https://raw.githubusercontent.com/rafaelromao/sandman/main/assets/badge-built-with-sandman.svg" alt="Built with Sandman" width="154" />
+</a>
