@@ -234,7 +234,8 @@ export function Workbench({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new edit can ask for an estimate; a report landing later must not
   useEffect(() => {
     const last = state.lastEdit;
-    if (last?.status !== 'landed' || last.edit.kind !== 'swap') return;
+    // Re-scoring exchanges two keys of one layer: a swap across layers waits for the analysis.
+    if (last?.status !== 'landed' || last.edit.kind !== 'swap' || last.edit.toLayer) return;
     if (!landed || landed.layout !== last.before || landed.settings !== ready) return;
     const swap = last.edit;
     const layerIdx = state.compiled.layerIndex.get(swap.layer);
@@ -694,17 +695,34 @@ export function Workbench({
     state.combo === null
       ? null
       : (boardCombos.find((c) => placeOf(c.index) === state.combo)?.index ?? null);
+  // A key armed waits for its partner on any layer, but is outlined only on its own: on another,
+  // its place is another key. Away from it, the hint says which layer it is on.
+  const armedLayer =
+    state.swapFrom === null
+      ? null
+      : (state.compiled.layers.find((l) => l.id === state.swapLayer) ?? null);
+  const armedHere = armedLayer !== null && armedLayer.idx === boardLayer;
+  const armedAway = armedLayer !== null && !armedHere ? ` on ${armedLayer.name}` : '';
   const highlighted = useMemo(() => {
     if (playing) return frame?.held ?? [];
     const ids = [
-      ...(state.swapFrom ? [state.swapFrom] : []),
+      ...(state.swapFrom && armedHere ? [state.swapFrom] : []),
       ...(state.comboPick ?? openCombo?.keys ?? []),
     ];
     const edits = ids
       .map((id) => state.compiled.keyIndex.get(id))
       .filter((p): p is number => p !== undefined);
     return [...edits, ...outline];
-  }, [playing, frame, state.swapFrom, state.comboPick, openCombo, state.compiled, outline]);
+  }, [
+    playing,
+    frame,
+    state.swapFrom,
+    armedHere,
+    state.comboPick,
+    openCombo,
+    state.compiled,
+    outline,
+  ]);
 
   const highlightItem = (ruleId: string, index: number) => {
     const rule = shown?.results.find((r) => r.id === ruleId);
@@ -1095,7 +1113,7 @@ export function Workbench({
           </div>
           <p aria-live="polite" className="sr-only">
             {state.swapFrom
-              ? `${state.swapFrom} armed for a swap`
+              ? `${state.swapFrom}${armedAway} armed ${state.swapMode === 'copy' ? 'to copy' : 'for a swap'}`
               : state.placing !== null
                 ? `${spoken(state.placing)} armed: tap a key to put it on`
                 : message}
@@ -1270,7 +1288,8 @@ export function Workbench({
 
                         {state.swapFrom && (
                           <p className="text-xs">
-                            <span className="font-mono">{state.swapFrom}</span> is armed —{' '}
+                            <span className="font-mono">{state.swapFrom}</span>
+                            {armedAway} is armed —{' '}
                             {state.swapMode === 'copy'
                               ? 'tap the key to copy it onto'
                               : 'tap the key to swap it with'}

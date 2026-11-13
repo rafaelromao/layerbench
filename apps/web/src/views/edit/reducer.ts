@@ -40,6 +40,11 @@ export interface EditState {
   also: string[];
   /** Key the user armed for a click-to-swap, if any. */
   swapFrom: string | null;
+  /**
+   * The layer, by id, the armed key is on: its partner may be picked on another, the board turned
+   * to it in between. Read only while a key is armed.
+   */
+  swapLayer: string;
   /** What the armed key does when its partner is picked. */
   swapMode: 'swap' | 'copy';
   /** A character tapped in the missing-keys tray, waiting for its key; null when none is. */
@@ -137,6 +142,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     selected: null,
     also: [],
     swapFrom: null,
+    swapLayer: layout.layers[0].id,
     swapMode: 'swap',
     placing: null,
     strays: [],
@@ -239,12 +245,24 @@ function make(state: EditState, edit: Edit, say?: string): EditState {
   return land(state, applyEdit(state.layout, edit), say);
 }
 
-/** The edit a drop makes: the key dropped on swaps places with the one dragged, or is copied over. */
+/**
+ * The edit a drop makes: the key dropped on swaps places with the one dragged, or is copied over.
+ * A key dragged is on the layer shown; one armed is on `fromLayer`, and its partner, tapped on the
+ * layer shown, may be on another.
+ */
 function dropped(
   state: EditState,
   { from, to, mode }: { from: string; to: string; mode: 'swap' | 'copy' },
+  fromLayer = shownLayer(state),
 ): Edit {
-  return { kind: mode, layer: shownLayer(state), from, to };
+  const toLayer = shownLayer(state);
+  return {
+    kind: mode,
+    layer: fromLayer,
+    from,
+    to,
+    ...(toLayer === fromLayer ? {} : { toLayer }),
+  };
 }
 
 /**
@@ -282,11 +300,11 @@ function reduce(state: EditState, action: EditAction): EditState {
       return make(state, action.edit, action.say);
 
     case 'selectLayer':
-      // The selection stays: the same key on another layer is usually the next thing to look at.
+      // The selection stays: the same key on another layer is usually the next thing to look at. A
+      // key armed stays armed: its partner may be on the layer turned to.
       return {
         ...state,
         layer: action.layer,
-        swapFrom: null,
         focusRequest: null,
         error: null,
       };
@@ -312,17 +330,21 @@ function reduce(state: EditState, action: EditAction): EditState {
           error: null,
         };
       }
-      if (state.swapFrom === action.keyId) return { ...state, swapFrom: null };
+      // The armed key tapped again puts it down; the same key on another layer is its partner.
+      if (state.swapFrom === action.keyId && state.swapLayer === shownLayer(state)) {
+        return { ...state, swapFrom: null };
+      }
       // Arming a key and then tapping its partner is what a drag is, for anyone not holding a
-      // mouse — so it has to reach copying too, not only swapping.
+      // mouse — so it has to reach copying too, not only swapping, and other layers, which a drag
+      // cannot.
       const armed = { ...state, swapFrom: null };
       return make(
         armed,
-        dropped(armed, {
-          from: state.swapFrom,
-          to: action.keyId,
-          mode: state.swapMode,
-        }),
+        dropped(
+          armed,
+          { from: state.swapFrom, to: action.keyId, mode: state.swapMode },
+          state.swapLayer,
+        ),
       );
     }
 
@@ -346,7 +368,13 @@ function reduce(state: EditState, action: EditAction): EditState {
 
     case 'startSwap':
       return state.selected
-        ? { ...state, swapFrom: state.selected, swapMode: action.mode ?? 'swap', placing: null }
+        ? {
+            ...state,
+            swapFrom: state.selected,
+            swapLayer: shownLayer(state),
+            swapMode: action.mode ?? 'swap',
+            placing: null,
+          }
         : state;
 
     case 'cancelSwap':

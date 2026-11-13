@@ -102,6 +102,8 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
       say: `${keyId} cleared`,
     });
   const otherLayers = compiled.layers.filter((l) => l.idx !== layer);
+  // The selection follows the board to other layers; the move armed is this key's on its own only.
+  const armed = state.swapFrom === keyId && state.swapLayer === activeLayer.id;
 
   return (
     <fieldset
@@ -144,14 +146,14 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
         <div className="lb-key-actions">
           <button
             type="button"
-            className={`btn btn-xs ${state.swapFrom === keyId && state.swapMode === 'swap' ? 'btn-primary' : ''}`}
+            className={`btn btn-xs ${armed && state.swapMode === 'swap' ? 'btn-primary' : ''}`}
             onClick={() => send({ type: 'startSwap', mode: 'swap' })}
           >
             Swap with…
           </button>
           <button
             type="button"
-            className={`btn btn-xs ${state.swapFrom === keyId && state.swapMode === 'copy' ? 'btn-primary' : ''}`}
+            className={`btn btn-xs ${armed && state.swapMode === 'copy' ? 'btn-primary' : ''}`}
             onClick={() => send({ type: 'startSwap', mode: 'copy' })}
           >
             Copy to…

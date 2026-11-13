@@ -200,6 +200,61 @@ describe('where the board goes after an edit', () => {
   });
 });
 
+describe('a key armed, and its partner on another layer', () => {
+  /** LHM armed on the base for a copy or a swap, and the board turned to Nav. */
+  const armedThenNav = (mode: 'swap' | 'copy') =>
+    reducer(reducer(pick(withNav(), 'LHM'), { type: 'startSwap', mode }), {
+      type: 'selectLayer',
+      layer: NAV,
+    });
+
+  it('stays armed while the board turns to another layer', () => {
+    const turned = armedThenNav('copy');
+    expect(turned).toMatchObject({ layer: NAV, swapFrom: 'LHM', swapLayer: 'base' });
+  });
+
+  it('copies onto the key tapped there, staying there with it selected', () => {
+    const turned = armedThenNav('copy');
+    const copied = reducer(turned, { type: 'keyClick', keyId: 'LHI' });
+    expect(at(copied, NAV, 'LHI')).toEqual(at(turned, 0, 'LHM'));
+    expect(copied.layout.layers[0]).toBe(turned.layout.layers[0]);
+    expect(copied).toMatchObject({ layer: NAV, selected: 'LHI', swapFrom: null });
+    expect(copied.lastEdit).toMatchObject({
+      status: 'landed',
+      edit: { kind: 'copy', layer: 'base', from: 'LHM', to: 'LHI', toLayer: 'nav' },
+    });
+    // One Undo takes it back, armed no more.
+    const undone = reducer(copied, { type: 'undo' });
+    expect(undone.layout).toBe(turned.layout);
+    expect(undone.swapFrom).toBeNull();
+  });
+
+  it('swaps with the key tapped there, each taking the other one’s layer', () => {
+    const turned = armedThenNav('swap');
+    const swapped = reducer(turned, { type: 'keyClick', keyId: 'LHI' });
+    expect(at(swapped, NAV, 'LHI')).toEqual(at(turned, 0, 'LHM'));
+    // Nav's LHI was Transparent, and goes to the base as such.
+    expect(at(swapped, 0, 'LHM')).toEqual({ kind: 'trans' });
+    expect(swapped.lastEdit).toMatchObject({ edit: { kind: 'swap', toLayer: 'nav' } });
+  });
+
+  it('takes the same key on another layer as its partner, and puts it down on its own', () => {
+    const copied = reducer(armedThenNav('copy'), { type: 'keyClick', keyId: 'LHM' });
+    expect(at(copied, NAV, 'LHM')).toEqual(at(copied, 0, 'LHM'));
+    const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap', mode: 'copy' });
+    const down = reducer(armed, { type: 'keyClick', keyId: 'LHM' });
+    expect(down.swapFrom).toBeNull();
+    expect(down.layout).toBe(armed.layout);
+  });
+
+  it('makes a drag a move on the layer shown', () => {
+    const onNav = reducer(withNav(), { type: 'selectLayer', layer: NAV });
+    const dropped = reducer(onNav, { type: 'dropKey', from: 'LHM', to: 'LHI', mode: 'copy' });
+    expect(dropped.lastEdit).toMatchObject({ edit: { kind: 'copy', layer: 'nav' } });
+    expect(dropped.lastEdit?.edit).not.toHaveProperty('toLayer');
+  });
+});
+
 describe('the tabs', () => {
   it('drop a request for the key editor to take focus, which it is not there to answer', () => {
     const start = initialUndoState(qwerty, compileLayout(qwerty));
