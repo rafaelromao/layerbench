@@ -12,7 +12,7 @@ import {
 import { gistIds, gitHubAccess, retrySignIn, useGitHubSession } from '../auth/github-session.js';
 import { toast } from '../state/toasts.js';
 import { AutoSync } from './auto-sync.js';
-import { CompositeStorage, type CopiedUp } from './composite.js';
+import { CompositeStorage, type CopiedUp, type Removed } from './composite.js';
 import { GistAdapter } from './gist.js';
 import { IndexedDbAdapter } from './indexeddb.js';
 
@@ -35,6 +35,16 @@ export function StorageProvider({
   const login = useGitHubSession((s) => s.login);
   const problem = useGitHubSession((s) => s.problem);
   const settled = !!adapter || status !== 'unknown';
+  const [listings] = useState(() => new Map<Collection, Listing>());
+  // What another browser deleted, gone from here, goes from the lists that show it.
+  const relist = useCallback(
+    (removed: Removed[]) => {
+      for (const collection of new Set(removed.map((r) => r.collection))) {
+        void listings.get(collection)?.refresh();
+      }
+    },
+    [listings],
+  );
 
   // A sign-in server that did not answer is asked again when the browser is back online, or the
   // tab is shown again: a phone out of coverage comes back to it, and must not stay signed out.
@@ -68,8 +78,14 @@ export function StorageProvider({
     <StorageContext.Provider value={value}>
       <SettledContext.Provider value={settled}>
         {/* Tests that pass their own adapter run the sending themselves, or not at all. */}
-        {!adapter && <AutoSync storage={value} login={status === 'signed-in' ? login : null} />}
-        <ListingsProvider>{children}</ListingsProvider>
+        {!adapter && (
+          <AutoSync
+            storage={value}
+            login={status === 'signed-in' ? login : null}
+            onRemoved={relist}
+          />
+        )}
+        <ListingsContext.Provider value={listings}>{children}</ListingsContext.Provider>
       </SettledContext.Provider>
     </StorageContext.Provider>
   );
@@ -241,13 +257,8 @@ class Listing {
   }
 }
 
+/** Shares one listing of each collection between everything below the storage. */
 const ListingsContext = createContext<Map<Collection, Listing> | null>(null);
-
-/** Shares one listing of each collection between everything below it. */
-function ListingsProvider({ children }: { children: ReactNode }) {
-  const [listings] = useState(() => new Map<Collection, Listing>());
-  return <ListingsContext.Provider value={listings}>{children}</ListingsContext.Provider>;
-}
 
 /**
  * The index of one collection, refreshed on demand after a save or a delete. It opens with what the

@@ -43,7 +43,10 @@ function show(storage: CompositeStorage) {
 }
 
 /** A choice, once the dialog lets it be made: it ignores input for a moment after it opens. */
-async function choose(user: ReturnType<typeof userEvent.setup>, name: 'Keep mine' | 'Keep theirs') {
+async function choose(
+  user: ReturnType<typeof userEvent.setup>,
+  name: 'Keep mine' | 'Keep theirs' | 'Delete it',
+) {
   const button = await screen.findByRole('button', { name });
   await waitFor(() => expect(button).toBeEnabled());
   await user.click(button);
@@ -315,7 +318,7 @@ describe('choosing between two versions', () => {
     expect(await description(remote, 'gust')).toBe('Gust on the laptop');
   });
 
-  it("keeps this browser's version, and says so, when the account's was deleted since", async () => {
+  it("keeps this browser's version, and asks whether to keep it, when the account's was deleted since", async () => {
     const user = userEvent.setup();
     const { storage, local, remote, marks } = await conflicted();
     const stop = startAutoSync(storage, marks);
@@ -327,12 +330,13 @@ describe('choosing between two versions', () => {
 
     await waitFor(() =>
       expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
-        "Gust was deleted from your GitHub account since, so this browser's version stays and is sent again.",
+        'Gust was deleted from your GitHub account since you were shown it, so nothing was replaced.',
       ),
     );
     expect(await description(local, 'gust')).toBe('Gust on the phone');
-    // Sent again, as it said.
-    await waitFor(async () => expect(await description(remote, 'gust')).toBe('Gust on the phone'));
+    // Not sent back unasked: asked about, as a layout the account deleted.
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
+    expect(await remote.get('layouts', 'gust')).toBeNull();
     stop();
   });
 
@@ -365,5 +369,84 @@ describe('choosing between two versions', () => {
     );
     act(() => review(true));
     expect(screen.queryByRole('dialog', { name: /Two versions/ })).toBeNull();
+  });
+});
+
+describe('choosing whether to keep a layout the account deleted', () => {
+  /** The phone's edit, made offline, of a layout the laptop then deleted from the account. */
+  async function deletedThere() {
+    const marks = memoryMarks();
+    const local = new MemoryStorage('local');
+    const remote = new MemoryStorage('github');
+    const storage = new CompositeStorage(local, remote, marks);
+    await storage.put('layouts', 'gust', { name: 'Gust' });
+    await new CompositeStorage(local, null, marks).put('layouts', 'gust', {
+      name: 'Gust',
+      description: 'Gust on the phone',
+    });
+    await remote.delete('layouts', 'gust');
+    noteResult(await storage.copyUp());
+    return { marks, local, remote, storage };
+  }
+
+  it('says it was deleted from the account, when, and offers to keep it or delete it', async () => {
+    const { storage } = await deletedThere();
+    show(storage);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Gust was deleted from your GitHub account',
+    });
+    expect(
+      within(dialog).getByText(
+        /was deleted from your GitHub account, and this browser still has it/,
+      ),
+    ).toBeVisible();
+    expect(within(dialog).getByText(/^Deleted /)).toBeVisible();
+    expect(within(dialog).queryByText('What differs')).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Keep mine' })).toBeVisible();
+    expect(within(dialog).getByRole('button', { name: 'Delete it' })).toBeVisible();
+  });
+
+  it('sends it back to the account with Keep mine', async () => {
+    const user = userEvent.setup();
+    const { storage, remote, marks } = await deletedThere();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
+    await choose(user, 'Keep mine');
+    await waitFor(async () => expect(await description(remote, 'gust')).toBe('Gust on the phone'));
+    expect(marks.has('layouts', 'gust')).toBe(false);
+    expect(useSync.getState().last?.conflicts).toEqual([]);
+  });
+
+  it('deletes it from this browser too with Delete it, and leaves the account as it is', async () => {
+    const user = userEvent.setup();
+    const { storage, local, remote, marks } = await deletedThere();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
+    await choose(user, 'Delete it');
+    await waitFor(() =>
+      expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+        'Deleted Gust from this browser',
+      ),
+    );
+    expect(await local.get('layouts', 'gust')).toBeNull();
+    expect(await remote.get('layouts', 'gust')).toBeNull();
+    expect(marks.has('layouts', 'gust')).toBe(false);
+    expect(marks.base('layouts', 'gust')).toBeNull();
+    expect(useSync.getState().last?.conflicts).toEqual([]);
+  });
+
+  it('deletes nothing when the account has it again since it was shown, and says so', async () => {
+    const user = userEvent.setup();
+    const { storage, local, remote } = await deletedThere();
+    show(storage);
+    await screen.findByRole('dialog', { name: 'Gust was deleted from your GitHub account' });
+    await remote.put('layouts', 'gust', { name: 'Gust', description: 'Gust made again' });
+    await choose(user, 'Delete it');
+    await waitFor(() =>
+      expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+        'Gust was saved again in your GitHub account, so nothing was replaced. Choose again.',
+      ),
+    );
+    expect(await description(local, 'gust')).toBe('Gust on the phone');
   });
 });

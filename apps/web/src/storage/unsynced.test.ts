@@ -78,6 +78,23 @@ describe('the documents saved here and not sent', () => {
     expect(marks.has('layouts', 'b')).toBe(true);
   });
 
+  it('keeps which documents were made here new, for the next visit, until forgotten', () => {
+    const store = memory();
+    const marks = new Unsynced(store.backing);
+    marks.setMade('layouts', 'lemon', true);
+    expect(new Unsynced(store.backing).made('layouts', 'lemon')).toBe(true);
+    expect(marks.made('rulesets', 'lemon')).toBe(false);
+    marks.setMade('layouts', 'lemon', false);
+    expect(marks.made('layouts', 'lemon')).toBe(false);
+    marks.setMade('layouts', 'lemon', true);
+    marks.forget('layouts', 'lemon');
+    expect(marks.made('layouts', 'lemon')).toBe(false);
+    // A list that is not one is none, and an old copy of the marks without it has none.
+    expect(
+      new Unsynced(memory('{"unsent":[],"base":{},"made":"x"}').backing).made('layouts', 'x'),
+    ).toBe(false);
+  });
+
   it('keeps who this browser last sent to', () => {
     const kept = memory();
     const marks = new Unsynced(kept.backing);

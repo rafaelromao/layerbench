@@ -1,6 +1,7 @@
 import {
   COLLECTIONS,
   type Collection,
+  type Deletion,
   type IndexEntry,
   indexSummary,
   type JsonObject,
@@ -15,8 +16,9 @@ import {
 import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /**
- * A document changed here since the gists last held it, and in the gists since: neither version is
- * written over the other until the user says which to keep.
+ * A document changed here since the gists last held it, and in the gists since, or deleted from them
+ * since: neither version is written over the other, nor this browser's deleted or sent back, until
+ * the user says which to keep.
  */
 export interface Conflict {
   collection: Collection;
@@ -25,8 +27,20 @@ export interface Conflict {
   name: string;
   /** This browser's version, and when it was saved. */
   mine: { doc: JsonObject; updatedAt: string };
-  /** The gists' version, when it was saved, and its version for writing over it. */
-  theirs: { name: string; doc: JsonObject; updatedAt: string; sha: string };
+  /**
+   * The gists' version, when it was saved, and its version for writing over it; null where the gists
+   * deleted the document since, as `deleted` says.
+   */
+  theirs: { name: string; doc: JsonObject; updatedAt: string; sha: string } | null;
+  /** Where the gists deleted it: when, as they recorded it. */
+  deleted?: { at: string };
+}
+
+/** A document deleted from this browser because it was deleted from the gists, by another browser. */
+export interface Removed {
+  collection: Collection;
+  id: string;
+  name: string;
 }
 
 /** A document that could not be sent, and why. */
@@ -41,7 +55,8 @@ export interface Failure {
  * What copying up did: the documents sent to the gists, those that are the same in both, the
  * documents that differ and are not known to be an edit of the version the gists hold, which are
  * left as they are for the user to settle, the layouts left here because the gists have another of
- * the same name, and the documents that could not be sent, each with why.
+ * the same name, the documents that could not be sent, each with why, and this browser's copies of
+ * documents deleted from the gists, which went from here too.
  */
 export interface CopiedUp {
   copied: number;
@@ -49,6 +64,7 @@ export interface CopiedUp {
   conflicts: Conflict[];
   taken: number;
   failed: Failure[];
+  removed: Removed[];
 }
 
 /** Copying up stopped partway; what it did before is in `result`, and what went up is in the gists. */
@@ -87,6 +103,15 @@ class Stopped extends Error {
     this.name = 'Stopped';
   }
 }
+
+const nothingDone = (): CopiedUp => ({
+  copied: 0,
+  current: 0,
+  conflicts: [],
+  taken: 0,
+  failed: [],
+  removed: [],
+});
 
 /** Whether two stored documents say the same, whichever order their keys came in. */
 function sameDocument(a: JsonObject, b: JsonObject): boolean {
@@ -333,16 +358,29 @@ export class CompositeStorage implements StorageAdapter {
     // save is then refused or fails, the version recorded before it is put back.
     const recorded = !waiting && typeof opts.basedOn === 'string';
     if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
-    const restoreBase = () => {
-      if (!recorded) return;
-      if (previousBase === null) this.marks.clearBase(collection, id);
-      else this.marks.setBase(collection, id, previousBase);
-    };
     // Edits waiting to be sent are the latest work, and a save of them is written over exactly the
     // version the editor read: a tab opened before another saved them is refused, not written over
     // the other's, and what is waiting is kept.
     // A browser that cannot be read is no copy to decide from: the save is not made blind.
     const before = waiting ? null : await this.local.get(collection, id);
+    // Recorded again once read: a delete followed meanwhile, in another tab, forgets what is on record
+    // of the document, which this save, not marked yet, is still an edit of.
+    if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
+    // Saved new: no copy here, and no edit of a version read (an edit of a layout says which, with
+    // `basedOn`; one of a rule set or a text is of the version this browser last read). It is a
+    // document of its own until it is sent, so a deletion the gists record of its id is not of it.
+    const madeNew =
+      !waiting &&
+      before === null &&
+      (collection === 'layouts' ? typeof opts.basedOn !== 'string' : previousBase === null);
+    const wasMade = this.marks.made(collection, id);
+    if (madeNew) this.marks.setMade(collection, id, true);
+    const restoreBase = () => {
+      if (madeNew && !wasMade) this.marks.setMade(collection, id, false);
+      if (!recorded) return;
+      if (previousBase === null) this.marks.clearBase(collection, id);
+      else this.marks.setBase(collection, id, previousBase);
+    };
     // Unsent edits whose mark was lost are the same: a copy that is neither the version recorded nor
     // the one the editor read has been edited here since, and is not written over by an editor that
     // did not see it.
@@ -440,6 +478,17 @@ export class CompositeStorage implements StorageAdapter {
     let seen: Awaited<ReturnType<StorageAdapter['get']>>;
     try {
       seen = await remote.get(collection, id);
+      // Deleted from the gists since, by another browser, and this not a document made here new: it
+      // is not put back unasked. It stays here, marked, and the sender asks whether to keep it.
+      if (
+        !seen &&
+        opts.expectedSha === undefined &&
+        !this.marks.made(collection, id) &&
+        (await this.deletionOf(collection, id))
+      ) {
+        this.marks.notify();
+        return saved;
+      }
     } catch {
       this.marks.notify();
       return saved;
@@ -540,7 +589,12 @@ export class CompositeStorage implements StorageAdapter {
         ) {
           throw new StorageConflictError();
         }
-        await this.remote.delete(collection, id, opts);
+        // Only the version looked at: a save from another browser between the look and the delete
+        // refuses it, rather than being deleted, and followed by that browser as if it were this one.
+        await this.remote.delete(collection, id, {
+          ...opts,
+          ...(seen && { expectedSha: seen.meta.sha }),
+        });
       }
       await this.local.delete(collection, id, opts);
       // Gone from this browser, there is nothing left of it to send.
@@ -618,7 +672,7 @@ export class CompositeStorage implements StorageAdapter {
    */
   copyOne(collection: Collection, id: string): Promise<CopiedUp | 'absent'> {
     return this.exclusive(async () => {
-      const done: CopiedUp = { copied: 0, current: 0, conflicts: [], taken: 0, failed: [] };
+      const done = nothingDone();
       if (!this.remote) return done;
       const entry = (await this.local.list(collection)).find((e) => e.id === id);
       if (!entry) return 'absent';
@@ -713,7 +767,9 @@ export class CompositeStorage implements StorageAdapter {
    * they last held it, or that they lack. A document edited here and in the gists since is a
    * conflict: it is left as it is in both and returned, for the user to settle with `keepMine` or
    * `keepTheirs`. One saved in the gists while copying is left as it is, as a conflict if it was
-   * edited here, and nothing is deleted or comes down. A document that cannot be sent is reported
+   * edited here, and nothing comes down. What the gists record as deleted, by another browser, is
+   * followed first (`follow`): a copy here not edited since goes, and one edited is asked about
+   * rather than sent back. A document that cannot be sent is reported
    * with why, and the rest go on; several in a row end it, as the gists are then out of reach,
    * keeping what went up. What it sends, or finds the gists hold already, is no longer marked as
    * unsent; a layout left for its name, a conflict, and one that could not be sent, are.
@@ -721,18 +777,14 @@ export class CompositeStorage implements StorageAdapter {
    * With `everything`, the documents never marked are weighed too, as those saved before edits
    * were marked have to be: each that differs is marked, and sent only if the gists hold the version
    * it was an edit of, never by when each was saved, and asked about otherwise. That is for the user
-   * to ask for, as a document the gists lack may be one another browser deleted.
+   * to ask for, as a document the gists lack, with no record of its deletion, may still be one
+   * another browser deleted. Deletions are not followed then: each document the gists record as
+   * deleted is asked about, kept or deleted here as the user chooses.
    */
   async copyUp(opts: { everything?: boolean; signal?: AbortSignal } = {}): Promise<CopiedUp> {
     const everything = opts.everything === true;
     const remote = this.remote;
-    const done: CopiedUp = {
-      copied: 0,
-      current: 0,
-      conflicts: [],
-      taken: 0,
-      failed: [],
-    };
+    const done = nothingDone();
     if (!remote) return done;
     const stopped = () => {
       // Given up on by whoever asked: it stops at the next document, keeping what went up.
@@ -743,6 +795,10 @@ export class CompositeStorage implements StorageAdapter {
         stopped();
         const here = await this.local.list(collection);
         await this.prune(collection, new Set(here.map((e) => e.id)));
+        // What another browser deleted goes from here first, rather than being sent back; but not
+        // when the user asks for everything to be sent: what the gists record as deleted is asked
+        // about then, as the user said to keep it.
+        if (!everything) await this.follow(collection, here, stopped, done.removed);
         let inARow = 0;
         for (const entry of here) {
           try {
@@ -762,6 +818,150 @@ export class CompositeStorage implements StorageAdapter {
       throw new CopyUpError(done, e);
     }
     return done;
+  }
+
+  /**
+   * Follow what was deleted from the gists, by another browser, in every collection: see `follow`. It
+   * sends nothing. What it cannot read is left for the next time, said nowhere: nothing is lost by it.
+   * Told to stop, it stops at the next document, and says what it deleted before.
+   */
+  async followDeletions(opts: { signal?: AbortSignal } = {}): Promise<Removed[]> {
+    const removed: Removed[] = [];
+    if (!this.remote) return removed;
+    const stopped = () => {
+      if (opts.signal?.aborted) throw new Stopped();
+    };
+    try {
+      for (const collection of COLLECTIONS) {
+        stopped();
+        const here = await this.local.list(collection).catch(() => null);
+        if (here) await this.follow(collection, here, stopped, removed);
+      }
+    } catch (e) {
+      if (!(e instanceof Stopped)) throw e;
+    }
+    return removed;
+  }
+
+  /**
+   * Delete from here what the gists record as deleted since, which is how a delete made in another
+   * browser reaches this one, a renamed layout's old id included: each copy here not edited since
+   * the gists last held it, or that is the very version deleted. One edited here since is left, and
+   * marked if it was not, to be asked about when it is sent: it is neither dropped nor sent back
+   * unasked. One with no version on record is not known to be the one deleted, and stays. Only a
+   * deletion the gists record is followed: a document they merely lack (deleted by hand, or by an
+   * older version of the app) is not deleted here. Each document deleted is added to `removed` as
+   * it goes, so one stopped partway still says what it did.
+   */
+  private async follow(
+    collection: Collection,
+    here: readonly IndexEntry[],
+    stopped: () => void,
+    removed: Removed[],
+  ): Promise<void> {
+    const remote = this.remote;
+    // A layout this browser does not hold has nothing to follow: one saved new under its id is sent
+    // all the same, as `put` marks it made here new, which a recorded deletion does not count against.
+    if (!remote?.deleted || (here.length === 0 && collection === 'layouts')) return;
+    let deletions: Deletion[];
+    try {
+      deletions = await remote.deleted(collection);
+    } catch {
+      // Not known now, so nothing is followed: the next attempt looks again.
+      return;
+    }
+    const byId = new Map(deletions.map((d) => [d.id, d]));
+    for (const entry of here) {
+      const deletion = byId.get(entry.id);
+      if (!deletion) continue;
+      try {
+        await this.exclusive(async () => {
+          stopped();
+          if (await this.followOne(collection, entry.id, deletion)) {
+            removed.push({ collection, id: entry.id, name: entry.name });
+          }
+        });
+      } catch (e) {
+        if (e instanceof Stopped) throw e;
+        // This one is looked at again next time; the others are not held up by it.
+      }
+    }
+    if (collection === 'layouts') return;
+    // A rule set or a text this browser only read, deleted since: what was recorded of it goes, so
+    // one made again under its name is a new one, as where this browser held a copy. Their saves
+    // record no version, so nothing an editor recorded is undone by it.
+    const held = new Set(here.map((e) => e.id));
+    for (const { id } of deletions) {
+      if (held.has(id) || this.marks.base(collection, id) === null) continue;
+      try {
+        await this.exclusive(async () => {
+          stopped();
+          if (this.marks.has(collection, id)) return;
+          if ((await this.local.get(collection, id)) || (await remote.get(collection, id))) return;
+          if (!this.marks.has(collection, id)) this.marks.clearBase(collection, id);
+        });
+      } catch (e) {
+        if (e instanceof Stopped) throw e;
+      }
+    }
+  }
+
+  /** One copy's turn in following a deletion: whether it was deleted here. */
+  private async followOne(
+    collection: Collection,
+    id: string,
+    deletion: Deletion,
+  ): Promise<boolean> {
+    const remote = this.remote as StorageAdapter;
+    // An edit waiting to be sent is the sender's to ask about; one made here new is not the one
+    // deleted, even where its mark was lost.
+    if (this.marks.has(collection, id) || this.marks.made(collection, id)) return false;
+    // Saved there again since, by a version of the app that leaves the record: not deleted.
+    if (await remote.get(collection, id)) return false;
+    const mine = await this.local.get(collection, id);
+    if (!mine) return false;
+    const base = this.marks.base(collection, id);
+    if (mine.meta.sha !== base && mine.meta.sha !== deletion.sha) {
+      // Edited here since the gists last held it, its mark lost: an edit, asked about when sent.
+      if (base !== null) {
+        this.marks.mark(collection, id);
+        this.marks.notify();
+      }
+      return false;
+    }
+    // Saved or marked meanwhile, by another tab: that is not the copy decided on.
+    if (this.marks.has(collection, id) || this.marks.made(collection, id)) return false;
+    try {
+      await this.local.delete(collection, id, { expectedSha: mine.meta.sha });
+    } catch (e) {
+      if (e instanceof StorageConflictError) return false;
+      throw e;
+    }
+    return this.forgetIfGone(collection, id, false);
+  }
+
+  /**
+   * Forget what is on record of a document just deleted here, unless a save from another tab came
+   * meanwhile: a write where there is no copy is never refused, so it may have landed just after the
+   * delete, and one that has not yet marks before it writes. Its record is then kept, so it is
+   * weighed as the edit it is. A document that was marked already, as a conflict is, is looked for
+   * alone. Whether the document is gone.
+   */
+  private async forgetIfGone(
+    collection: Collection,
+    id: string,
+    wasMarked: boolean,
+  ): Promise<boolean> {
+    const back = await this.local.get(collection, id).catch(() => null);
+    if (back || (!wasMarked && this.marks.has(collection, id))) return false;
+    this.marks.forget(collection, id);
+    return true;
+  }
+
+  /** The gists' record of a document's deletion, if they keep one and it is deleted. */
+  private async deletionOf(collection: Collection, id: string): Promise<Deletion | null> {
+    const deletions = await this.remote?.deleted?.(collection);
+    return deletions?.find((d) => d.id === id) ?? null;
   }
 
   /** Forget the marks of documents this browser no longer holds, having looked for each. */
@@ -820,6 +1020,17 @@ export class CompositeStorage implements StorageAdapter {
       await this.settled(collection, id, seen.meta.sha, stored.doc);
       done.current++;
       return;
+    }
+    if (!seen) {
+      // Deleted from the gists since, by another browser: a copy here that is not a document made
+      // here new is not sent back, nor deleted, unasked. Marked, it is asked about, whether this is
+      // an attempt by itself or a send the user asked for, until the user chooses.
+      const deletion = await this.deletionOf(collection, id);
+      if (deletion && !this.marks.made(collection, id)) {
+        this.marks.mark(collection, id);
+        this.leaveDeleted(collection, entry, stored.doc, deletion, done);
+        return;
+      }
     }
     if (seen && !this.marks.has(collection, id)) {
       const base = this.marks.base(collection, id);
@@ -886,6 +1097,8 @@ export class CompositeStorage implements StorageAdapter {
     sent: JsonObject,
   ): Promise<void> {
     this.marks.setBase(collection, id, sha);
+    // Sent, it is no longer a document of this browser's own, but the account's version of it.
+    this.marks.setMade(collection, id, false);
     const now = await this.local.get(collection, id).catch(() => null);
     if (!now || sameDocument(now.doc, sent)) this.marks.clear(collection, id);
   }
@@ -926,10 +1139,29 @@ export class CompositeStorage implements StorageAdapter {
     });
   }
 
+  /** Leave a document edited here that the gists deleted since, as a conflict, as `leave` does. */
+  private leaveDeleted(
+    collection: Collection,
+    entry: IndexEntry,
+    doc: JsonObject,
+    deletion: Deletion,
+    done: CopiedUp,
+  ): void {
+    done.conflicts.push({
+      collection,
+      id: entry.id,
+      name: entry.name,
+      mine: { doc, updatedAt: entry.updatedAt },
+      theirs: null,
+      deleted: { at: deletion.deletedAt },
+    });
+  }
+
   /**
    * Settle a conflict by keeping this browser's version: it is sent over the gists' version the
-   * user was shown. If that has changed again meanwhile nothing is written, and `changed` says so:
-   * the conflict is a new one, to be looked at again.
+   * user was shown, or, where they deleted it, only where they still have none. If that has changed
+   * again meanwhile nothing is written, and `changed` says so: the conflict is a new one, to be
+   * looked at again.
    */
   keepMine(conflict: Conflict): Promise<'kept' | 'changed' | 'edited'> {
     return this.exclusive(async () => {
@@ -944,7 +1176,7 @@ export class CompositeStorage implements StorageAdapter {
       if (!this.remote) throw new Error('GitHub is not set up here');
       try {
         const meta = await this.remote.put(collection, id, stored.doc, {
-          expectedSha: conflict.theirs.sha,
+          expectedSha: conflict.theirs?.sha ?? null,
           message: `Keep the browser's ${collection} ${conflict.name}`,
         });
         await this.settled(collection, id, meta.sha, stored.doc);
@@ -968,6 +1200,7 @@ export class CompositeStorage implements StorageAdapter {
       const { collection, id } = conflict;
       if (!this.remote) throw new Error('GitHub is not set up here');
       const seen = await this.remote.get(collection, id);
+      if (conflict.theirs === null) return this.deleteAsTheirs(conflict, seen !== null);
       if (!seen) return 'gone';
       if (seen.meta.sha !== conflict.theirs.sha) return 'changed';
       // An edit made here since the user was shown the two is not one they chose to throw away.
@@ -986,5 +1219,30 @@ export class CompositeStorage implements StorageAdapter {
       await this.settled(collection, id, seen.meta.sha, seen.doc);
       return 'kept';
     });
+  }
+
+  /**
+   * Keep the gists' side of a document they deleted: this browser's copy is deleted too, unless they
+   * hold it again (`changed`), or it was saved here since the user was shown it (`edited`).
+   */
+  private async deleteAsTheirs(
+    conflict: Conflict,
+    savedThereAgain: boolean,
+  ): Promise<'kept' | 'changed' | 'edited'> {
+    const { collection, id } = conflict;
+    if (savedThereAgain) return 'changed';
+    const wasMarked = this.marks.has(collection, id);
+    const mine = await this.local.get(collection, id);
+    if (mine) {
+      if (!sameDocument(mine.doc, conflict.mine.doc)) return 'edited';
+      try {
+        // Only the copy the user was shown, even if one is saved between the look and the delete.
+        await this.local.delete(collection, id, { expectedSha: mine.meta.sha });
+      } catch (e) {
+        if (e instanceof StorageConflictError) return 'edited';
+        throw e;
+      }
+    }
+    return (await this.forgetIfGone(collection, id, wasMarked)) ? 'kept' : 'edited';
   }
 }

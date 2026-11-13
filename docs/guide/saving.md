@@ -179,8 +179,8 @@ carrying on as if nothing had changed.
 
 Only what is marked goes up by itself. A document this browser holds that was never marked is not
 sent: a layout you deleted on another browser is not put back in your account by one that still has
-it. The copy this browser still holds stays in this browser, and saving it there creates it in your
-account again.
+it. What happens to the copy this browser still holds is under
+[Deleted on another browser](#deleted-on-another-browser).
 
 Opening a layout, rule set or text from your account, when this browser holds a copy of it, brings
 that copy up to the version you opened, so what you edit offline afterwards is an edit of it, but
@@ -196,14 +196,18 @@ browser last held.
 When you sign in, and at most every twelve hours for each account, this browser's documents are also
 compared with your account's by their **contents**, never by when each was saved: the same in both
 is recorded as such; one this browser holds an unedited older copy of is brought up to your
-account's; any other that differs is marked, and sent or asked about like the rest. A document your
-account lacks is not sent by itself, since another browser may have deleted it, but is listed: the
+account's; any other that differs is marked, and sent or asked about like the rest. What another
+browser deleted is followed first (see [Deleted on another browser](#deleted-on-another-browser)),
+when the comparison is made by itself and when you run it again. A document your account lacks is
+not sent by itself, since it may have been deleted all the same, but is listed: the
 status, above the editor and in **Storage**, names each one, with its kind, and says if a GitHub
 account held it before (a recorded version is what tells it; on a browser that has been signed in to
 more than one account it may have been another). Each row has **Send**, which sends that one and no
-other, and **Delete**, which asks first, in the row, and then deletes it from this browser alone:
+other (one your account records as deleted is asked about instead, and neither sent nor deleted until
+you choose, as below), and **Delete**, which asks first, in the row, and then deletes it from this browser alone:
 nothing is asked of your account, and one it holds under the same id stays there. A document saved
-again since, or deleted elsewhere in the app, comes off the list. **Send them** sends all of them.
+again since, or deleted elsewhere in the app, comes off the list. **Send them** sends all of them, in
+the same way.
 **Storage** does not show a ✓ until the list is empty. If the comparison cannot finish, it says so,
 with a button to run it again.
 
@@ -243,7 +247,8 @@ ignores the two choices for about half a second after it opens by itself, so a t
 on the screen does not land on one.
 
 **Decide later**, or closing the dialog any way, leaves both as they are. The status on **Storage**
-and under the layout's name says *changed in this browser and in your GitHub account*, with a
+and under the layout's name says *changed in this browser and in your GitHub account* (or, for one
+deleted there, *deleted from your GitHub account and … still in this browser*), with a
 **Choose** button, for as long as it is so; the dialog does not open again by itself until the next
 visit.
 
@@ -260,9 +265,61 @@ save to overwrite the other one.
 **Deleting** a document while signed in is checked against your account first: if another browser saved
 it since this one last held it, nothing is deleted, and with no record of which version this one held, a copy that differs
 from your account's is not deleted either; open it first. If your account cannot be reached, nothing is
-deleted, edits not sent yet included. A document you edited here that was deleted from your account
-since is not a conflict: your edit is sent, and the document is back. If you chose **Keep theirs** for one that has since been deleted
-there, nothing is thrown away: your version stays and is sent.
+deleted, edits not sent yet included. Your account records the delete, so your other browsers delete
+their copies too: see [Deleted on another browser](#deleted-on-another-browser). If you chose **Keep
+theirs** for one that has since been deleted there, nothing is thrown away: your version stays, and
+you are asked whether to keep it, as below, where your account recorded the delete; where it did
+not, your version is sent again.
+
+### Deleted on another browser
+
+A document deleted while signed in, from **Library**'s **Delete** or by renaming a layout (which
+saves it under its new name and deletes the old one), is deleted from your account, and your account
+records which document it was, and its version. Each of your other browsers follows that record the
+next time it syncs: when the page is opened or reloaded, when you come back to its tab, and when it
+comes back online, whether or not anything waits to be sent, and before each attempt to send; not
+while what waits is held back for another account, as above. The browser that deleted it follows
+the record too, so a delete cut short there, gone from your account and not yet from it, is finished
+on its next sync, or asked about if the document had edits not sent yet.
+
+- A copy this browser holds that was not changed here since your account last held it, or that is the
+  very version deleted, and that is not waiting to be sent, is deleted from this browser too. A
+  message names what went, and the lists show it gone. A layout renamed on another browser shows here
+  under its new name only.
+- A copy waiting to be sent, or changed here since your account last held it, is neither deleted nor
+  put back in your account. It is asked about, in the same dialog as
+  [When both have changed](#when-both-have-changed), titled *… was deleted from your GitHub account*: **Keep mine**
+  sends this browser's version back to your account; **Delete it** deletes it from this browser too.
+  Nothing is done until you choose, however many times this browser syncs meanwhile. If your account
+  holds the document again by then, saved from
+  another browser, nothing is deleted and you choose again; if this browser's copy was changed after
+  the dialog showed it, nothing is written and you choose again.
+- A save, in **Analyze** or elsewhere, of a document deleted from your account since this browser
+  last held it stays in this browser and is asked about in the same way, rather than putting it back,
+  in this browser's own editors too, where the delete was made here while one was open. A layout's
+  editor says which version it opened, so this holds for as long as it is open; a rule set or a text
+  saved after this browser has followed its delete is taken for a new one, and sent.
+- A copy with no version on record (saved before versions were kept), other than the very version
+  deleted, is not taken for the one deleted, nor deleted: the status lists it as missing from your
+  account, as above, and sending it from there asks about it as below.
+- A layout made here new under the name of one deleted, where this browser holds no copy of it, by
+  **New layout**, **Import** (even of the very file deleted), **Save a copy** or renaming another to
+  it, is a layout of its own and is sent like any other, signed in or out, whether or not this browser
+  had read the deleted one. This browser keeps which documents it made new until they are sent.
+- What you ask to send yourself, with **Send** or **Send them** in the status or with **Copy this
+  browser's documents up**, is not followed: a document your account records as deleted is asked
+  about, in the same dialog, whichever version this browser has, unless it was made here new.
+
+Only a delete your account records is followed. A document your account lacks with no such record,
+because it was deleted by hand on GitHub or by an older version of LayerBench, or because this
+browser is signed in to another account, is not deleted here: the status lists it as missing from
+your account, as above. Your account keeps the latest 500 deletes of each kind of document; a browser
+not synced since older ones keeps its copies of those, listed the same way.
+
+On a browser signed in to more than one GitHub account, a document this browser holds unchanged from
+one account is deleted when the account signed in records deleting one with the same name (or a name
+that differs only in capitals, spaces or punctuation, which LayerBench files under the same id). It
+stays in the other account.
 
 Deleting a layout while you are not signed in is not sent: it comes back from your account the next
 time you sign in, and you delete it again. Renaming one while signed out is a new document and a
@@ -273,7 +330,8 @@ deletion, so only the new one goes up, and the old name stays in your account un
 **Copy this browser's documents up**, in **Storage** once you are signed in, weighs every layout,
 rule set and text this browser holds, whether or not it is marked. It is for what was saved before
 edits were marked, and for anything that looks missing; you should not need it otherwise. A document
-your account lacks is sent, so use it only for what you want in your account. One that differs from
+your account lacks is sent, so use it only for what you want in your account; one your account
+records as deleted is asked about instead, neither sent nor deleted here until you choose. One that differs from
 your account's is never sent over it by the clocks: it is marked, and sent only if your account still
 holds the version it was an edit of, and otherwise asked about. It says how many it sent, how many
 are the same, how many are waiting for you to choose, how many it left for their names, and which
@@ -288,8 +346,9 @@ from there. One tab sends at a time.
   account but not listed, and the next send of it writes it again, so it is listed.
 - A rule set or a text is weighed against the version this browser last read or held, which any read
   in another tab moves on, not the version its editor opened, as a layout's is.
-- Documents here that your account lacks stay in the status until you send them or delete them here:
-  one deleted from your account on purpose looks the same as one never sent, but for the note that a
+- Documents here that your account lacks, and does not record as deleted, stay in the status until
+  you send them or delete them here: one deleted from your account with no record (by hand on GitHub,
+  or by an older version of LayerBench) looks the same as one never sent, but for the note that a
   GitHub account held it before, which only a document whose version was recorded has. The list is as
   of the last comparison, so one sent or deleted from another browser since is only taken off when the
   comparison is next made, and what it calls missing is judged by your account's list of documents: one
@@ -304,9 +363,14 @@ from there. One tab sends at a time.
   Three documents in a row that cannot be sent end an attempt, so documents after them wait until
   those are dealt with.
 - A gist takes no conditional write: between the check of a version and its write, one round trip,
-  another browser can save the same document, whether by a save, a delete or **Keep mine**. Deleting
-  is also not one step: if it is cut short between your account and this browser, the document is gone
-  from the account and still listed here until it is deleted again.
+  another browser can save the same document, whether by a save, a delete or **Keep mine**. A delete
+  made in that moment over another browser's save deletes that save too, there once it follows the
+  delete; a save that lands before it refuses it. Deleting is also not one step: if it is cut short between your account and this browser, the document is gone
+  from the account and still here until this browser next syncs, when it follows the delete your
+  account recorded, or asks about it if it was changed here meanwhile. The record of deletes is
+  rewritten whole with each delete, and with each save of a document deleted before, so two browsers
+  doing so at the same moment can drop one of them: your other browsers then keep their copies of that
+  one, listed as missing from your account, rather than deleting them.
 - Marks are kept in site data as one entry, so two tabs updating them at once can lose an update for a
   moment; it is found again on the next read or comparison, but the check mark is not to be trusted
   until then.

@@ -2,7 +2,13 @@ import { COLLECTIONS, type StorageAdapter } from '@layerbench/core';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { toast } from '../state/toasts.js';
-import { CompositeStorage, type Conflict, type CopiedUp, CopyUpError } from './composite.js';
+import {
+  CompositeStorage,
+  type Conflict,
+  type CopiedUp,
+  CopyUpError,
+  type Removed,
+} from './composite.js';
 import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /** Where sending this browser's documents to the gists stands. */
@@ -56,18 +62,44 @@ const AUDIT_EVERY_MS = 12 * 3_600_000;
 
 const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
-/** What to tell the user an attempt did, if it did anything they would not see for themselves. */
-function announce({ copied }: CopiedUp): void {
-  if (copied > 0) {
-    toast.info(`Sent ${documents(copied)} saved in this browser to your GitHub account`);
-  }
+/** Names, as a sentence lists them: `A`, `A and B`, `A, B and C`, `A, B and 2 more`. */
+function named(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
 }
 
 /**
- * Which conflict this is: the document and the version of it in the gists. This browser's version
- * is left out, since it changes with every save of the document while the conflict stays one.
+ * Tell the user what went from this browser because it was deleted from their account elsewhere,
+ * and the lists that show it. A proposed change goes unsaid: it is a layout's, which is named, or
+ * the account's own bookkeeping of a change merged or closed.
  */
-const versionOf = (c: Conflict) => `${c.collection}/${c.id}@${c.theirs.sha}`;
+function announceRemoved(removed: readonly Removed[]): void {
+  if (removed.length === 0) return;
+  active?.removed([...removed]);
+  const names = [
+    ...new Set(removed.filter((r) => r.collection !== 'proposals').map((r) => r.name)),
+  ];
+  if (names.length === 0) return;
+  const they = names.length === 1 ? 'it was' : 'they were';
+  toast.info(`Removed ${named(names)} from this browser: ${they} deleted from your GitHub account`);
+}
+
+/** What to tell the user an attempt did, if it did anything they would not see for themselves. */
+function announce({ copied, removed }: CopiedUp): void {
+  if (copied > 0) {
+    toast.info(`Sent ${documents(copied)} saved in this browser to your GitHub account`);
+  }
+  announceRemoved(removed);
+}
+
+/**
+ * Which conflict this is: the document and the version of it in the gists, or its deletion there.
+ * This browser's version is left out, since it changes with every save of the document while the
+ * conflict stays one.
+ */
+const versionOf = (c: Conflict) =>
+  `${c.collection}/${c.id}@${c.theirs ? c.theirs.sha : `deleted ${c.deleted?.at ?? ''}`}`;
 
 /**
  * The conflicts the dialog has opened for since the page loaded. It opens by itself for ones it has
@@ -128,10 +160,16 @@ const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 function copyMessage({ copied, current, conflicts, taken, failed }: CopiedUp): string {
   const parts = [`Copied ${documents(copied)} to GitHub`];
   if (current > 0) parts.push(`${current} ${current === 1 ? 'was' : 'were'} already up to date`);
-  if (conflicts.length > 0) {
-    const n = conflicts.length;
+  const deleted = conflicts.filter((c) => c.theirs === null).length;
+  const changed = conflicts.length - deleted;
+  if (changed > 0) {
     parts.push(
-      `${n} ${n === 1 ? 'was' : 'were'} changed here and in GitHub, and ${n === 1 ? 'waits' : 'wait'} for you to choose`,
+      `${changed} ${changed === 1 ? 'was' : 'were'} changed here and in GitHub, and ${changed === 1 ? 'waits' : 'wait'} for you to choose`,
+    );
+  }
+  if (deleted > 0) {
+    parts.push(
+      `${deleted} ${deleted === 1 ? 'was' : 'were'} deleted from GitHub and ${deleted === 1 ? 'is' : 'are'} still here, and ${deleted === 1 ? 'waits' : 'wait'} for you to choose`,
     );
   }
   if (failed.length > 0) {
@@ -186,6 +224,8 @@ let active: {
   release: () => void;
   audit: () => void;
   everything: () => Promise<void>;
+  /** Hears of documents deleted from this browser because another deleted them. */
+  removed: (removed: Removed[]) => void;
 } | null = null;
 
 /** Try sending now, rather than waiting for the next attempt; nothing while storage is this browser's alone. */
@@ -251,7 +291,8 @@ export async function sendMissing(
       return true;
     }
     if (result.conflicts.length > 0) {
-      // The account has one under that id now: asked about, as any other, and no longer lacking.
+      // The account has one under that id now, or recorded deleting it: asked about, as any other,
+      // and no longer lacking.
       noteResult(mergedWithShown(result));
       dropMissing([keyOf(document)], marks);
       return true;
@@ -300,6 +341,10 @@ export async function deleteMissing(
  * something still unsent. Each attempt is a copy up, which writes over nothing the gists hold that
  * the edit was not made on. Returns what stops it.
  *
+ * What another browser deleted from the gists is followed here at the same times, and on every
+ * visit, tab shown again and return online with nothing waiting too: this browser's copies not
+ * edited since go, `onRemoved` hears which, and one edited is asked about when it is sent.
+ *
  * Documents waiting when someone signs in whom this browser has not last sent to are held back for
  * the user to release: the browser may be one that someone else used, and sending is public enough
  * (secret gists are unlisted, not private) not to be done to a stranger's account unasked.
@@ -314,6 +359,7 @@ export function startAutoSync(
     auditEveryMs?: number;
   } = {},
   login: string | null = null,
+  onRemoved: (removed: Removed[]) => void = () => {},
 ): () => void {
   if (!storage.reachesRemote) return () => {};
   const settleMs = timing.settleMs ?? SETTLE_MS;
@@ -353,16 +399,26 @@ export function startAutoSync(
     const work = (): Promise<CopiedUp> => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       const given = new AbortController();
+      let late = false;
       const limit = new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           // Stopped, not only given up on: it ends at the next document, keeping what went up.
+          late = true;
           given.abort();
           reject(new Error('GitHub did not answer in time'));
         }, attemptMs);
       });
       const copying = storage.copyUp({ signal: given.signal });
-      // One that finishes after the limit has been given up on is nobody's to hear about.
-      copying.catch(() => {});
+      // One that finishes after the limit has been given up on is nobody's to hear about, but for
+      // what it deleted here, which the lists must not go on showing.
+      copying.then(
+        (r) => {
+          if (late && !stopped) announceRemoved(r.removed);
+        },
+        (e: unknown) => {
+          if (late && !stopped && e instanceof CopyUpError) announceRemoved(e.result.removed);
+        },
+      );
       return Promise.race([copying, limit]).finally(() => clearTimeout(timer));
     };
     // One tab at a time. null: another tab is sending.
@@ -412,7 +468,10 @@ export function startAutoSync(
       if (stopped) return;
       failures++;
       // What it did before it stopped is still what it found.
-      if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
+      if (e instanceof CopyUpError) {
+        noteResult(mergedWithShown(e.result));
+        announceRemoved(e.result.removed);
+      }
       useSync.setState({ phase: 'failed', error: e instanceof Error ? e.message : String(e) });
       later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
     } finally {
@@ -468,16 +527,39 @@ export function startAutoSync(
     }
   };
   const unsubscribe = marks.subscribe(onMarks);
+
+  /**
+   * Follow what another browser deleted, with nothing waiting to be sent: quietly, as nothing is
+   * being sent, and only to say what went from here. What it marks is sent, and asked about, as any
+   * save is.
+   */
+  let following = false;
+  const follow = async (): Promise<void> => {
+    if (stopped || held || running || following) return;
+    following = true;
+    lastRun = Date.now();
+    const given = new AbortController();
+    const timer = setTimeout(() => given.abort(), attemptMs);
+    try {
+      const removed = await storage.followDeletions({ signal: given.signal });
+      if (stopped) return;
+      announceRemoved(removed);
+    } catch {
+      // Looked at again on the next visit, or when the tab is shown again.
+    } finally {
+      clearTimeout(timer);
+      following = false;
+    }
+  };
+  /** An attempt where something waits to be sent, which follows deletions too; else that alone. */
+  const sync = () => (marks.count() > 0 ? run() : follow());
+
   const onOnline = () => {
-    if (marks.count() > 0) void run();
+    void sync();
   };
   const onVisible = () => {
-    if (
-      document.visibilityState === 'visible' &&
-      marks.count() > 0 &&
-      Date.now() - lastRun >= MIN_GAP_MS
-    ) {
-      void run();
+    if (document.visibilityState === 'visible' && Date.now() - lastRun >= MIN_GAP_MS) {
+      void sync();
     }
   };
   window.addEventListener('online', onOnline);
@@ -495,6 +577,7 @@ export function startAutoSync(
     release,
     audit: () => void audit(true),
     everything: () => copyEverything(() => storage.copyUp({ everything: true })),
+    removed: onRemoved,
   };
   active = handle;
 
@@ -521,6 +604,10 @@ export function startAutoSync(
       void pruneGone();
       return;
     }
+    // What another browser deleted goes first, as on a visit: asked for again, the look would
+    // otherwise list it as missing from the account, to be sent back.
+    if (force) await follow();
+    if (stopped) return;
     const given = new AbortController();
     const timer = setTimeout(() => given.abort(), attemptMs);
     useSync.setState({ auditing: true });
@@ -546,9 +633,10 @@ export function startAutoSync(
   const accountChanged = login !== null && before !== null && before !== login;
   if (marks.count() === 0) {
     // Nothing is waiting, so there is nothing to send, and nothing to ask: the browser is the
-    // account's that signed in.
+    // account's that signed in. What another browser deleted goes before the look, which would
+    // otherwise list it as missing from the account.
     if (login) marks.setAccount(login);
-    void audit();
+    void follow().then(() => audit());
   } else if (login && before !== null && before !== login) {
     held = true;
     useSync.setState({ held: { account: before } });
@@ -570,18 +658,25 @@ export function startAutoSync(
   };
 }
 
-/** Runs `startAutoSync` for as long as `storage` is the one the app saves to and reaches the gists. */
+/**
+ * Runs `startAutoSync` for as long as `storage` is the one the app saves to and reaches the gists.
+ * `onRemoved` hears of documents deleted from this browser because another deleted them.
+ */
 export function AutoSync({
   storage,
   login = null,
+  onRemoved,
 }: {
   storage: StorageAdapter;
   login?: string | null;
+  onRemoved?: (removed: Removed[]) => void;
 }): null {
   useEffect(
     () =>
-      storage instanceof CompositeStorage ? startAutoSync(storage, unsynced, {}, login) : undefined,
-    [storage, login],
+      storage instanceof CompositeStorage
+        ? startAutoSync(storage, unsynced, {}, login, onRemoved)
+        : undefined,
+    [storage, login, onRemoved],
   );
   return null;
 }

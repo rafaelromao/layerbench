@@ -1,6 +1,18 @@
-import { type Collection, NameTakenError, StorageConflictError } from '@layerbench/core';
+import {
+  type Collection,
+  isDocumentId,
+  NameTakenError,
+  StorageConflictError,
+} from '@layerbench/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { documentFile, GistAdapter, type GistIds, indexFile } from './gist.js';
+import {
+  deletedFile,
+  documentFile,
+  GistAdapter,
+  type GistIds,
+  indexFile,
+  MAX_DELETIONS,
+} from './gist.js';
 import { sha1Hex } from './indexeddb.js';
 
 interface Call {
@@ -416,6 +428,121 @@ describe('gists as storage', () => {
     await adapter.delete('layouts', 'gone');
     files = calls.at(-1)?.body?.files as Record<string, unknown>;
     expect(documentFile('layouts', 'gone') in files).toBe(false);
+  });
+
+  it('records a delete, with the version deleted, in the same edit, for other browsers to follow', async () => {
+    responder = (call) =>
+      json(200, call.method === 'PATCH' ? { id: 'g1', files: {} } : layoutsGist());
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+
+    await adapter.delete('layouts', 'mine');
+    const edits = calls.filter((c) => c.method === 'PATCH');
+    expect(edits).toHaveLength(1);
+    const files = edits[0].body?.files as Record<string, { content: string } | null>;
+    expect(files[documentFile('layouts', 'mine')]).toBeNull();
+    expect(JSON.parse(files[deletedFile('layouts')]?.content ?? '')).toEqual([
+      { id: 'mine', sha: await sha1Hex(MINE), deletedAt: expect.any(String) },
+    ]);
+
+    // A document that is not there was not deleted by this, and no version of it is known.
+    await adapter.delete('layouts', 'gone');
+    expect(Object.keys((calls.at(-1)?.body?.files ?? {}) as object)).not.toContain(
+      deletedFile('layouts'),
+    );
+  });
+
+  it('refuses to delete, or record deleted, a version other than the one expected', async () => {
+    responder = (call) =>
+      json(200, call.method === 'PATCH' ? { id: 'g1', files: {} } : layoutsGist());
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+
+    await expect(
+      adapter.delete('layouts', 'mine', { expectedSha: 'another-version' }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+
+    await adapter.delete('layouts', 'mine', { expectedSha: await sha1Hex(MINE) });
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(1);
+  });
+
+  it('deletes a document too large to read all the same, recording no version of it', async () => {
+    responder = (call) =>
+      json(
+        200,
+        call.method === 'PATCH'
+          ? { id: 'g1', files: {} }
+          : layoutsGist({ [documentFile('layouts', 'mine')]: { truncated: true } }),
+      );
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    await adapter.delete('layouts', 'mine');
+    const files = calls.at(-1)?.body?.files as Record<string, unknown>;
+    expect(files[documentFile('layouts', 'mine')]).toBeNull();
+    expect(deletedFile('layouts') in files).toBe(false);
+  });
+
+  it('reads what was deleted, dropping rows that are not deletions, and a file that is not one', async () => {
+    const rows = [
+      { id: 'old', sha: 'a', deletedAt: '2026-11-01T00:00:00Z' },
+      { id: '../index', sha: 'b', deletedAt: '2026-11-01T00:00:00Z' },
+      { id: 'no-sha', deletedAt: '2026-11-01T00:00:00Z' },
+    ];
+    let content = JSON.stringify(rows);
+    responder = () => json(200, layoutsGist({ [deletedFile('layouts')]: { content } }));
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+    expect(await adapter.deleted('layouts')).toEqual([rows[0]]);
+
+    content = 'not json';
+    expect(await adapter.deleted('layouts')).toEqual([]);
+    // A gist from before deletions were recorded has none.
+    responder = () => json(200, layoutsGist());
+    expect(await adapter.deleted('layouts')).toEqual([]);
+  });
+
+  it('drops the record of a delete once the document is saved again, in the same edit', async () => {
+    const kept = { id: 'kept', sha: 'k', deletedAt: '2026-11-01T00:00:00Z' };
+    const deletions = [{ id: 'other', sha: 'o', deletedAt: '2026-11-02T00:00:00Z' }, kept];
+    responder = (call) =>
+      call.method === 'PATCH'
+        ? json(200, { id: 'g1', files: {} })
+        : json(
+            200,
+            layoutsGist({ [deletedFile('layouts')]: { content: JSON.stringify(deletions) } }),
+          );
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+
+    await adapter.put('layouts', 'other', { name: 'Another' });
+    let files = calls.at(-1)?.body?.files as Record<string, { content: string }>;
+    expect(JSON.parse(files[deletedFile('layouts')].content)).toEqual([kept]);
+
+    // A save of a document never deleted leaves the record alone.
+    await adapter.put('layouts', 'mine', { name: 'Mine', note: 'again' });
+    files = calls.at(-1)?.body?.files as Record<string, { content: string }>;
+    expect(deletedFile('layouts') in files).toBe(false);
+  });
+
+  it('keeps the latest deletions only, so the record stays small', async () => {
+    const older = Array.from({ length: MAX_DELETIONS }, (_, n) => ({
+      id: `old-${n}`,
+      sha: 's',
+      deletedAt: '2026-01-01T00:00:00Z',
+    }));
+    responder = (call) =>
+      call.method === 'PATCH'
+        ? json(200, { id: 'g1', files: {} })
+        : json(200, layoutsGist({ [deletedFile('layouts')]: { content: JSON.stringify(older) } }));
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+
+    await adapter.delete('layouts', 'mine');
+    const files = calls.at(-1)?.body?.files as Record<string, { content: string }>;
+    const recorded = JSON.parse(files[deletedFile('layouts')].content) as { id: string }[];
+    expect(recorded).toHaveLength(MAX_DELETIONS);
+    expect(recorded[0].id).toBe('mine');
+    expect(recorded.at(-1)?.id).toBe(`old-${MAX_DELETIONS - 2}`);
+  });
+
+  it('names its record of deletions so that no document file can be it, as no id has a dot', () => {
+    expect(deletedFile('layouts')).toBe('layouts.deleted.index.json');
+    expect(isDocumentId('deleted.index')).toBe(false);
   });
 
   it('forgets a gist deleted on GitHub and looks for another', async () => {

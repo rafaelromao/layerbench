@@ -85,7 +85,7 @@ describe('a copy that stops partway', () => {
     } as Conflict;
     storage.copyUp = async () => {
       throw new CopyUpError(
-        { copied: 2, current: 0, conflicts: [found], taken: 0, failed: [] },
+        { copied: 2, current: 0, conflicts: [found], taken: 0, failed: [], removed: [] },
         new Error('GitHub did not answer in time'),
       );
     };

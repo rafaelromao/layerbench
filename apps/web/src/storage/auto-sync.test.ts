@@ -11,6 +11,7 @@ import {
   review,
   sendEverything,
   sendHeld,
+  sendMissing,
   startAutoSync,
   syncNow,
   useSync,
@@ -530,11 +531,11 @@ describe('a copy of everything that stops partway', () => {
       theirs: { name: 'Gust', doc: { name: 'G2' }, updatedAt: '2026-11-10T10:00:00Z', sha: 's' },
     } as Conflict;
     useSync.setState({
-      last: { copied: 0, current: 0, conflicts: [shown], taken: 0, failed: [] },
+      last: { copied: 0, current: 0, conflicts: [shown], taken: 0, failed: [], removed: [] },
     });
     await copyEverything(async () => {
       throw new CopyUpError(
-        { copied: 1, current: 0, conflicts: [], taken: 0, failed: [] },
+        { copied: 1, current: 0, conflicts: [], taken: 0, failed: [], removed: [] },
         new Error('GitHub did not answer in time'),
       );
     });
@@ -882,6 +883,302 @@ describe('when both have changed', () => {
     await remote.put('layouts', 'gust', { name: 'Gust (laptop, again)' });
     syncNow();
     await vi.waitFor(() => expect(useSync.getState().reviewing).toBe(true));
+    stop();
+  });
+});
+
+describe('a delete made on another browser', () => {
+  /** A phone holding Lemon and Fusion, saved and sent there, and a laptop signed in to the same account. */
+  async function phoneAndLaptop() {
+    const remote = new MemoryStorage('github');
+    const phoneMarks = memoryMarks();
+    const phoneLocal = new MemoryStorage('local');
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    await phone.put('layouts', 'lemon', { name: 'Lemon' });
+    await phone.put('layouts', 'fusion', { name: 'Fusion' });
+    const laptop = new CompositeStorage(new MemoryStorage('laptop'), remote, memoryMarks());
+    await laptop.get('layouts', 'lemon');
+    await laptop.get('layouts', 'fusion');
+    /** Lemon deleted on the laptop, and Fusion renamed there to Magic Caster. */
+    const deleteAndRename = async () => {
+      await laptop.delete('layouts', 'lemon');
+      await laptop.put(
+        'layouts',
+        'magic-caster',
+        { name: 'Magic Caster' },
+        { replacing: ['fusion'] },
+      );
+      await laptop.delete('layouts', 'fusion');
+    };
+    return { remote, phone, phoneLocal, phoneMarks, laptop, deleteAndRename };
+  }
+
+  const names = async (storage: CompositeStorage) =>
+    (await storage.list('layouts')).map((e) => e.name);
+
+  it('is followed when the phone opens, though nothing of its own waits to be sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    expect(phoneMarks.count()).toBe(0);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    stop();
+  });
+
+  it('says what went from this browser, and tells the lists, without saying anything was sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    const removed = vi.fn();
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING, null, removed);
+    await vi.waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(removed.mock.calls[0][0].map((r: { name: string }) => r.name).sort()).toEqual([
+      'Fusion',
+      'Lemon',
+    ]);
+    expect(texts()).toEqual([
+      expect.stringMatching(
+        /^Removed (Fusion and Lemon|Lemon and Fusion) from this browser: they were deleted from your GitHub account$/,
+      ),
+    ]);
+    expect(useSync.getState()).toMatchObject({ phase: 'idle', last: null });
+    stop();
+  });
+
+  it('is followed again when the tab is shown, with nothing waiting to be sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    // Deleted while the phone's tab was in the background.
+    await deleteAndRename();
+    await vi.advanceTimersByTimeAsync(15_000);
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    stop();
+  });
+
+  it('asks about a layout changed on the phone that the laptop deleted, and keeps it until then', async () => {
+    const { remote, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+      note: 'phone',
+    });
+    await laptop.delete('layouts', 'lemon');
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.waitFor(() =>
+      expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]),
+    );
+    expect(useSync.getState().reviewing).toBe(true);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone');
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(texts()).toEqual([]);
+    stop();
+  });
+
+  it('names a layout once when the change proposed from it goes with it', async () => {
+    const { phone, phoneMarks, laptop } = await phoneAndLaptop();
+    await phone.put('proposals', 'lemon', { name: 'Lemon' });
+    await laptop.get('proposals', 'lemon');
+    await laptop.delete('layouts', 'lemon');
+    await laptop.delete('proposals', 'lemon');
+    const removed = vi.fn();
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING, null, removed);
+    await vi.waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(removed.mock.calls[0][0]).toHaveLength(2);
+    expect(texts()).toEqual([
+      'Removed Lemon from this browser: it was deleted from your GitHub account',
+    ]);
+    stop();
+  });
+
+  /** The record of deletes unreadable until `back()`, as on a flaky connection at the visit. */
+  function flaky(remote: StorageAdapter) {
+    const deleted = remote.deleted?.bind(remote);
+    let down = true;
+    remote.deleted = async (collection) => {
+      if (down) throw new Error('GitHub responded 503');
+      return deleted ? deleted(collection) : [];
+    };
+    return { back: () => (down = false) };
+  }
+
+  it('keeps asking about a missing document the user sent, past the next attempts, until they choose', async () => {
+    const { remote, phone, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await laptop.delete('layouts', 'lemon');
+    // An older copy of Fusion with no version on record, which the account lacks too.
+    phoneMarks.forget('layouts', 'fusion');
+    await phoneLocal.put('layouts', 'fusion', { name: 'Fusion', note: 'old copy' });
+    await laptop.delete('layouts', 'fusion');
+    // The visit's follow could not read the record, so both are still here, listed as missing.
+    const connection = flaky(remote);
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    connection.back();
+
+    await sendMissing(phone, { collection: 'layouts', id: 'lemon', name: 'Lemon', sent: true });
+    await sendMissing(phone, { collection: 'layouts', id: 'fusion', name: 'Fusion', sent: false });
+    review(false);
+    // The attempts that the marks set off, and more: neither deleted here nor sent back.
+    await vi.advanceTimersByTimeAsync(10_000);
+    syncNow();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(
+      useSync
+        .getState()
+        .last?.conflicts.map((c) => [c.id, c.theirs])
+        .sort(),
+    ).toEqual([
+      ['fusion', null],
+      ['lemon', null],
+    ]);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await phoneLocal.get('layouts', 'fusion')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(await remote.get('layouts', 'fusion')).toBeNull();
+    expect(texts().some((t) => t.startsWith('Removed') || t.startsWith('Sent'))).toBe(false);
+    stop();
+  });
+
+  it('says, after copying everything, which wait because they changed and which because they were deleted', async () => {
+    const mine = { doc: { name: 'X' }, updatedAt: '2026-11-13T09:00:00Z' };
+    const changed = {
+      collection: 'layouts' as const,
+      id: 'gust',
+      name: 'Gust',
+      mine,
+      theirs: { name: 'Gust', doc: { name: 'G2' }, updatedAt: '2026-11-13T10:00:00Z', sha: 's' },
+    };
+    const deleted = { ...changed, id: 'lemon', name: 'Lemon', theirs: null, deleted: { at: '' } };
+    await copyEverything(async () => ({
+      copied: 0,
+      current: 0,
+      conflicts: [changed, deleted],
+      taken: 0,
+      failed: [],
+      removed: [],
+    }));
+    expect(texts()).toContain(
+      'Copied 0 documents to GitHub; 1 was changed here and in GitHub, and waits for you to choose; 1 was deleted from GitHub and is still here, and waits for you to choose',
+    );
+  });
+
+  it('keeps asking after copying everything, past the next attempt', async () => {
+    const { remote, phone, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await laptop.delete('layouts', 'lemon');
+    const connection = flaky(remote);
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    connection.back();
+
+    sendEverything();
+    await vi.waitFor(() =>
+      expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]),
+    );
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    stop();
+  });
+
+  it('is followed when the browser comes back online, with nothing waiting to be sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await deleteAndRename();
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    stop();
+  });
+
+  it('is followed before a look asked for again, so it is not listed as missing, nor sent back from the list', async () => {
+    const { remote, phone, phoneLocal, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    const stop = startAutoSync(phone, phoneMarks, { ...TIMING, auditEveryMs: 3_600_000 });
+    await vi.waitFor(() => expect(useSync.getState().missing).toEqual([]));
+    await deleteAndRename();
+
+    checkAgain();
+    await vi.waitFor(() => expect(useSync.getState().auditing).toBe(false));
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    expect(useSync.getState().missing).toEqual([]);
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    stop();
+  });
+
+  it('asks about a missing document the account recorded as deleted when the user sends it, never saying it was sent', async () => {
+    const { remote, phone, phoneLocal, laptop } = await phoneAndLaptop();
+    await laptop.delete('layouts', 'lemon');
+
+    const kept = await sendMissing(phone, {
+      collection: 'layouts',
+      id: 'lemon',
+      name: 'Lemon',
+      sent: true,
+    });
+    expect(kept).toBe(true);
+    expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect(texts().some((t) => t.startsWith('Sent'))).toBe(false);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('says what an attempt that ran out of time deleted, once it ends', async () => {
+    const { remote, phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    // Something waits, so an attempt is a copy up; the account is slow to answer the first look at
+    // a deleted layout, which outlasts the attempt, and the copy goes once it answers.
+    await new CompositeStorage(new MemoryStorage('unused'), null, phoneMarks).put('layouts', 'x', {
+      name: 'X',
+    });
+    const get = remote.get.bind(remote);
+    let first = true;
+    remote.get = async (collection, id) => {
+      if (first) {
+        first = false;
+        await new Promise((r) => setTimeout(r, 30_000));
+      }
+      return get(collection, id);
+    };
+    const removed = vi.fn();
+    // No second attempt meanwhile: what is said is the late one's.
+    const stop = startAutoSync(
+      phone,
+      phoneMarks,
+      { ...TIMING, retryMs: [3_600_000] },
+      null,
+      removed,
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(useSync.getState().phase).toBe('failed');
+    expect(removed).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(11_000);
+    await vi.waitFor(() => expect(removed).toHaveBeenCalledTimes(1));
+    expect(removed.mock.calls[0][0]).toHaveLength(1);
+    expect(texts()).toContainEqual(
+      expect.stringMatching(/^Removed (Lemon|Fusion) from this browser/),
+    );
+    stop();
+  });
+
+  it('follows nothing while what waits is held back for another account', async () => {
+    const { remote, phoneLocal, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    phoneMarks.setAccount('someone-else');
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'other', {
+      name: 'Other',
+    });
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING, 'me');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(useSync.getState().held).toEqual({ account: 'someone-else' });
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
     stop();
   });
 });

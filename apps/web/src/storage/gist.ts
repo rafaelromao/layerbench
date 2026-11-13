@@ -2,6 +2,7 @@ import {
   assertDocumentId,
   COLLECTIONS,
   type Collection,
+  type Deletion,
   type IndexEntry,
   indexSummary,
   isDocumentId,
@@ -30,6 +31,17 @@ const DESCRIPTIONS: Record<Collection, string> = {
  */
 export const indexFile = (collection: Collection) => `${collection}.index.json`;
 export const documentFile = (collection: Collection, id: string) => `${collection}.${id}.json`;
+/**
+ * What was deleted from the collection, so that another browser holding a copy deletes it too. Its
+ * name has a dot that no id can have, so it is not mistaken for a document's file either.
+ */
+export const deletedFile = (collection: Collection) => `${collection}.deleted.index.json`;
+
+/**
+ * The most deletions kept, the latest: a browser that has not synced for longer than these last keeps
+ * its copies of the older ones, which the status then lists as missing from the account.
+ */
+export const MAX_DELETIONS = 500;
 
 /**
  * A document's version: the hash of the text it is saved as, as the browser's store hashes it. A file
@@ -60,6 +72,28 @@ function readIndex(text: string): IndexEntry[] {
   try {
     const parsed: unknown = JSON.parse(text);
     return Array.isArray(parsed) ? parsed.filter(isIndexEntry) : [];
+  } catch {
+    return [];
+  }
+}
+
+function isDeletion(value: unknown): value is Deletion {
+  if (!value || typeof value !== 'object') return false;
+  const o = value as Record<string, unknown>;
+  return (
+    typeof o.id === 'string' &&
+    isDocumentId(o.id) &&
+    typeof o.sha === 'string' &&
+    typeof o.deletedAt === 'string'
+  );
+}
+
+/** The well-formed rows of a deletions file; anything else is dropped, and a file that is not one is none. */
+function readDeletions(text: string | null): Deletion[] {
+  if (text === null) return [];
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed.filter(isDeletion) : [];
   } catch {
     return [];
   }
@@ -189,6 +223,16 @@ export class GistAdapter implements StorageAdapter {
     return file.content;
   }
 
+  /** The deletions a gist records; one too large to read records none it can be held to. */
+  private static deletions(gist: Gist | null, collection: Collection): Deletion[] {
+    if (!gist) return [];
+    try {
+      return readDeletions(GistAdapter.content(gist, deletedFile(collection)));
+    } catch {
+      return [];
+    }
+  }
+
   private async write(
     collection: Collection,
     gist: Gist | null,
@@ -246,6 +290,10 @@ export class GistAdapter implements StorageAdapter {
     };
   }
 
+  async deleted(collection: Collection): Promise<Deletion[]> {
+    return GistAdapter.deletions(await this.read(collection), collection);
+  }
+
   /**
    * A gist takes no conditional writes, so the expected version is checked against a fresh read
    * just before writing; the window left is the length of one request. Commit messages have no
@@ -288,30 +336,69 @@ export class GistAdapter implements StorageAdapter {
     const next = rows.filter((e) => e.id !== id);
     next.push(entry);
     next.sort((a, b) => a.name.localeCompare(b.name));
+    // Saved again, it is not deleted: no browser that holds a copy deletes it for an older delete.
+    const deletions = GistAdapter.deletions(gist, collection);
+    const undeleted = deletions.filter((d) => d.id !== id);
 
     await this.write(collection, gist, {
       [path]: { content },
       [indexFile(collection)]: { content: JSON.stringify(next) },
+      ...(undeleted.length !== deletions.length && {
+        [deletedFile(collection)]: { content: JSON.stringify(undeleted) },
+      }),
     });
     return { sha: await sha1Hex(content), path };
   }
 
-  async delete(collection: Collection, id: string): Promise<void> {
+  /**
+   * `expectedSha`, checked against a fresh read as a save's is: another version is a conflict, and
+   * nothing is deleted, nor recorded as deleted for other browsers to follow.
+   */
+  async delete(
+    collection: Collection,
+    id: string,
+    opts: { message?: string; expectedSha?: string } = {},
+  ): Promise<void> {
     assertDocumentId(id);
-    return this.exclusive(() => this.deleteNow(collection, id));
+    return this.exclusive(() => this.deleteNow(collection, id, opts.expectedSha));
   }
 
-  private async deleteNow(collection: Collection, id: string): Promise<void> {
+  private async deleteNow(collection: Collection, id: string, expectedSha?: string): Promise<void> {
     const path = documentFile(collection, id);
     const gist = await this.read(collection);
     if (!gist) return;
 
     const index = GistAdapter.content(gist, indexFile(collection));
     const next = (index ? readIndex(index) : []).filter((e) => e.id !== id);
+    // Recorded, with the version deleted, in the same revision, so every other browser that holds a
+    // copy deletes it too; only one that was there is, as no version of it is known otherwise, nor
+    // of one too large to read, which is deleted all the same.
+    let current: string | null = null;
+    try {
+      current = gist.files[path] ? GistAdapter.content(gist, path) : null;
+    } catch {
+      current = null;
+    }
+    // Saved since the version the caller decided on: that save is not deleted unseen.
+    if (
+      expectedSha !== undefined &&
+      current !== null &&
+      (await versionOf(current)) !== expectedSha
+    ) {
+      throw new StorageConflictError();
+    }
+    const recorded =
+      current === null
+        ? null
+        : [
+            { id, sha: await versionOf(current), deletedAt: new Date().toISOString() },
+            ...GistAdapter.deletions(gist, collection).filter((d) => d.id !== id),
+          ].slice(0, MAX_DELETIONS);
     // A file named in an edit with nothing in it is deleted, so only a file that exists is named.
     await this.write(collection, gist, {
       ...(gist.files[path] ? { [path]: null } : {}),
       [indexFile(collection)]: { content: JSON.stringify(next) },
+      ...(recorded && { [deletedFile(collection)]: { content: JSON.stringify(recorded) } }),
     });
   }
 }

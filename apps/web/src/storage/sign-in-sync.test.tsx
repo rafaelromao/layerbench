@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initGitHubSession, useGitHubSession } from '../auth/github-session.js';
 import { useToasts } from '../state/toasts.js';
 import { useSync } from './auto-sync.js';
+import { sha1Hex } from './indexeddb.js';
 import { unsynced } from './unsynced.js';
-import { StorageProvider, useStorage } from './use-storage.js';
+import { StorageProvider, useCollection, useStorage } from './use-storage.js';
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -196,5 +197,59 @@ describe('a layout saved in this browser, as the app is wired', () => {
       timeout: 8_000,
     });
     await waitFor(() => expect(unsynced.count()).toBe(0));
+  });
+});
+
+describe('a layout deleted on another browser, as the app is wired', () => {
+  it('goes from the list this browser shows once it follows the delete', async () => {
+    const github = fakeGitHub();
+    github.signIn();
+    const app: {
+      storage: StorageAdapter | null;
+      names: string[];
+      refresh: () => Promise<void>;
+    } = { storage: null, names: [], refresh: async () => {} };
+    function Probe() {
+      app.storage = useStorage();
+      const { entries, refresh } = useCollection('layouts');
+      app.names = entries.map((e) => e.name);
+      app.refresh = refresh;
+      return null;
+    }
+    render(
+      <StorageProvider>
+        <Probe />
+      </StorageProvider>,
+    );
+    await act(() => initGitHubSession());
+    await waitFor(() => expect(useGitHubSession.getState().status).toBe('signed-in'));
+    await app.storage?.put('layouts', 'gone-elsewhere', { name: 'Gone elsewhere' });
+    await act(() => app.refresh());
+    await waitFor(() => expect(app.names).toContain('Gone elsewhere'));
+
+    // Deleted on the laptop: gone from the gist, which records it, as the gists adapter does.
+    const files = [...github.gists.values()].find((f) => 'layouts.index.json' in f);
+    if (!files) throw new Error('the layouts gist is there');
+    const text = files['layouts.gone-elsewhere.json'];
+    delete files['layouts.gone-elsewhere.json'];
+    files['layouts.index.json'] = JSON.stringify(
+      (JSON.parse(files['layouts.index.json']) as { id: string }[]).filter(
+        (e) => e.id !== 'gone-elsewhere',
+      ),
+    );
+    files['layouts.deleted.index.json'] = JSON.stringify([
+      {
+        id: 'gone-elsewhere',
+        sha: await sha1Hex(JSON.stringify(JSON.parse(text))),
+        deletedAt: new Date().toISOString(),
+      },
+    ]);
+
+    // The phone comes back online.
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(app.names).not.toContain('Gone elsewhere'));
+    expect(useToasts.getState().toasts.map((t) => t.text)).toContain(
+      'Removed Gone elsewhere from this browser: it was deleted from your GitHub account',
+    );
   });
 });
