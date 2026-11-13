@@ -12,9 +12,10 @@ This policy covers the code in this repository:
 - **The workflows** (`.github/workflows`), which build, test and deploy the app and the landing
   page, and open pull requests as the GitHub App.
 
-A vulnerability in a dependency belongs to that project; report it there, or, if it is not yet
-public, through GitHub's advisory database. A bundled layout or corpus text being wrong is not a
-security issue: open an issue for that instead (see the templates).
+A vulnerability in a dependency belongs to that project: report it there, in private, as its own
+security policy says. One that is already public may be in GitHub's Advisory Database and does not
+need to be reported here. A bundled layout or corpus text being wrong is not a security issue: open
+an issue for that instead (see the templates).
 
 ## Reporting a vulnerability
 
