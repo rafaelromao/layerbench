@@ -68,10 +68,10 @@ chore(deps): bump vitest
 ```
 
 If the check fails, edit the title on GitHub. It runs again as soon as the title changes; no push is
-needed, and re-running the failed run would read the title it had then. Two limits: GitHub starts no
-`pull_request` workflow for a pull request that has a merge conflict, so one is not checked until the
-conflict is gone; and nothing requires the check to pass before a merge, which a repository ruleset
-that requires `pr-title / title` would.
+needed, and re-running the failed run would read the title it had then. A pull request into `main`
+does not merge until the check passes: the repository's ruleset for `main` requires
+`pr-title / title` ([Merging](#merging)). GitHub starts no `pull_request` workflow for a pull request
+that has a merge conflict, so one is neither checked nor merged until the conflict is gone.
 
 ### Pull requests the app opens
 
@@ -108,16 +108,41 @@ from and are not checked.
 ### Merging
 
 Squash a pull request, so `main` has one commit for each change and that commit's header is the
-title. In the repository's **Settings**, **General**, section **Pull Requests**, the dropdown under
-**Allow squash merging** sets what a squash starts from; choose the one that uses just the pull
-request's title (`squash_merge_commit_title: PR_TITLE` in the REST API). With the default, GitHub
-squashes a pull request of one commit with that commit's own title, and only a pull request of
-several commits with the pull request's.
+title. A squash is the only merge `main` takes, and it takes just the pull request's title, with no
+body: Release Please reads a body too, and a line of the description that reads as `fix: …`, or a
+`BREAKING CHANGE:` footer, would add a changelog line or a version the title does not have.
+
+Two settings of the repository hold this, each set by an owner:
+
+- **Settings**, **General**, **Pull Requests**: under **Allow squash merging**, **Pull request
+  title** (`squash_merge_commit_title: PR_TITLE` and `squash_merge_commit_message: BLANK` in the
+  REST API). With GitHub's default, a pull request of one commit is squashed under that commit's own
+  title.
+- **Settings**, **Rules**, **Rulesets**: the ruleset `main`, made from `.github/rulesets/main.json`.
+  It holds the default branch to pull requests, merged by a squash only, and only once
+  `pr-title / title` has passed: the check run named `title`, the workflow's job, from GitHub
+  Actions. It asks for no approval, as GitHub does not count an author's own, and no one bypasses
+  it. Merge commits and rebase merges stay on for the repository, for the pull requests into
+  `layerbench-data`, which nothing is released from.
+
+When the file changes, apply it again, with an owner's token (`gh` fills `{owner}` and `{repo}`
+from the clone's remote):
+
+```sh
+gh api -X PATCH repos/{owner}/{repo} -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=BLANK
+id=$(gh api repos/{owner}/{repo}/rulesets --jq '.[] | select(.name == "main") | .id')
+if [ -n "$id" ]; then
+  gh api -X PUT "repos/{owner}/{repo}/rulesets/$id" --input .github/rulesets/main.json
+else
+  gh api -X POST repos/{owner}/{repo}/rulesets --input .github/rulesets/main.json
+fi
+```
 
 Release Please also reads a merge commit, by the title in its body, but it does not read a title with
-a `!` there: such a pull request is missed altogether, with no release and no changelog line. Only a
-squash merge makes a breaking change count. A rebase merge puts the title nowhere in the history.
-History before the first release is not conventional and is left as it is.
+a `!` there: such a pull request is missed altogether, with no release and no changelog line. And a
+merge commit brings the pull request's commits with it, so a change whose commit has a conventional
+header of its own is listed twice. A rebase merge puts the title nowhere in the history. History
+before the first release is not conventional and is left as it is.
 
 ## Updating GitHub Actions pins
 
