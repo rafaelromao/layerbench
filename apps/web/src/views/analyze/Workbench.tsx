@@ -460,9 +460,10 @@ export function Workbench({
     [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals],
   );
 
-  // A layout that is not stored here, bundled or carried in a link, is not the user's to overwrite:
-  // its first save makes a copy, and asks what to call it. Later saves are of the copy, and ask
-  // nothing, unless the layout was renamed to another custom layout's name.
+  // A layout that is none of the custom layouts here, bundled or carried in a link whose id names
+  // none of them, is not the user's to overwrite: its first save makes a copy, and asks what to call
+  // it. Later saves are of the copy, and ask nothing, unless the layout was renamed to another custom
+  // layout's name. One carried in a link whose id names a custom layout here saves over that one.
   const [naming, setNaming] = useState<{ taken: TakenLayout | null; overwrite: boolean } | null>(
     null,
   );
@@ -476,7 +477,7 @@ export function Workbench({
       ]),
     [state.layout.name, customLayouts.entries],
   );
-  /** Whether Save makes a copy: of a layout not stored here, bundled or carried in a link. */
+  /** Whether Save makes a copy: of a layout that is none of the custom layouts here. */
   const copying = session.storedId === null;
   const save = useCallback(() => {
     if (session.storedId !== null) void store();
@@ -484,7 +485,7 @@ export function Workbench({
     else setNaming({ taken: null, overwrite: true });
   }, [session.storedId, session.source, store]);
 
-  // Duplicate saves the layout as the editor shows it as a new custom layout, under a name asked
+  // Save as copy saves the layout as the editor shows it as a new custom layout, under a name asked
   // for, and opens that one. The layout it was made from is left alone.
   const [duplicating, setDuplicating] = useState<{
     name: string;
@@ -502,7 +503,7 @@ export function Workbench({
           void customLayouts.refresh();
         } else {
           setDuplicateNamed(name);
-          toast.error(`Duplicate failed: ${result.error}`);
+          toast.error(`Save as copy failed: ${result.error}`);
         }
         return;
       }
@@ -939,7 +940,7 @@ export function Workbench({
         onSave={save}
         onCancel={state.dirty && state.saved !== null ? discard : undefined}
         onSubmit={submitted ? () => void submit() : undefined}
-        onDuplicate={() => setDuplicating({ name: duplicateNamed ?? copyName, taken: null })}
+        onSaveAsCopy={() => setDuplicating({ name: duplicateNamed ?? copyName, taken: null })}
         copiesOnSave={session.storedId === null}
         proposal={proposalUrl ?? undefined}
         proposalMerged={proposalMerged}
@@ -1013,16 +1014,16 @@ export function Workbench({
 
       {duplicating && (
         <NameDialog
-          title={`Duplicate ${state.layout.name}`}
-          // What goes into the duplicate is what the editor shows, so edits not saved go with it.
+          title={`Save ${state.layout.name} as a copy`}
+          // What goes into the copy is what the editor shows, so edits not saved go with it.
           intro={
             state.dirty
               ? `Saves a copy of this layout, with its unsaved changes, among your custom layouts, and opens it. ${state.layout.name} stays as it was.`
               : 'Saves a copy of this layout among your custom layouts, and opens it.'
           }
-          nameLabel="Name of the duplicate"
+          nameLabel="Name of the copy"
           initialName={duplicating.name}
-          submitLabel="Duplicate"
+          submitLabel="Save copy"
           // Two custom layouts never share a name, and a duplicate does not take another's place.
           // The one storage just refused the name for is taken even before the list is read again.
           taken={(name) =>

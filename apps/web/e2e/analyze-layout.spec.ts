@@ -167,14 +167,18 @@ test.describe('on a phone', () => {
   test('the layout picker keeps room to show a name without sideways scroll', async ({ page }) => {
     await openEdit(page);
     const bar = page.getByRole('region', { name: 'Layout' });
-    // Wide enough to read a layout's name in, whatever else the row holds: Duplicate must not
-    // squeeze it down to its arrow.
+    // Wide enough to read a layout's name in, whatever else the row holds.
     const picker = await bar.getByRole('combobox', { name: 'Layout' }).boundingBox();
     expect(picker?.width ?? 0).toBeGreaterThanOrEqual(144);
 
-    const duplicate = bar.getByRole('button', { name: 'Duplicate' });
-    await expect(duplicate).toBeVisible();
-    const box = await duplicate.boundingBox();
+    // On a phone the buttons take a line under the name, which keeps room to be read.
+    const name = await bar.getByRole('textbox', { name: 'Name', exact: true }).boundingBox();
+    expect(name?.width ?? 0).toBeGreaterThanOrEqual(144);
+
+    // Save as copy sits by Save, and still fits on the screen.
+    const copy = bar.getByRole('button', { name: 'Save as copy' });
+    await expect(copy).toBeVisible();
+    const box = await copy.boundingBox();
     const viewport = page.viewportSize();
     expect(box && viewport).toBeTruthy();
     if (!box || !viewport) return;
@@ -246,17 +250,33 @@ test.describe('at a desk', () => {
     await expect(page.getByRole('group', { name: 'Edit LHI' })).toBeVisible();
   });
 
-  test('the layout picker, Compare and Duplicate share one row', async ({ page }) => {
+  test('Save as copy sits between Save and Submit, and the picker beside Compare', async ({
+    page,
+  }) => {
     await openEdit(page);
     const bar = page.getByRole('region', { name: 'Layout' });
-    const centre = async (control: Locator) => {
-      const box = await control.boundingBox();
-      return box ? box.y + box.height / 2 : Number.NaN;
+    const box = async (control: Locator) => {
+      const b = await control.boundingBox();
+      if (!b) throw new Error('not drawn');
+      return b;
     };
+    const centre = async (control: Locator) => {
+      const b = await box(control);
+      return b.y + b.height / 2;
+    };
+    const save = bar.getByRole('button', { name: 'Save', exact: true });
+    const copy = bar.getByRole('button', { name: 'Save as copy' });
+    const named = [await centre(save), await centre(copy)];
+    for (const y of named) expect(Math.abs(y - named[0])).toBeLessThanOrEqual(2);
+    expect((await box(copy)).x).toBeGreaterThan((await box(save)).x);
+    // Submit is there for a custom layout only; where it is, it comes after.
+    const submit = bar.getByRole('button', { name: 'Submit' });
+    if (await submit.isVisible()) {
+      expect((await box(submit)).x).toBeGreaterThan((await box(copy)).x);
+    }
     const row = [
       await centre(bar.getByRole('combobox', { name: 'Layout' })),
       await centre(bar.getByRole('button', { name: 'Compare' })),
-      await centre(bar.getByRole('button', { name: 'Duplicate' })),
     ];
     for (const y of row) expect(Math.abs(y - row[0])).toBeLessThanOrEqual(2);
   });

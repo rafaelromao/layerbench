@@ -10,10 +10,10 @@ A layout of your own starts in **Library**, in one of these ways:
 
 - Press **Analyze** on any layout's card, change it in **Analyze** and press **Save**: Save asks what
   to call the copy, or, on one that comes with the app or a community layout, whether to propose
-  your change instead, and keeps it among your custom layouts. See [Saving a copy](#saving-a-copy)
-  below.
-- Press **Duplicate**, in the bar of **Analyze**, on any layout: it asks what to call the duplicate,
-  keeps it among your custom layouts and opens it. See [Duplicating a layout](#duplicating-a-layout)
+  your change instead, and keeps it among your custom layouts. See
+  [Saving a layout that is not yours](#saving-a-layout-that-is-not-yours) below.
+- Press **Save as copy**, beside **Save** in **Analyze**, on any layout: it asks what to call the
+  copy, keeps it among your custom layouts and opens it. See [Saving as a copy](#saving-as-a-copy)
   below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
@@ -27,19 +27,22 @@ A layout of your own starts in **Library**, in one of these ways:
 Saved, it is a custom layout: listed in **Library** among the layouts that come with the app, marked *custom* and
 ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze**, then press
 **Save**, beside its name at the top, to keep the edits. Until you do, the name is marked
-*unsaved*, and your edits live only in the page's link and in this tab: opened in another tab or
-browser, the same link is a layout of its own, and saving it there makes a copy.
+*unsaved*, and your edits live only in the page's link and in this tab. Opened in another tab or
+browser where the layout is saved, the same link is that layout with your edits, still marked
+*unsaved*, and **Save** there saves over it. Opened where it is not saved, it is a layout of its
+own, and saving it makes a copy.
 
 While edits are unsaved, **Cancel** sits beside **Save**: it gives the layout back as it was opened
 or last saved, all the edits at once. It does not ask, because **Undo** brings them back, unsaved as
 they were. A layout opened from a link whose edits were unsaved from the start has no saved state to
 go back to, and no **Cancel**; to leave it, pick another layout.
 
-### Saving a copy
+### Saving a layout that is not yours
 
 A layout that is not yours is never saved over: one that comes with the app, a community layout,
-or one that a link or
-**Open in analyzer** brought here and you have not saved. On one that comes with the app or a
+or one that a link or **Open in analyzer** brought here and you have not saved. A link or JSON that
+carries the id of one of your custom layouts is that layout, though, and **Save** saves over it,
+however it differs. On one that comes with the app or a
 community layout, **Save** first asks whether to [propose your change](#proposing-a-change) to it
 or to **Save a copy**. Save a copy, and the first **Save** of any other, opens a dialog that says
 Save makes a copy in your custom layouts and asks for the copy's name. The name offered is the
@@ -51,25 +54,26 @@ A custom layout is kept in this browser. To keep it anywhere else, sign in with 
 copy its LayerBench JSON from the editor's **Export** panel and keep the text, which **Import** reads
 back.
 
-### Duplicating a layout
+### Saving as a copy
 
-**Duplicate**, in the bar of **Analyze** beside **Compare**, copies the layout you are looking at
+**Save as copy**, beside **Save** at the top of **Analyze**, copies the layout you are looking at
 and opens the copy. It works on any layout: one of yours, one that comes with the app, a community
-layout, or one that a link brought here. A dialog asks what to call the duplicate, and offers the
-layout's name with *copy* after it, numbered (*copy 2*) if a layout already has it; an empty name is
-refused. **Cancel** saves nothing and leaves the editor as it was. Duplicate waits while a save is
-under way.
+layout, or one that a link brought here. **Save** keeps your edits in the layout itself, where it is
+yours; **Save as copy** is how to keep them beside it instead. A dialog asks what to call the copy,
+and offers the layout's name with *copy* after it, numbered (*copy 2*) if a layout already has it;
+an empty name is refused. **Cancel** saves nothing and leaves the editor as it was. Save as copy
+waits while a save is under way.
 
-The duplicate is the layout as the editor shows it now, so edits you have not saved go into it, and
-the dialog says so when there are some. The layout it was made from is left as it was last saved: a
-layout of yours opened again is without those edits. Once saved, the duplicate is one of your custom
+The copy is the layout as the editor shows it now, so edits you have not saved go into it, and the
+dialog says so when there are some. The layout it was made from is left as it was last saved: a
+layout of yours opened again is without those edits. Once saved, the copy is one of your custom
 layouts, and **Analyze** opens it on its first layer, with nothing marked *unsaved*.
 
-Duplicate never overwrites. A name another custom layout has is refused in the dialog, capitals and
-spacing not making two names, and **Duplicate** stays unavailable until you type another. If the name
-is taken while the dialog is open, in another tab say, the dialog asks again. If the duplicate cannot
-be saved, a message says so and the layout stays open; the next **Duplicate** offers the name you
-gave.
+Save as copy never overwrites. A name another custom layout has is refused in the dialog, capitals
+and spacing not making two names, and **Save copy** stays unavailable until you type another. If the
+name is taken while the dialog is open, in another tab say, the dialog asks again. If the copy
+cannot be saved, a message says so and the layout stays open; the next **Save as copy** offers the
+name you gave.
 
 ### Proposing a change
 
@@ -106,7 +110,7 @@ Two custom layouts never share a name: capitals and spacing do not make two name
 you save under is already another custom layout's, whether in a copy's dialog, **New layout**, an
 import, or the **Name** field of a layout you renamed, the dialog says so and offers to
 **Overwrite** that layout, or to type another name. Overwrite puts this layout in its place; nothing
-is saved until you choose. [**Duplicate**](#duplicating-a-layout) is the exception: it only asks for
+is saved until you choose. [**Save as copy**](#saving-as-a-copy) is the exception: it only asks for
 another name.
 
 ## Signing in with GitHub

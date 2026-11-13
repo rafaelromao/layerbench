@@ -50,7 +50,10 @@ export type SessionState =
       /** The layout as opened. */
       layout: Layout;
       compiled: CompiledLayout;
-      /** A draft this tab made, opened from its own link: its edits are still unsaved. */
+      /**
+       * A draft this tab made, opened from its own link, or a custom layout carried whole with
+       * changes not saved in it, from another tab or browser: its edits are still unsaved.
+       */
       startsUnsaved: boolean;
       /** The custom layout this is, or will be saved as; null for one never saved. */
       storedId: string | null;
@@ -283,11 +286,13 @@ export function createLayoutSession(
       publish();
       return;
     }
-    const startsUnsaved = origin !== undefined;
-    storedId = startsUnsaved ? origin : result.storedId;
+    // A draft this tab made, or a custom layout carried whole with changes not saved in it.
+    const draft = origin !== undefined;
+    const startsUnsaved = draft || result.unsaved === true;
+    storedId = draft ? origin : result.storedId;
     // What was read, or what a draft was made from: not what happens to be in storage by the time it is saved.
-    basedOn = startsUnsaved ? drafts.shaOf(ref) : (result.sha ?? null);
-    source = startsUnsaved ? drafts.sourceOf(ref) : result.source;
+    basedOn = draft ? drafts.shaOf(ref) : (result.sha ?? null);
+    source = draft ? drafts.sourceOf(ref) : result.source;
     attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });

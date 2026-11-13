@@ -219,16 +219,21 @@ describe('Drafts', () => {
     expect(again.s.getState()).toMatchObject({ storedId: 'qwerty-copy', source: null });
   });
 
-  it('opens a draft another tab made as a layout of its own', async () => {
+  it('opens a draft another tab made as the custom layout it is an edit of, unsaved, and saves over it', async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const first = session('custom:qwerty-copy', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
     const draft = await first.s.link();
 
-    const elsewhere = await opened(session(draft, { storage }).s);
-    expect(elsewhere.startsUnsaved).toBe(false);
-    expect(elsewhere.storedId).toBeNull();
+    const other = session(draft, { storage });
+    const elsewhere = await opened(other.s);
+    expect(elsewhere).toMatchObject({ startsUnsaved: true, storedId: 'qwerty-copy' });
+    // Its link is the draft, not the custom layout's: the picker shows what is open.
+    expect(elsewhere.pickedRef).toBe(draft);
+    expect(await other.s.save(elsewhere.layout)).toMatchObject({ ok: true, id: 'qwerty-copy' });
+    expect(await ids(storage)).toEqual(['qwerty-copy']);
+    expect(JSON.stringify((await storage.get('layouts', 'qwerty-copy'))?.doc)).toContain('ç');
   });
 });
 
@@ -267,24 +272,19 @@ describe('A custom layout sent by its link', () => {
     expect(JSON.stringify((await mine.get('layouts', 'mine'))?.doc)).toContain('ç');
   });
 
-  it('never saves over a different layout saved under the same name unless told to', async () => {
+  // The owner's decision (2026-11-13): a layout carried whole is the custom layout of the id it
+  // carries, however it differs, so Save saves over it rather than asking for a copy's name.
+  it('opens as the custom layout of its id where that differs, unsaved, and saves over it', async () => {
     const link = await ownersLink();
     const theirs = new MemoryStorage();
     await seed(theirs, 'colemak', 'mine', { name: 'Mine' });
     const { s } = session(link, { storage: theirs });
     const state = await opened(s);
-    expect(state.storedId).toBeNull();
-    expect(await s.save(state.layout)).toMatchObject({
-      ok: false,
-      reason: 'name-taken',
-      taken: { id: 'mine', name: 'Mine' },
-    });
-    expect(s.getState()).toMatchObject({ storedId: null });
+    expect(state).toMatchObject({ storedId: 'mine', startsUnsaved: true });
+    expect(await s.save(state.layout)).toMatchObject({ ok: true, id: 'mine' });
     expect(await ids(theirs)).toEqual(['mine']);
     expect(JSON.stringify((await theirs.get('layouts', 'mine'))?.doc)).toBe(
-      JSON.stringify(
-        toCanonicalJson({ ...(bundledLayout('colemak') as Layout), id: 'mine', name: 'Mine' }),
-      ),
+      JSON.stringify(toCanonicalJson({ ...state.layout, id: 'mine' })),
     );
   });
 });

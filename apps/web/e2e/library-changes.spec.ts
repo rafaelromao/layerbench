@@ -70,7 +70,10 @@ test('Save on a bundled layout offers to propose the change, and links its pull 
 }) => {
   await signedIn(page, false);
   await page.goto('/analyze?layout=colemak&corpus=en-general');
-  await page.getByRole('region', { name: 'Layout' }).getByRole('button', { name: 'Save' }).click();
+  await page
+    .getByRole('region', { name: 'Layout' })
+    .getByRole('button', { name: 'Save', exact: true })
+    .click();
   const dialog = page.getByRole('dialog', { name: 'Save Colemak' });
   await expect(dialog.getByRole('button', { name: 'Save a copy' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Propose change' }).click();
