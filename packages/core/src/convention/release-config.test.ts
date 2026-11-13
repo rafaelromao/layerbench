@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PULL_SCOPES, PULL_TYPES } from './pr-title.js';
 
-// The rule's lists are in four places that must not drift: here, the changelog's sections in
-// Release Please's config, the tables of CONTRIBUTING.md, and the version every package carries.
+// The title convention, Release Please's changelog sections, the contributor tables and package
+// versions are checked together here. GitHub API categories are checked in release-notes.test.ts.
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const read = (path: string) => readFileSync(`${ROOT}${path}`, 'utf8');
 const json = (path: string) => JSON.parse(read(path)) as Record<string, unknown>;
@@ -47,11 +47,11 @@ describe('the convention and Release Please', () => {
     expect(shown.sort()).toEqual(['feat', 'fix', 'perf', 'revert']);
   });
 
-  it('generates release notes from merged pull requests without pinning the next version', () => {
+  it('uses GitHub release notes and permits Release Please to advance the manifest version', () => {
     expect(root['changelog-type']).toBe('github');
     expect(root['release-as']).toBeUndefined();
     expect(root['bump-minor-pre-major']).toBe(true);
-    expect(manifest['.']).toBe('0.2.0');
+    expect(manifest['.']).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it("gives every type and every scope a row in CONTRIBUTING.md's tables", () => {

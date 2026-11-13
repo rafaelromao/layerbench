@@ -4,20 +4,22 @@ name: release-please
 # title: CONTRIBUTING.md) and keeps one pull request open that sets the next version in the
 # package.json files and writes CHANGELOG.md. Merging that pull request tags the version
 # (`vX.Y.Z`) and publishes a GitHub release. Nothing here builds or deploys: the merge is a push to
-# main, which the `ci` workflow deploys as it does any other. A merge with nothing in it that is a
-# feat, fix, perf or revert, or breaking (docs, ci, chore, ...), opens no release pull request.
-# The config is release-please-config.json, the last released version .release-please-manifest.json.
+# main, which the `ci` workflow deploys as it does any other. This workflow gates Release Please on
+# release-worthy Conventional Commit titles; GitHub-generated notes are categorized by labels that
+# this workflow assigns from those same titles. The config is release-please-config.json, the last
+# released version .release-please-manifest.json.
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-# The job token never writes: the GitHub App does, because a pull request opened with the job token
-# starts no workflow, so the release pull request would never be checked. The App's token also
-# needs no change to the repository's Actions settings (repository variable LAYERBENCH_APP_ID,
-# secret LAYERBENCH_APP_PRIVATE_KEY, as in `library-edit` and `ci`).
+# The job token labels merged pull requests for GitHub's release-note categories. The GitHub App
+# creates the release pull request because one opened with the job token starts no workflow, so its
+# checks would never run. The App token uses the existing repository variable and secret.
 permissions:
   contents: read
+  issues: write
+  pull-requests: read
 
 concurrency:
   group: release-please
@@ -30,15 +32,56 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         id: app
         with:
           app-id: ${{ vars.LAYERBENCH_APP_ID }}
           private-key: ${{ secrets.LAYERBENCH_APP_PRIVATE_KEY }}
+      - name: Check whether this merge can release
+        id: gate
+        if: ${{ github.event_name == 'push' }}
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: echo "should_release=$(node .github/scripts/should-run-release-please.mjs)" >> "$GITHUB_OUTPUT"
+      - name: Label merged pull requests for release notes
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          base_tag="$(git tag --sort=-version:refname | head -n 1)"
+          if [ -z "$base_tag" ]; then
+            echo "No version tag is available to bound release-note labels." >&2
+            exit 1
+          fi
+          base_date="$(git log -1 --format=%cI "$base_tag")"
+
+          gh label create "release-note: breaking" --color B60205 --description "Breaking change" --force
+          gh label create "release-note: feature" --color 1D76DB --description "Release feature" --force
+          gh label create "release-note: fix" --color D93F0B --description "Release bug fix" --force
+          gh label create "release-note: performance" --color 0E8A16 --description "Release performance improvement" --force
+          gh label create "release-note: revert" --color FBCA04 --description "Release revert" --force
+          gh label create "release-note: hidden" --color EDEDED --description "Exclude from release notes" --force
+
+          gh pr list --state merged --base main --limit 1000 --json number,title,labels,mergedAt |
+            node .github/scripts/release-note-labels.mjs --since "$base_date" > "$RUNNER_TEMP/release-note-labels.json"
+
+          while IFS= read -r update; do
+            number="$(jq -r '.number' <<< "$update")"
+            label="$(jq -r '.label' <<< "$update")"
+            args=(pr edit "$number" --add-label "$label")
+            while IFS= read -r old_label; do
+              args+=(--remove-label "$old_label")
+            done < <(jq -r '.removeLabels[]?' <<< "$update")
+            gh "${args[@]}"
+          done < <(jq -c '.[]' "$RUNNER_TEMP/release-note-labels.json")
       # It runs on Node 24, which GitHub's runners provide.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         id: release
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true' }}
         with:
           token: ${{ steps.app.outputs.token }}
           config-file: release-please-config.json

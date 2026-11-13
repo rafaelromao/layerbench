@@ -169,16 +169,21 @@ versions.
 
 ## Releases
 
-`.github/workflows/release-please.yml` runs on every push to `main`. It keeps one pull request open,
-titled `chore(main): release X.Y.Z`, that sets the version in the `package.json` files (the root, and
+`.github/workflows/release-please.yml` runs on every push to `main`, but gates Release Please on
+release-worthy titles. It keeps one pull request open, titled `chore(main): release X.Y.Z`, that sets
+the version in the `package.json` files (the root, and
 `packages/core`, `packages/corpora` and `apps/web`, which share it), writes `CHANGELOG.md` from
-GitHub-generated release notes, and updates `.release-please-manifest.json`. Those notes list merged
-pull requests once, even when the older history contains both a merge commit and the original commit.
-Merging the release pull request tags `vX.Y.Z` and publishes a GitHub release. For the first public
-release, the workflow prepends [`docs/releases/0.3.0.md`](docs/releases/0.3.0.md) to the generated
-notes; dispatch the workflow to retry that edit if publishing succeeded but the notes update failed.
-There is one version for the whole repository, and it is not the app's: the app is deployed on every
-push to `main`, as before, and does not read it.
+GitHub-generated release notes, and updates `.release-please-manifest.json`. GitHub groups notes by
+merged pull request, so a squash and its older merge commit appear once. The workflow labels merged
+pull requests from their Conventional Commit title; [`.github/release.yml`](.github/release.yml)
+keeps the visible Features, Bug Fixes, Performance Improvements and Reverts categories and excludes
+the types hidden by `changelog-sections`. Release Please runs for a feature, fix, performance gain,
+revert, breaking change, or its own release pull request; non-breaking docs, tests and workflow-only
+changes do not create releases. Merging the release pull request tags `vX.Y.Z` and publishes a GitHub release.
+For the first public release, the workflow prepends [`docs/releases/0.3.0.md`](docs/releases/0.3.0.md)
+to the generated notes; dispatch the workflow to retry that edit if publishing succeeded but the
+notes update failed. There is one version for the whole repository, and it is not the app's: the app
+is deployed on every push to `main`, as before, and does not read it.
 
 - Do not edit the release pull request's title: Release Please finds the pull request it merged by
   it, and builds the release's notes from its body.

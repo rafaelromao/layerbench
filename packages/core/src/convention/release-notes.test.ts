@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const SCRIPT = `${ROOT}.github/scripts/compose-release-notes.mjs`;
+const RELEASE_GATE = `${ROOT}.github/scripts/should-run-release-please.mjs`;
+const RELEASE_LABELS = `${ROOT}.github/scripts/release-note-labels.mjs`;
 const WORKFLOW = readFileSync(`${ROOT}.github/workflows/release-please.yml`, 'utf8');
+const RELEASE_CONFIG = readFileSync(`${ROOT}.github/release.yml`, 'utf8');
 const overview = readFileSync(`${ROOT}docs/releases/0.3.0.md`, 'utf8').trim();
 const expression = (value: string) => `\${{ ${value} }}`;
 
@@ -14,6 +17,20 @@ const compose = (releaseNotes: string) =>
     cwd: ROOT,
     encoding: 'utf8',
     env: { ...process.env, RELEASE_NOTES: releaseNotes },
+  });
+
+const shouldRunReleasePlease = (commitMessage: string) =>
+  execFileSync(process.execPath, [RELEASE_GATE], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, COMMIT_MESSAGE: commitMessage },
+  });
+
+const labelPullRequests = (since: string, pullRequests: unknown) =>
+  execFileSync(process.execPath, [RELEASE_LABELS, '--since', since], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    input: JSON.stringify(pullRequests),
   });
 
 describe('the first public release notes', () => {
@@ -44,11 +61,132 @@ describe('the first public release notes', () => {
     expect(compose(composed)).toBe(composed);
   });
 
+  it('deduplicates GitHub-generated pull requests while preserving the release sections', () => {
+    const since = '2026-11-10T00:00:00Z';
+    const pullRequests = [
+      {
+        number: 151,
+        title: 'feat(sync): list missing account documents',
+        body: '',
+        mergedAt: '2026-11-11T19:14:01Z',
+        labels: [{ name: 'release-note: hidden' }],
+      },
+      {
+        number: 151,
+        title: 'feat(sync): list missing account documents',
+        body: '',
+        mergedAt: '2026-11-11T19:14:01Z',
+        labels: [{ name: 'release-note: hidden' }],
+      },
+      {
+        number: 150,
+        title: 'docs(guide): explain release process',
+        body: '',
+        mergedAt: '2026-11-11T18:00:00Z',
+        labels: [],
+      },
+      {
+        number: 148,
+        title: 'fix(analysis): correct a result',
+        mergedAt: '2026-11-11T17:00:00Z',
+        labels: [],
+      },
+      {
+        number: 147,
+        title: 'perf(web): reduce work',
+        mergedAt: '2026-11-11T16:00:00Z',
+        labels: [],
+      },
+      {
+        number: 146,
+        title: 'revert: undo a feature',
+        mergedAt: '2026-11-11T15:00:00Z',
+        labels: [],
+      },
+      {
+        number: 145,
+        title: 'docs(guide)!: remove an old contract',
+        mergedAt: '2026-11-11T14:00:00Z',
+        labels: [],
+      },
+      {
+        number: 149,
+        title: 'chore(main): release 0.3.0',
+        body: '',
+        mergedAt: '2026-11-09T18:00:00Z',
+        labels: [],
+      },
+    ];
+
+    expect(JSON.parse(labelPullRequests(since, pullRequests))).toEqual([
+      {
+        number: 151,
+        label: 'release-note: feature',
+        removeLabels: ['release-note: hidden'],
+      },
+      { number: 150, label: 'release-note: hidden', removeLabels: [] },
+      { number: 148, label: 'release-note: fix', removeLabels: [] },
+      { number: 147, label: 'release-note: performance', removeLabels: [] },
+      { number: 146, label: 'release-note: revert', removeLabels: [] },
+      { number: 145, label: 'release-note: breaking', removeLabels: [] },
+    ]);
+    expect(RELEASE_CONFIG).toContain('release-note: hidden');
+    expect(RELEASE_CONFIG).toContain('title: Features');
+    expect(RELEASE_CONFIG).toContain('title: Bug Fixes');
+    expect(RELEASE_CONFIG).toContain('title: Performance Improvements');
+    expect(RELEASE_CONFIG).toContain('title: Reverts');
+    for (const label of [
+      'release-note: breaking',
+      'release-note: feature',
+      'release-note: fix',
+      'release-note: performance',
+      'release-note: revert',
+      'release-note: hidden',
+    ]) {
+      expect(RELEASE_CONFIG).toContain(label);
+    }
+  });
+
+  it('runs Release Please only for release-worthy merges or its release PR', () => {
+    for (const title of [
+      'feat(web): add a capability',
+      'fix(analysis): correct a result',
+      'perf(web): reduce work',
+      'revert: feat(web): add a capability',
+      'docs(guide)!: remove an old contract',
+      'chore(main): release 0.3.0',
+    ]) {
+      expect(shouldRunReleasePlease(title), title).toBe('true');
+    }
+
+    for (const title of [
+      'docs(guide): explain a capability',
+      'test(core): cover a case',
+      'ci(ci): update a workflow',
+      'chore(deps): update tooling',
+    ]) {
+      expect(shouldRunReleasePlease(title), title).toBe('false');
+    }
+  });
+
   it('updates only v0.3.0 releases and can recover through manual dispatch', () => {
     expect(WORKFLOW).toContain('id: release');
     expect(WORKFLOW).toContain("steps.release.outputs.release_created == 'true'");
     expect(WORKFLOW).toContain("steps.release.outputs.tag_name == 'v0.3.0'");
     expect(WORKFLOW).toContain("github.event_name == 'workflow_dispatch'");
+    expect(WORKFLOW).toContain('should-run-release-please.mjs');
+    expect(WORKFLOW).toContain('release-note-labels.mjs');
+    expect(WORKFLOW).toContain(`steps.gate.outputs.should_release == 'true'`);
+    expect(WORKFLOW).toContain('issues: write');
+    expect(WORKFLOW).toContain('pull-requests: read');
+    expect(WORKFLOW).toContain('fetch-depth: 0');
+    expect(WORKFLOW).toContain(`if: ${expression("github.event_name == 'push'")}`);
+    expect(WORKFLOW).toContain(
+      `if: ${expression("github.event_name == 'workflow_dispatch' || steps.gate.outputs.should_release == 'true'")}`,
+    );
+    expect(WORKFLOW.indexOf('Label merged pull requests')).toBeLessThan(
+      WORKFLOW.indexOf('id: release'),
+    );
     expect(WORKFLOW).toContain(`EVENT_NAME: ${expression('github.event_name')}`);
     expect(WORKFLOW).toContain(`RELEASE_BODY: ${expression('steps.release.outputs.body')}`);
     expect(WORKFLOW).toContain(`GH_TOKEN: ${expression('steps.app.outputs.token')}`);
