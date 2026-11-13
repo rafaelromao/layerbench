@@ -366,19 +366,18 @@ export class CompositeStorage implements StorageAdapter {
     // Recorded again once read: a delete followed meanwhile, in another tab, forgets what is on record
     // of the document, which this save, not marked yet, is still an edit of.
     if (recorded) this.marks.setBase(collection, id, opts.basedOn as string);
-    // A layout saved new, of no copy here and of no version (an edit of a layout says which, with
-    // `basedOn`), is a layout of its own: not an edit of the version recorded from reading another
-    // of its id from the gists, which may have been deleted there since. It is not weighed against it.
-    const fresh =
-      collection === 'layouts' &&
+    // Saved new: no copy here, and no edit of a version read (an edit of a layout says which, with
+    // `basedOn`; one of a rule set or a text is of the version this browser last read). It is a
+    // document of its own until it is sent, so a deletion the gists record of its id is not of it.
+    const madeNew =
       !waiting &&
       before === null &&
-      typeof opts.basedOn !== 'string' &&
-      opts.overwriting !== true &&
-      previousBase !== null;
-    if (fresh) this.marks.clearBase(collection, id);
+      (collection === 'layouts' ? typeof opts.basedOn !== 'string' : previousBase === null);
+    const wasMade = this.marks.made(collection, id);
+    if (madeNew) this.marks.setMade(collection, id, true);
     const restoreBase = () => {
-      if (!recorded && !fresh) return;
+      if (madeNew && !wasMade) this.marks.setMade(collection, id, false);
+      if (!recorded) return;
       if (previousBase === null) this.marks.clearBase(collection, id);
       else this.marks.setBase(collection, id, previousBase);
     };
@@ -479,12 +478,12 @@ export class CompositeStorage implements StorageAdapter {
     let seen: Awaited<ReturnType<StorageAdapter['get']>>;
     try {
       seen = await remote.get(collection, id);
-      // Held by the gists once, and deleted from them since, by another browser: an edit of it is
-      // not put back unasked. It stays here, marked, and the sender asks whether to keep it.
+      // Deleted from the gists since, by another browser, and this not a document made here new: it
+      // is not put back unasked. It stays here, marked, and the sender asks whether to keep it.
       if (
         !seen &&
         opts.expectedSha === undefined &&
-        this.marks.base(collection, id) !== null &&
+        !this.marks.made(collection, id) &&
         (await this.deletionOf(collection, id))
       ) {
         this.marks.notify();
@@ -1017,28 +1016,11 @@ export class CompositeStorage implements StorageAdapter {
       return;
     }
     if (!seen) {
+      // Deleted from the gists since, by another browser: a copy here that is not a document made
+      // here new is not sent back, nor deleted, unasked. Marked, it is asked about, whether this is
+      // an attempt by itself or a send the user asked for, until the user chooses.
       const deletion = await this.deletionOf(collection, id);
-      if (deletion && !everything && stored.meta.sha === deletion.sha) {
-        // The very version deleted, marked only as its send was never confirmed: nothing of it was
-        // changed here since, so it goes, as an unchanged copy does. Never on a send the user asked
-        // for, which is asked about instead, below.
-        const wasMarked = this.marks.has(collection, id);
-        try {
-          await this.local.delete(collection, id, { expectedSha: stored.meta.sha });
-        } catch (e) {
-          // Saved here again meanwhile: weighed at the next attempt, as it now is.
-          if (e instanceof StorageConflictError) return;
-          throw e;
-        }
-        if (await this.forgetIfGone(collection, id, wasMarked)) {
-          done.removed.push({ collection, id, name: entry.name });
-        }
-        return;
-      }
-      // Deleted from the gists since this copy was a version they held: not sent back unasked.
-      // Marked, it is asked about. So is any of theirs the user asks to send (`everything`), which
-      // is neither deleted here nor put back in the account without their saying which.
-      if (deletion && (everything || this.marks.base(collection, id) !== null)) {
+      if (deletion && !this.marks.made(collection, id)) {
         this.marks.mark(collection, id);
         this.leaveDeleted(collection, entry, stored.doc, deletion, done);
         return;
@@ -1109,6 +1091,8 @@ export class CompositeStorage implements StorageAdapter {
     sent: JsonObject,
   ): Promise<void> {
     this.marks.setBase(collection, id, sha);
+    // Sent, it is no longer a document of this browser's own, but the account's version of it.
+    this.marks.setMade(collection, id, false);
     const now = await this.local.get(collection, id).catch(() => null);
     if (!now || sameDocument(now.doc, sent)) this.marks.clear(collection, id);
   }

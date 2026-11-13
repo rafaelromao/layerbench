@@ -978,40 +978,88 @@ describe('a delete made on another browser', () => {
     stop();
   });
 
-  it('tells the lists, and names each once, when copying everything deletes what was deleted elsewhere', async () => {
-    const { phone, phoneMarks } = await phoneAndLaptop();
+  it('names a layout once when the change proposed from it goes with it', async () => {
+    const { phone, phoneMarks, laptop } = await phoneAndLaptop();
+    await phone.put('proposals', 'lemon', { name: 'Lemon' });
+    await laptop.get('proposals', 'lemon');
+    await laptop.delete('layouts', 'lemon');
+    await laptop.delete('proposals', 'lemon');
     const removed = vi.fn();
+
     const stop = startAutoSync(phone, phoneMarks, TIMING, null, removed);
-    await vi.advanceTimersByTimeAsync(1_000);
-    useToasts.setState({ toasts: [] });
-
-    // A layout and the change proposed from it, which goes with it.
-    const gone = [
-      { collection: 'layouts' as const, id: 'lemon', name: 'Lemon' },
-      { collection: 'proposals' as const, id: 'lemon', name: 'Lemon' },
-    ];
-    await copyEverything(async () => ({
-      copied: 0,
-      current: 0,
-      conflicts: [],
-      taken: 0,
-      failed: [],
-      removed: gone,
-    }));
-    expect(removed).toHaveBeenCalledWith(gone);
-    expect(texts()).toContain(
+    await vi.waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(removed.mock.calls[0][0]).toHaveLength(2);
+    expect(texts()).toEqual([
       'Removed Lemon from this browser: it was deleted from your GitHub account',
-    );
+    ]);
+    stop();
+  });
 
-    // And when it stops partway, for what it deleted before.
-    removed.mockClear();
-    await copyEverything(async () => {
-      throw new CopyUpError(
-        { copied: 0, current: 0, conflicts: [], taken: 0, failed: [], removed: gone.slice(0, 1) },
-        new Error('GitHub did not answer in time'),
-      );
-    });
-    expect(removed).toHaveBeenCalledWith(gone.slice(0, 1));
+  /** The record of deletes unreadable until `back()`, as on a flaky connection at the visit. */
+  function flaky(remote: StorageAdapter) {
+    const deleted = remote.deleted?.bind(remote);
+    let down = true;
+    remote.deleted = async (collection) => {
+      if (down) throw new Error('GitHub responded 503');
+      return deleted ? deleted(collection) : [];
+    };
+    return { back: () => (down = false) };
+  }
+
+  it('keeps asking about a missing document the user sent, past the next attempts, until they choose', async () => {
+    const { remote, phone, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await laptop.delete('layouts', 'lemon');
+    // An older copy of Fusion with no version on record, which the account lacks too.
+    phoneMarks.forget('layouts', 'fusion');
+    await phoneLocal.put('layouts', 'fusion', { name: 'Fusion', note: 'old copy' });
+    await laptop.delete('layouts', 'fusion');
+    // The visit's follow could not read the record, so both are still here, listed as missing.
+    const connection = flaky(remote);
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    connection.back();
+
+    await sendMissing(phone, { collection: 'layouts', id: 'lemon', name: 'Lemon', sent: true });
+    await sendMissing(phone, { collection: 'layouts', id: 'fusion', name: 'Fusion', sent: false });
+    review(false);
+    // The attempts that the marks set off, and more: neither deleted here nor sent back.
+    await vi.advanceTimersByTimeAsync(10_000);
+    syncNow();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(
+      useSync
+        .getState()
+        .last?.conflicts.map((c) => [c.id, c.theirs])
+        .sort(),
+    ).toEqual([
+      ['fusion', null],
+      ['lemon', null],
+    ]);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await phoneLocal.get('layouts', 'fusion')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(await remote.get('layouts', 'fusion')).toBeNull();
+    expect(texts().some((t) => t.startsWith('Removed') || t.startsWith('Sent'))).toBe(false);
+    stop();
+  });
+
+  it('keeps asking after copying everything, past the next attempt', async () => {
+    const { remote, phone, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await laptop.delete('layouts', 'lemon');
+    const connection = flaky(remote);
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    connection.back();
+
+    sendEverything();
+    await vi.waitFor(() =>
+      expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]),
+    );
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
     stop();
   });
 

@@ -191,12 +191,8 @@ export async function copyEverything(copy: () => Promise<CopiedUp>): Promise<voi
     }
     noteResult(result);
     toast.info(copyMessage(result));
-    announceRemoved(result.removed);
   } catch (e) {
-    if (e instanceof CopyUpError) {
-      noteResult(mergedWithShown(e.result));
-      announceRemoved(e.result.removed);
-    }
+    if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
     const copied = e instanceof CopyUpError ? e.copied : 0;
     toast.error(`Copying stopped after ${documents(copied)}: ${messageOf(e)}`);
   } finally {
@@ -286,12 +282,6 @@ export async function sendMissing(
     if (result === 'absent') {
       dropMissing([keyOf(document)], marks);
       toast.info(`${name} is not in this browser any more`);
-      return true;
-    }
-    if (result.removed.length > 0) {
-      // Gone from here, as the account recorded deleting it: not sent, and said so.
-      announceRemoved(result.removed);
-      dropMissing([keyOf(document)], marks);
       return true;
     }
     if (result.conflicts.length > 0) {

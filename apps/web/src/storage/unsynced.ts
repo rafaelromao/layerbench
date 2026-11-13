@@ -38,6 +38,8 @@ function browserBacking(): MarksBacking {
 interface Kept {
   unsent: string[];
   base: Record<string, string>;
+  /** Documents saved here new, as no edit of a version the gists held, and not sent since. */
+  made?: string[];
   /** Who this browser's documents were last sent to: the login of a GitHub account. */
   account?: string;
   /** The last look at this browser's documents against an account's: whose, when, how many it lacked. */
@@ -84,6 +86,7 @@ export interface Audit {
 interface Read {
   unsent: Set<string>;
   base: Map<string, string>;
+  made: Set<string>;
   account: string | null;
   audit: Audit | null;
 }
@@ -113,6 +116,9 @@ export class Unsynced {
       const base = Object.entries(parsed?.base ?? {}).filter(
         (e): e is [string, string] => typeof e[1] === 'string',
       );
+      const made = Array.isArray(parsed?.made)
+        ? parsed.made.filter((k) => typeof k === 'string')
+        : [];
       const account = typeof parsed?.account === 'string' ? parsed.account : null;
       const a = parsed?.audit;
       const audit =
@@ -129,9 +135,9 @@ export class Unsynced {
                 a.missing.every(isMissing) && { missing: a.missing as Missing[] }),
             }
           : null;
-      return { unsent: new Set(unsent), base: new Map(base), account, audit };
+      return { unsent: new Set(unsent), base: new Map(base), made: new Set(made), account, audit };
     } catch {
-      return { unsent: new Set(), base: new Map(), account: null, audit: null };
+      return { unsent: new Set(), base: new Map(), made: new Set(), account: null, audit: null };
     }
   }
 
@@ -139,6 +145,7 @@ export class Unsynced {
     const text = JSON.stringify({
       unsent: [...kept.unsent].sort(),
       base: Object.fromEntries([...kept.base].sort(([a], [b]) => a.localeCompare(b))),
+      ...(kept.made.size > 0 && { made: [...kept.made].sort() }),
       ...(kept.account !== null && { account: kept.account }),
       ...(kept.audit !== null && { audit: kept.audit }),
     } satisfies Kept);
@@ -193,12 +200,31 @@ export class Unsynced {
     if (kept.base.delete(`${collection}/${id}`)) this.write(kept);
   }
 
+  /**
+   * Whether a document was saved here new, not as an edit of a version the gists held, and has not
+   * been sent since: one the gists record as deleted is then not the one deleted, but another of
+   * its id.
+   */
+  made(collection: Collection, id: string): boolean {
+    return this.read().made.has(`${collection}/${id}`);
+  }
+
+  setMade(collection: Collection, id: string, made: boolean): void {
+    const kept = this.read();
+    const key = `${collection}/${id}`;
+    if (kept.made.has(key) === made) return;
+    if (made) kept.made.add(key);
+    else kept.made.delete(key);
+    this.write(kept);
+  }
+
   /** Forget everything known of a document: it is gone from this browser. */
   forget(collection: Collection, id: string): void {
     const kept = this.read();
     const key = `${collection}/${id}`;
     const had = kept.unsent.delete(key);
-    if (kept.base.delete(key) || had) this.write(kept);
+    const made = kept.made.delete(key);
+    if (kept.base.delete(key) || had || made) this.write(kept);
   }
 
   /** Who this browser's documents were last sent to, if anyone. */

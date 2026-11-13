@@ -278,24 +278,26 @@ the record too, so a delete cut short there, gone from your account and not yet 
 on its next sync, or asked about if the document had edits not sent yet.
 
 - A copy this browser holds that was not changed here since your account last held it, or that is the
-  very version deleted, is deleted from this browser too. A message names what went, and the lists
-  show it gone. A layout renamed on another browser shows here under its new name only.
-- A copy changed here since, whether the change is waiting to be sent or is an edit whose mark was
-  lost, is neither deleted nor put back in your account. It is asked about, in the same dialog as
+  very version deleted, and that is not waiting to be sent, is deleted from this browser too. A
+  message names what went, and the lists show it gone. A layout renamed on another browser shows here
+  under its new name only.
+- A copy waiting to be sent, or changed here since, or with no version on record (saved before
+  versions were), is neither deleted nor put back in your account. It is asked about, in the same dialog as
   [When both have changed](#when-both-have-changed), titled *… was deleted elsewhere*: **Keep mine**
   sends this browser's version back to your account; **Delete it** deletes it from this browser too.
-  Nothing is done until you choose. If your account holds the document again by then, saved from
+  Nothing is done until you choose, however many times this browser syncs meanwhile. If your account
+  holds the document again by then, saved from
   another browser, nothing is deleted and you choose again; if this browser's copy was changed after
   the dialog showed it, nothing is written and you choose again.
 - A save, in **Analyze** or elsewhere, of a document deleted from your account since this browser
   last held it stays in this browser and is asked about in the same way, rather than putting it back.
-- A layout made here new under the name of one deleted, by **New layout**, **Import**, **Save a copy**
-  or renaming another to it, is a layout of its own and is sent like any other, whether or not this
-  browser had read the deleted one. So is any document this browser never had a version of on record,
-  such as one made here under the same name while signed out.
+- A layout made here new under the name of one deleted, where this browser holds no copy of it, by
+  **New layout**, **Import** (even of the very file deleted), **Save a copy** or renaming another to
+  it, is a layout of its own and is sent like any other, signed in or out, whether or not this browser
+  had read the deleted one. This browser keeps which documents it made new until they are sent.
 - What you ask to send yourself, with **Send** or **Send them** in the status or with **Copy this
   browser's documents up**, is not followed: a document your account records as deleted is asked
-  about, in the same dialog, whichever version this browser has.
+  about, in the same dialog, whichever version this browser has, unless it was made here new.
 
 Only a delete your account records is followed. A document your account lacks with no such record,
 because it was deleted by hand on GitHub or by an older version of LayerBench, or because this

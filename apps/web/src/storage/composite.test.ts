@@ -2456,21 +2456,73 @@ describe('a delete made on another browser', () => {
     expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('unmarked edit');
   });
 
-  it('leaves a copy that was never known to be the one deleted, made here under the same name', async () => {
+  it('sends a layout made here new under the name of one deleted, once the delete was followed', async () => {
     const { laptop, phoneLocal, phoneMarks, phone, remote } = await twoBrowsers();
     await deleteLemon(laptop);
-    // Lemon made again on the phone with no connection, after it had followed nothing yet: a
-    // document of its own, with no version on record.
-    phoneMarks.forget('layouts', 'lemon');
+    expect(await phone.followDeletions()).toMatchObject([{ id: 'lemon' }]);
+    // Lemon made again on the phone with no connection: a document of its own.
     await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
       name: 'Lemon',
       note: 'new on the phone',
     });
-    expect(await phone.followDeletions()).toEqual([]);
+    expect(phoneMarks.made('layouts', 'lemon')).toBe(true);
     // Sent as the new document it is.
     expect(await phone.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
     expect((await remote.get('layouts', 'lemon'))?.doc.note).toBe('new on the phone');
     expect(await remote.deleted?.('layouts')).toEqual([]);
+    expect(phoneMarks.made('layouts', 'lemon')).toBe(false);
+  });
+
+  it('sends a layout imported again after it was deleted, the very version deleted, once its send gets through', async () => {
+    const { laptop, phoneLocal, phoneMarks, phone, remote } = await twoBrowsers();
+    await deleteLemon(laptop);
+    await phone.followDeletions();
+    // Imported again from the file it came from, the same text, with no connection: its send
+    // fails, and it waits.
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+    });
+    const [deletion] = (await remote.deleted?.('layouts')) ?? [];
+    expect((await phoneLocal.get('layouts', 'lemon'))?.meta.sha).toBe(deletion?.sha);
+
+    // Not taken for the copy deleted: it is the user's, made again.
+    expect(await phone.copyUp()).toMatchObject({ copied: 1, conflicts: [], removed: [] });
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+    expect(await remote.get('layouts', 'lemon')).not.toBeNull();
+  });
+
+  it('asks about an older copy with no version on record, once a conflict, that the laptop then deletes', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    // The phone's older copy, saved before versions were recorded: weighed, it is a conflict, and
+    // the user decides later.
+    phoneMarks.forget('layouts', 'lemon');
+    await phoneLocal.put('layouts', 'lemon', { name: 'Lemon', note: 'old phone copy' });
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    expect(await phone.audit()).toMatchObject({ marked: 1 });
+    expect((await phone.copyUp()).conflicts).toMatchObject([{ id: 'lemon' }]);
+    await laptop.get('layouts', 'lemon');
+    await deleteLemon(laptop);
+
+    // Not sent back to the account, which would put it back on the laptop too: asked about.
+    const { copied, conflicts } = await phone.copyUp();
+    expect(copied).toBe(0);
+    expect(conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+
+    // Nor when Keep theirs finds the account's version gone since.
+    const [shown] = conflicts;
+    expect(
+      await phone.keepTheirs({
+        ...shown,
+        theirs: { name: 'Lemon', doc: {}, updatedAt: '', sha: 'x' },
+        deleted: undefined,
+      }),
+    ).toBe('gone');
+    expect(await phone.copyUp()).toMatchObject({
+      copied: 0,
+      conflicts: [{ id: 'lemon', theirs: null }],
+    });
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
   });
 
   it('deletes nothing for a document the account lacks with no record of its deletion', async () => {
@@ -2611,7 +2663,7 @@ describe('a delete made on another browser', () => {
     expect(phoneMarks.has('rulesets', 'my-rules')).toBe(false);
   });
 
-  it('follows a copy waiting to be sent that is the very version deleted, rather than asking', async () => {
+  it('asks about a copy waiting to be sent, even the very version deleted, and never deletes it unasked', async () => {
     const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
     // Saved on the phone, and sent, but the answer never came: it is still marked there.
     const v2 = { name: 'Lemon', note: 'v2' };
@@ -2624,11 +2676,11 @@ describe('a delete made on another browser', () => {
     const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
     expect(await phone.copyUp()).toMatchObject({
       copied: 0,
-      conflicts: [],
-      removed: [{ collection: 'layouts', id: 'lemon', name: 'Lemon' }],
+      conflicts: [{ id: 'lemon', theirs: null }],
+      removed: [],
     });
-    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
-    expect(phoneMarks.has('layouts', 'lemon')).toBe(false);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('v2');
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
     expect(await remote.get('layouts', 'lemon')).toBeNull();
   });
 
