@@ -132,6 +132,10 @@ jobs:
       name: app
       url: https://layerbench.github.io/
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: app
@@ -144,18 +148,9 @@ jobs:
           path: site
       # The bundles of the deploy before stay one more round, and older ones go: Pages lets a browser
       # keep a page for ten minutes, and a page asks for the bundles it was built with.
+      - run: node apps/web/scripts/publish-assets.mjs dist site
       - run: |
           cd site
-          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name assets ! -name .assets -exec rm -rf {} +
-          if [ -d assets ]; then
-            for f in assets/*; do
-              [ -e "../dist/$f" ] || grep -qxF "$f" .assets 2>/dev/null || rm -f "$f"
-            done
-          fi
-          cp -R ../dist/. .
-          (cd ../dist && find assets -type f | sort) > .assets
-          # Published as it is, with no Jekyll build on GitHub's side.
-          touch .nojekyll
           git add -A
           if git diff --cached --quiet; then
             echo "The site already has this build."

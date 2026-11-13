@@ -4,5 +4,10 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["playwright.config.ts", "e2e/cyanophage.spec.ts", "e2e/cyanophage"]
+  "include": [
+    "playwright.config.ts",
+    "e2e/chunk-loading.spec.ts",
+    "e2e/cyanophage.spec.ts",
+    "e2e/cyanophage"
+  ]
 }

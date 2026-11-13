@@ -3,6 +3,7 @@ import { extname, resolve, sep } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { type Connect, defineConfig, loadEnv, type Plugin } from 'vite';
+import { assertSafeBuildOutput, CHUNK_WARNING_LIMIT_KB } from './src/build/output.js';
 import { RAW_ORIGIN } from './src/import/keymap-url.js';
 import { type AuthEnv, handleAuth } from './src/server/github-auth.js';
 import staticRoutes from './static-routes.json' with { type: 'json' };
@@ -76,20 +77,7 @@ function staticHosting(policy: string): Plugin {
      * production, so the build refuses to produce output the policy would block.
      */
     generateBundle(_options, bundle) {
-      for (const [name, chunk] of Object.entries(bundle)) {
-        if (chunk.type !== 'chunk') continue;
-        const offender = /(?<![.\w])eval\(|new Function\(/.exec(chunk.code);
-        if (offender) {
-          throw new Error(
-            `${name} contains ${offender[0]}, which "script-src 'self'" blocks. ` +
-              'Replace the dependency or relax the policy deliberately.',
-          );
-        }
-      }
-      const html = bundle['index.html'];
-      if (html?.type === 'asset' && /<script(?![^>]*\bsrc=)/.test(String(html.source))) {
-        throw new Error('index.html has an inline script, which "script-src \'self\'" blocks.');
-      }
+      assertSafeBuildOutput(bundle);
     },
     transformIndexHtml: {
       order: 'post',
@@ -102,6 +90,7 @@ function staticHosting(policy: string): Plugin {
     closeBundle() {
       const dir = resolve(import.meta.dirname, 'dist');
       const index = resolve(dir, 'index.html');
+      if (!existsSync(index)) return;
       copyFileSync(index, resolve(dir, '404.html'));
       for (const route of staticRoutes) {
         const routeDir = resolve(dir, route.slice(1));
@@ -229,6 +218,7 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2022',
       sourcemap: false,
+      chunkSizeWarningLimit: CHUNK_WARNING_LIMIT_KB,
     },
     server: {
       // The GitHub App's callback names this port; another one would send sign-in elsewhere.

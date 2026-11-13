@@ -133,7 +133,7 @@ describe('the landing page', () => {
     }
   });
 
-  it('links into the app only to views that exist, with a query the app reads back unchanged', () => {
+  it('links into the app only to views that exist, with a query the app reads back unchanged', async () => {
     for (const { url } of references.filter(({ url }) => isAppLink(url))) {
       const link = new URL(url, 'https://app.invalid');
       expect(
@@ -145,7 +145,9 @@ describe('the landing page', () => {
         const target = guidePage(slug);
         expect(target, url).toBeDefined();
         const hash = link.hash.slice(1);
-        if (hash && target) expect(anchorsOf(parseGuide(target.source)).has(hash), url).toBe(true);
+        if (hash && target) {
+          expect(anchorsOf(parseGuide(await target.load())).has(hash), url).toBe(true);
+        }
         continue;
       }
       if (link.search === '') continue;

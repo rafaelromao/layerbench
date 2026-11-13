@@ -5,17 +5,28 @@ import {
   Outlet,
   redirect,
 } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
-import { NotFoundScreen, RouteErrorScreen } from './components/RouteScreens.js';
+import { type ComponentType, lazy, Suspense } from 'react';
+import { NotFoundScreen, RouteErrorScreen, RouteLoadingScreen } from './components/RouteScreens.js';
 import { Shell } from './components/Shell.js';
 import { inlineInFragment } from './url/fragment.js';
 import type { RawSearch } from './url/params.js';
-import { AnalyzeView } from './views/AnalyzeView.js';
-import { CompareView } from './views/CompareView.js';
-import { CorpusView } from './views/CorpusView.js';
-import { GuideView } from './views/GuideView.js';
 import { LibraryView } from './views/LibraryView.js';
-import { RulesView } from './views/RulesView.js';
+
+const AnalyzeView = lazy(() =>
+  import('./views/AnalyzeView.js').then(({ AnalyzeView }) => ({ default: AnalyzeView })),
+);
+const CompareView = lazy(() =>
+  import('./views/CompareView.js').then(({ CompareView }) => ({ default: CompareView })),
+);
+const CorpusView = lazy(() =>
+  import('./views/CorpusView.js').then(({ CorpusView }) => ({ default: CorpusView })),
+);
+const GuideView = lazy(() =>
+  import('./views/GuideView.js').then(({ GuideView }) => ({ default: GuideView })),
+);
+const RulesView = lazy(() =>
+  import('./views/RulesView.js').then(({ RulesView }) => ({ default: RulesView })),
+);
 
 /**
  * Search parameters stay strings from end to end. The router must not coerce them: what a value
@@ -65,12 +76,16 @@ const homeRoute = createRoute({
 });
 
 /** Every view route reads the same raw search object; each view parses what it needs. */
-function view(path: string, component: () => ReactNode) {
+function view(path: string, Component: ComponentType) {
   return createRoute({
     getParentRoute: () => rootRoute,
     path,
     validateSearch: (search: Record<string, unknown>): RawSearch => search as RawSearch,
-    component,
+    component: () => (
+      <Suspense fallback={<RouteLoadingScreen />}>
+        <Component />
+      </Suspense>
+    ),
   });
 }
 
