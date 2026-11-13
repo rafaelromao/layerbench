@@ -123,6 +123,7 @@ describe('two stores at once', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
   });
 });
@@ -154,7 +155,7 @@ describe('copying up everything this browser holds', () => {
     const composite = new CompositeStorage(local, remote);
     expect(composite.reachesRemote).toBe(true);
     const result = await composite.copyUp({ everything: true });
-    expect(result).toMatchObject({ copied: 2, current: 0, taken: 0, failed: [] });
+    expect(result).toMatchObject({ copied: 2, current: 0, taken: 0, failed: [], removed: [] });
     expect(result.conflicts.map((c) => c.id).sort()).toEqual(['edited-here', 'edited-there']);
 
     const name = async (c: Collection, id: string) => (await remote.get(c, id))?.doc.name;
@@ -178,6 +179,7 @@ describe('copying up everything this browser holds', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
   });
 
@@ -205,6 +207,7 @@ describe('copying up everything this browser holds', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
   });
 
@@ -221,6 +224,7 @@ describe('copying up everything this browser holds', () => {
       conflicts: [],
       taken: 1,
       failed: [],
+      removed: [],
     });
     expect((await remote.list('layouts')).map((e) => e.id)).toEqual(['mine', 'other']);
   });
@@ -302,6 +306,7 @@ describe('what is waiting to be sent', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
     expect((await remote.get('layouts', 'mine'))?.doc).toEqual({ name: 'Mine' });
     expect(marks.count()).toBe(0);
@@ -327,15 +332,18 @@ describe('what is waiting to be sent', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
     expect(await remote.get('layouts', 'old')).toBeNull();
     expect(await composite.copyUp({ everything: true })).toMatchObject({ copied: 1 });
     expect(await remote.get('layouts', 'old')).not.toBeNull();
   });
 
-  it('does not bring back a document another browser deleted', async () => {
+  it('does not bring back a document the gists lack with no record of its deletion', async () => {
     const { marks, local, remote, composite } = await agreed();
-    // Deleted from the account elsewhere; this browser still holds it, saved and sent as it was.
+    // Deleted from the account by hand, or by a version of the app that recorded no deletion; this
+    // browser still holds it, saved and sent as it was. It is not deleted here on that alone.
+    remote.deleted = undefined;
     await remote.delete('layouts', 'gust');
     expect(await composite.copyUp()).toEqual({
       copied: 0,
@@ -343,6 +351,7 @@ describe('what is waiting to be sent', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
     expect(await remote.get('layouts', 'gust')).toBeNull();
     expect((await local.get('layouts', 'gust'))?.doc).toEqual({ name: 'Gust' });
@@ -414,6 +423,7 @@ describe('what is waiting to be sent', () => {
       conflicts: [],
       taken: 0,
       failed: [],
+      removed: [],
     });
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust, edited on the phone');
     expect(marks.count()).toBe(0);
@@ -450,7 +460,7 @@ describe('what is waiting to be sent', () => {
       mine: { doc: { name: 'Gust (phone)' } },
       theirs: { name: 'Gust (laptop)', doc: { name: 'Gust (laptop)' } },
     });
-    expect(result.conflicts[0].theirs.sha).toBe((await remote.get('layouts', 'gust'))?.meta.sha);
+    expect(result.conflicts[0].theirs?.sha).toBe((await remote.get('layouts', 'gust'))?.meta.sha);
     // Neither was written over, and it is still waiting.
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
     expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
@@ -488,7 +498,7 @@ describe('what is waiting to be sent', () => {
     };
 
     const result = await composite.copyUp();
-    expect(result.conflicts.map((c) => c.theirs.doc.name)).toEqual(['Gust (laptop)']);
+    expect(result.conflicts.map((c) => c.theirs?.doc.name)).toEqual(['Gust (laptop)']);
     expect((await remote.get('layouts', 'gust'))?.doc.name).toBe('Gust (laptop)');
   });
 
@@ -622,7 +632,7 @@ describe('a signed-in save of a document the gists hold another version of', () 
     expect(marks.has('layouts', 'gust')).toBe(true);
     // It is found as the conflict it is, and asked about.
     const { conflicts } = await composite.copyUp();
-    expect(conflicts.map((c) => [c.mine.doc.name, c.theirs.doc.name])).toEqual([
+    expect(conflicts.map((c) => [c.mine.doc.name, c.theirs?.doc.name])).toEqual([
       ['Gust (phone)', 'Gust (laptop)'],
     ]);
   });
@@ -751,7 +761,7 @@ describe('settling a conflict', () => {
     expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
     expect(marks.has('layouts', 'gust')).toBe(true);
     // The conflict is found afresh, against what the gists hold now.
-    expect((await composite.copyUp()).conflicts[0].theirs.name).toBe('Gust (laptop, again)');
+    expect((await composite.copyUp()).conflicts[0].theirs?.name).toBe('Gust (laptop, again)');
   });
 
   it("writes nothing when this browser's copy was saved again since the user was shown the two", async () => {
@@ -772,7 +782,21 @@ describe('settling a conflict', () => {
     // Nothing was thrown away: it is still here, and still waiting to be sent.
     expect((await local.get('layouts', 'gust'))?.doc.name).toBe('Gust (phone)');
     expect(marks.has('layouts', 'gust')).toBe(true);
+    // The gists recorded the delete, so it is not sent back unasked: whether to keep it is asked.
+    expect(await composite.copyUp()).toMatchObject({
+      copied: 0,
+      conflicts: [{ id: 'gust', theirs: null, deleted: { at: expect.any(String) } }],
+    });
+    expect(await remote.get('layouts', 'gust')).toBeNull();
+  });
+
+  it('sends it again where the gists lack it with no record of its deletion', async () => {
+    const { marks, remote, composite, conflict } = await conflicted();
+    remote.deleted = undefined;
+    await remote.delete('layouts', 'gust');
+    expect(await composite.keepTheirs(conflict)).toBe('gone');
     expect(await composite.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+    expect(marks.has('layouts', 'gust')).toBe(false);
   });
 });
 
@@ -971,7 +995,7 @@ describe('what an edit is made on', () => {
 
     const { conflicts, copied } = await composite.copyUp();
     expect(copied).toBe(0);
-    expect(conflicts.map((c) => c.theirs.doc.name)).toEqual(['X v3']);
+    expect(conflicts.map((c) => c.theirs?.doc.name)).toEqual(['X v3']);
     expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X v3');
   });
 
@@ -1338,7 +1362,7 @@ describe('a save weighed against the version the editor read', () => {
     expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X R2');
     expect(marks.has('layouts', 'x')).toBe(true);
     // And it is asked about, not sent over R2.
-    expect((await composite.copyUp()).conflicts.map((c) => c.theirs.doc.name)).toEqual(['X R2']);
+    expect((await composite.copyUp()).conflicts.map((c) => c.theirs?.doc.name)).toEqual(['X R2']);
     expect((await remote.get('layouts', 'x'))?.doc.name).toBe('X R2');
   });
 
@@ -2235,7 +2259,14 @@ describe('sending one document', () => {
     const composite = new CompositeStorage(local, remote, marks);
 
     const result = await composite.copyOne('layouts', 'one');
-    expect(result).toEqual({ copied: 1, current: 0, conflicts: [], taken: 0, failed: [] });
+    expect(result).toEqual({
+      copied: 1,
+      current: 0,
+      conflicts: [],
+      taken: 0,
+      failed: [],
+      removed: [],
+    });
     expect((await remote.get('layouts', 'one'))?.doc).toEqual({ name: 'One' });
     expect(await remote.get('layouts', 'two')).toBeNull();
     // What both hold is on record, as after any send.
@@ -2344,6 +2375,123 @@ describe('a delete made on another browser', () => {
     expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('edited on the phone');
     expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
     expect(await remote.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('is followed where the laptop changed the layout before deleting it, the phone never having seen that', async () => {
+    const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
+    const opened = await laptop.get('layouts', 'lemon');
+    await laptop.put(
+      'layouts',
+      'lemon',
+      { name: 'Lemon', note: 'edited on the laptop' },
+      { basedOn: opened?.meta.sha },
+    );
+    await deleteLemon(laptop);
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+
+    // The phone's copy is the older version both held, not edited there: it goes.
+    expect(await phone.followDeletions()).toEqual([
+      { collection: 'layouts', id: 'lemon', name: 'Lemon' },
+    ]);
+    expect(await phoneLocal.get('layouts', 'lemon')).toBeNull();
+  });
+
+  it('marks, and asks about, a copy edited on the phone whose mark was lost', async () => {
+    const { laptop, phoneLocal, phoneMarks, phone } = await twoBrowsers();
+    // Changed in the phone's store with nothing to say so, as a save before edits were marked.
+    await phoneLocal.put('layouts', 'lemon', { name: 'Lemon', note: 'unmarked edit' });
+    await deleteLemon(laptop);
+
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(true);
+    const { conflicts } = await phone.copyUp();
+    expect(conflicts).toMatchObject([{ id: 'lemon', theirs: null }]);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('unmarked edit');
+  });
+
+  it('leaves a copy that was never known to be the one deleted, made here under the same name', async () => {
+    const { laptop, phoneLocal, phoneMarks, phone, remote } = await twoBrowsers();
+    await deleteLemon(laptop);
+    // Lemon made again on the phone with no connection, after it had followed nothing yet: a
+    // document of its own, with no version on record.
+    phoneMarks.forget('layouts', 'lemon');
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+      note: 'new on the phone',
+    });
+    expect(await phone.followDeletions()).toEqual([]);
+    // Sent as the new document it is.
+    expect(await phone.copyUp()).toMatchObject({ copied: 1, conflicts: [] });
+    expect((await remote.get('layouts', 'lemon'))?.doc.note).toBe('new on the phone');
+    expect(await remote.deleted?.('layouts')).toEqual([]);
+  });
+
+  it('deletes nothing for a document the account lacks with no record of its deletion', async () => {
+    const { remote, phone, phoneLocal } = await twoBrowsers();
+    // The gist removed by hand on GitHub, or the account signed in to another one: no record.
+    remote.deleted = async () => [];
+    await remote.delete('layouts', 'lemon');
+    expect(await phone.followDeletions()).toEqual([]);
+    await phone.copyUp();
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+  });
+
+  it('follows nothing, and fails nothing, when the record cannot be read', async () => {
+    const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
+    await deleteLemon(laptop);
+    remote.deleted = async () => {
+      throw new Error('GitHub responded 503');
+    };
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(await phone.copyUp()).toMatchObject({ failed: [], removed: [] });
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+  });
+
+  it('keeps the edit and sends it back with Keep mine, or deletes it here with the other choice', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    const offline = new CompositeStorage(phoneLocal, null, phoneMarks);
+    await offline.put('layouts', 'lemon', { name: 'Lemon', note: 'phone' });
+    await offline.put('layouts', 'fusion', { name: 'Fusion', note: 'phone' });
+    await deleteLemon(laptop);
+    await laptop.delete('layouts', 'fusion');
+
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    const { conflicts } = await phone.copyUp();
+    const lemon = conflicts.find((c) => c.id === 'lemon');
+    const fusion = conflicts.find((c) => c.id === 'fusion');
+    if (!lemon || !fusion) throw new Error('both are asked about');
+
+    expect(await phone.keepMine(lemon)).toBe('kept');
+    expect((await remote.get('layouts', 'lemon'))?.doc.note).toBe('phone');
+    expect(await remote.deleted?.('layouts')).toMatchObject([{ id: 'fusion' }]);
+    expect(phoneMarks.has('layouts', 'lemon')).toBe(false);
+
+    expect(await phone.keepTheirs(fusion)).toBe('kept');
+    expect(await phoneLocal.get('layouts', 'fusion')).toBeNull();
+    expect(phoneMarks.has('layouts', 'fusion')).toBe(false);
+    expect(await phone.copyUp()).toMatchObject({ copied: 0, conflicts: [] });
+    expect(await remote.get('layouts', 'fusion')).toBeNull();
+  });
+
+  it('writes nothing for a choice about a layout the account has again, or the phone edited, since', async () => {
+    const { remote, laptop, phoneLocal, phoneMarks } = await twoBrowsers();
+    const offline = new CompositeStorage(phoneLocal, null, phoneMarks);
+    await offline.put('layouts', 'lemon', { name: 'Lemon', note: 'phone' });
+    await deleteLemon(laptop);
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+    const [lemon] = (await phone.copyUp()).conflicts;
+
+    await offline.put('layouts', 'lemon', { name: 'Lemon', note: 'phone, again' });
+    expect(await phone.keepTheirs(lemon)).toBe('edited');
+    expect(await phone.keepMine(lemon)).toBe('edited');
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone, again');
+
+    const [again] = (await phone.copyUp()).conflicts;
+    await remote.put('layouts', 'lemon', { name: 'Lemon', note: 'made again on the laptop' });
+    expect(await phone.keepTheirs(again)).toBe('changed');
+    expect(await phone.keepMine(again)).toBe('changed');
+    expect((await remote.get('layouts', 'lemon'))?.doc.note).toBe('made again on the laptop');
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone, again');
   });
 
   it('is asked about where the phone saves an edit of the layout after it was deleted', async () => {

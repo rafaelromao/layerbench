@@ -530,11 +530,11 @@ describe('a copy of everything that stops partway', () => {
       theirs: { name: 'Gust', doc: { name: 'G2' }, updatedAt: '2026-11-10T10:00:00Z', sha: 's' },
     } as Conflict;
     useSync.setState({
-      last: { copied: 0, current: 0, conflicts: [shown], taken: 0, failed: [] },
+      last: { copied: 0, current: 0, conflicts: [shown], taken: 0, failed: [], removed: [] },
     });
     await copyEverything(async () => {
       throw new CopyUpError(
-        { copied: 1, current: 0, conflicts: [], taken: 0, failed: [] },
+        { copied: 1, current: 0, conflicts: [], taken: 0, failed: [], removed: [] },
         new Error('GitHub did not answer in time'),
       );
     });
@@ -887,29 +887,109 @@ describe('when both have changed', () => {
 });
 
 describe('a delete made on another browser', () => {
-  it('is followed when the phone opens, though nothing of its own waits to be sent', async () => {
+  /** A phone holding Lemon and Fusion, saved and sent there, and a laptop signed in to the same account. */
+  async function phoneAndLaptop() {
     const remote = new MemoryStorage('github');
     const phoneMarks = memoryMarks();
-    const phone = new CompositeStorage(new MemoryStorage('local'), remote, phoneMarks);
+    const phoneLocal = new MemoryStorage('local');
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
     await phone.put('layouts', 'lemon', { name: 'Lemon' });
     await phone.put('layouts', 'fusion', { name: 'Fusion' });
     const laptop = new CompositeStorage(new MemoryStorage('laptop'), remote, memoryMarks());
     await laptop.get('layouts', 'lemon');
     await laptop.get('layouts', 'fusion');
-    await laptop.delete('layouts', 'lemon');
-    await laptop.put(
-      'layouts',
-      'magic-caster',
-      { name: 'Magic Caster' },
-      { replacing: ['fusion'] },
-    );
-    await laptop.delete('layouts', 'fusion');
+    /** Lemon deleted on the laptop, and Fusion renamed there to Magic Caster. */
+    const deleteAndRename = async () => {
+      await laptop.delete('layouts', 'lemon');
+      await laptop.put(
+        'layouts',
+        'magic-caster',
+        { name: 'Magic Caster' },
+        { replacing: ['fusion'] },
+      );
+      await laptop.delete('layouts', 'fusion');
+    };
+    return { remote, phone, phoneLocal, phoneMarks, laptop, deleteAndRename };
+  }
+
+  const names = async (storage: CompositeStorage) =>
+    (await storage.list('layouts')).map((e) => e.name);
+
+  it('is followed when the phone opens, though nothing of its own waits to be sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
     expect(phoneMarks.count()).toBe(0);
 
     const stop = startAutoSync(phone, phoneMarks, TIMING);
-    await vi.waitFor(async () =>
-      expect((await phone.list('layouts')).map((e) => e.name)).toEqual(['Magic Caster']),
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    stop();
+  });
+
+  it('says what went from this browser, and tells the lists, without saying anything was sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    const removed = vi.fn();
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING, null, removed);
+    await vi.waitFor(() => expect(removed).toHaveBeenCalled());
+    expect(removed.mock.calls[0][0].map((r: { name: string }) => r.name).sort()).toEqual([
+      'Fusion',
+      'Lemon',
+    ]);
+    expect(texts()).toEqual([
+      expect.stringMatching(
+        /^Removed (Fusion and Lemon|Lemon and Fusion) from this browser: they were deleted from your GitHub account$/,
+      ),
+    ]);
+    expect(useSync.getState()).toMatchObject({ phase: 'idle', last: null });
+    stop();
+  });
+
+  it('is followed again when the tab is shown, with nothing waiting to be sent', async () => {
+    const { phone, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.advanceTimersByTimeAsync(1_000);
+    // Deleted while the phone's tab was in the background.
+    await deleteAndRename();
+    await vi.advanceTimersByTimeAsync(15_000);
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(async () => expect(await names(phone)).toEqual(['Magic Caster']));
+    stop();
+  });
+
+  it('asks about a layout changed on the phone that the laptop deleted, and keeps it until then', async () => {
+    const { remote, phoneLocal, phoneMarks, laptop } = await phoneAndLaptop();
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+      note: 'phone',
+    });
+    await laptop.delete('layouts', 'lemon');
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING);
+    await vi.waitFor(() =>
+      expect(useSync.getState().last?.conflicts).toMatchObject([{ id: 'lemon', theirs: null }]),
     );
+    expect(useSync.getState().reviewing).toBe(true);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone');
+    expect(await remote.get('layouts', 'lemon')).toBeNull();
+    expect(texts()).toEqual([]);
+    stop();
+  });
+
+  it('follows nothing while what waits is held back for another account', async () => {
+    const { remote, phoneLocal, phoneMarks, deleteAndRename } = await phoneAndLaptop();
+    await deleteAndRename();
+    phoneMarks.setAccount('someone-else');
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'other', {
+      name: 'Other',
+    });
+    const phone = new CompositeStorage(phoneLocal, remote, phoneMarks);
+
+    const stop = startAutoSync(phone, phoneMarks, TIMING, 'me');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(useSync.getState().held).toEqual({ account: 'someone-else' });
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
     stop();
   });
 });

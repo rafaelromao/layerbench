@@ -2,7 +2,13 @@ import { COLLECTIONS, type StorageAdapter } from '@layerbench/core';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { toast } from '../state/toasts.js';
-import { CompositeStorage, type Conflict, type CopiedUp, CopyUpError } from './composite.js';
+import {
+  CompositeStorage,
+  type Conflict,
+  type CopiedUp,
+  CopyUpError,
+  type Removed,
+} from './composite.js';
 import { type Missing, type Unsynced, unsynced } from './unsynced.js';
 
 /** Where sending this browser's documents to the gists stands. */
@@ -56,18 +62,37 @@ const AUDIT_EVERY_MS = 12 * 3_600_000;
 
 const documents = (n: number) => `${n} document${n === 1 ? '' : 's'}`;
 
+/** Names, as a sentence lists them: `A`, `A and B`, `A, B and C`, `A, B and 2 more`. */
+function named(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length <= 3) return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+}
+
+/** Tell the user what went from this browser because it was deleted from their account elsewhere. */
+function announceRemoved(removed: readonly Removed[]): void {
+  if (removed.length === 0) return;
+  const they = removed.length === 1 ? 'it was' : 'they were';
+  toast.info(
+    `Removed ${named(removed.map((r) => r.name))} from this browser: ${they} deleted from your GitHub account`,
+  );
+}
+
 /** What to tell the user an attempt did, if it did anything they would not see for themselves. */
-function announce({ copied }: CopiedUp): void {
+function announce({ copied, removed }: CopiedUp): void {
   if (copied > 0) {
     toast.info(`Sent ${documents(copied)} saved in this browser to your GitHub account`);
   }
+  announceRemoved(removed);
 }
 
 /**
- * Which conflict this is: the document and the version of it in the gists. This browser's version
- * is left out, since it changes with every save of the document while the conflict stays one.
+ * Which conflict this is: the document and the version of it in the gists, or its deletion there.
+ * This browser's version is left out, since it changes with every save of the document while the
+ * conflict stays one.
  */
-const versionOf = (c: Conflict) => `${c.collection}/${c.id}@${c.theirs.sha}`;
+const versionOf = (c: Conflict) =>
+  `${c.collection}/${c.id}@${c.theirs ? c.theirs.sha : `deleted ${c.deleted?.at ?? ''}`}`;
 
 /**
  * The conflicts the dialog has opened for since the page loaded. It opens by itself for ones it has
@@ -159,6 +184,7 @@ export async function copyEverything(copy: () => Promise<CopiedUp>): Promise<voi
     }
     noteResult(result);
     toast.info(copyMessage(result));
+    announceRemoved(result.removed);
   } catch (e) {
     if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
     const copied = e instanceof CopyUpError ? e.copied : 0;
@@ -300,6 +326,10 @@ export async function deleteMissing(
  * something still unsent. Each attempt is a copy up, which writes over nothing the gists hold that
  * the edit was not made on. Returns what stops it.
  *
+ * What another browser deleted from the gists is followed here at the same times, and on every
+ * visit, tab shown again and return online with nothing waiting too: this browser's copies not
+ * edited since go, `onRemoved` hears which, and one edited is asked about when it is sent.
+ *
  * Documents waiting when someone signs in whom this browser has not last sent to are held back for
  * the user to release: the browser may be one that someone else used, and sending is public enough
  * (secret gists are unlisted, not private) not to be done to a stranger's account unasked.
@@ -314,6 +344,7 @@ export function startAutoSync(
     auditEveryMs?: number;
   } = {},
   login: string | null = null,
+  onRemoved: (removed: Removed[]) => void = () => {},
 ): () => void {
   if (!storage.reachesRemote) return () => {};
   const settleMs = timing.settleMs ?? SETTLE_MS;
@@ -397,6 +428,7 @@ export function startAutoSync(
       if (login) marks.setAccount(login);
       noteResult(result);
       announce(result);
+      if (result.removed.length > 0) onRemoved(result.removed);
       const first = result.failed[0];
       if (first) {
         // Some could not be sent: it says which, and why, and tries again later.
@@ -412,7 +444,11 @@ export function startAutoSync(
       if (stopped) return;
       failures++;
       // What it did before it stopped is still what it found.
-      if (e instanceof CopyUpError) noteResult(mergedWithShown(e.result));
+      if (e instanceof CopyUpError) {
+        noteResult(mergedWithShown(e.result));
+        announceRemoved(e.result.removed);
+        if (e.result.removed.length > 0) onRemoved(e.result.removed);
+      }
       useSync.setState({ phase: 'failed', error: e instanceof Error ? e.message : String(e) });
       later('retry', retryMs[Math.min(failures, retryMs.length) - 1]);
     } finally {
@@ -468,16 +504,40 @@ export function startAutoSync(
     }
   };
   const unsubscribe = marks.subscribe(onMarks);
+
+  /**
+   * Follow what another browser deleted, with nothing waiting to be sent: quietly, as nothing is
+   * being sent, and only to say what went from here. What it marks is sent, and asked about, as any
+   * save is.
+   */
+  let following = false;
+  const follow = async (): Promise<void> => {
+    if (stopped || held || running || following) return;
+    following = true;
+    lastRun = Date.now();
+    const given = new AbortController();
+    const timer = setTimeout(() => given.abort(), attemptMs);
+    try {
+      const removed = await storage.followDeletions({ signal: given.signal });
+      if (stopped) return;
+      announceRemoved(removed);
+      if (removed.length > 0) onRemoved(removed);
+    } catch {
+      // Looked at again on the next visit, or when the tab is shown again.
+    } finally {
+      clearTimeout(timer);
+      following = false;
+    }
+  };
+  /** An attempt where something waits to be sent, which follows deletions too; else that alone. */
+  const sync = () => (marks.count() > 0 ? run() : follow());
+
   const onOnline = () => {
-    if (marks.count() > 0) void run();
+    void sync();
   };
   const onVisible = () => {
-    if (
-      document.visibilityState === 'visible' &&
-      marks.count() > 0 &&
-      Date.now() - lastRun >= MIN_GAP_MS
-    ) {
-      void run();
+    if (document.visibilityState === 'visible' && Date.now() - lastRun >= MIN_GAP_MS) {
+      void sync();
     }
   };
   window.addEventListener('online', onOnline);
@@ -546,9 +606,10 @@ export function startAutoSync(
   const accountChanged = login !== null && before !== null && before !== login;
   if (marks.count() === 0) {
     // Nothing is waiting, so there is nothing to send, and nothing to ask: the browser is the
-    // account's that signed in.
+    // account's that signed in. What another browser deleted goes before the look, which would
+    // otherwise list it as missing from the account.
     if (login) marks.setAccount(login);
-    void audit();
+    void follow().then(() => audit());
   } else if (login && before !== null && before !== login) {
     held = true;
     useSync.setState({ held: { account: before } });
@@ -570,18 +631,25 @@ export function startAutoSync(
   };
 }
 
-/** Runs `startAutoSync` for as long as `storage` is the one the app saves to and reaches the gists. */
+/**
+ * Runs `startAutoSync` for as long as `storage` is the one the app saves to and reaches the gists.
+ * `onRemoved` hears of documents deleted from this browser because another deleted them.
+ */
 export function AutoSync({
   storage,
   login = null,
+  onRemoved,
 }: {
   storage: StorageAdapter;
   login?: string | null;
+  onRemoved?: (removed: Removed[]) => void;
 }): null {
   useEffect(
     () =>
-      storage instanceof CompositeStorage ? startAutoSync(storage, unsynced, {}, login) : undefined,
-    [storage, login],
+      storage instanceof CompositeStorage
+        ? startAutoSync(storage, unsynced, {}, login, onRemoved)
+        : undefined,
+    [storage, login, onRemoved],
   );
   return null;
 }

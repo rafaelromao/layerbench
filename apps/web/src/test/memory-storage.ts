@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import {
   assertDocumentId,
   type Collection,
+  type Deletion,
   type IndexEntry,
   indexSummary,
   type JsonObject,
@@ -25,10 +26,11 @@ interface Stored {
  * hash of that text, as a gist's is and as the browser's store gives it, so the same text is the same
  * version in any store, and a write that names another version is a conflict. To make an operation
  * fail, replace it on the instance. As every store does, it keeps no second custom layout of a name
- * another has.
+ * another has. It records what is deleted from it, as the gists do, until it is saved again.
  */
 export class MemoryStorage implements StorageAdapter {
   private readonly docs = new Map<string, Stored>();
+  private readonly gone = new Map<string, Deletion>();
 
   constructor(readonly id = 'memory') {}
 
@@ -80,6 +82,7 @@ export class MemoryStorage implements StorageAdapter {
       if (taken) throw new NameTakenError(taken);
     }
     this.docs.set(`${collection}/${id}`, { json, sha, updatedAt: new Date().toISOString() });
+    this.gone.delete(`${collection}/${id}`);
     return { sha };
   }
 
@@ -94,5 +97,17 @@ export class MemoryStorage implements StorageAdapter {
       throw new StorageConflictError();
     }
     this.docs.delete(`${collection}/${id}`);
+    if (existing) {
+      this.gone.set(`${collection}/${id}`, {
+        id,
+        sha: existing.sha,
+        deletedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  async deleted(collection: Collection): Promise<Deletion[]> {
+    const prefix = `${collection}/`;
+    return [...this.gone].filter(([key]) => key.startsWith(prefix)).map(([, d]) => ({ ...d }));
   }
 }

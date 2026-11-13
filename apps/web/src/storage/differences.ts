@@ -116,7 +116,8 @@ export function describeDifferences(mine: unknown, theirs: unknown): string[] {
  * which by name; null for anything but a layout that reads as one.
  */
 export async function compareLink(conflict: Conflict): Promise<string | null> {
-  if (conflict.collection !== 'layouts') return null;
+  // A layout the account deleted has no second version to open.
+  if (conflict.collection !== 'layouts' || conflict.theirs === null) return null;
   const mine = safeParseLayout(conflict.mine.doc);
   const theirs = safeParseLayout(conflict.theirs.doc);
   if (!mine.ok || !theirs.ok) return null;

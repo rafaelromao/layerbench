@@ -61,6 +61,18 @@ export interface StorageAdapter {
     id: string,
     opts?: { message?: string; expectedSha?: string },
   ): Promise<void>;
+  /**
+   * For a store that records what is deleted from it, as the gists do for every browser signed in to
+   * them: the documents deleted and not saved again since, each with the version deleted.
+   */
+  deleted?(collection: Collection): Promise<Deletion[]>;
+}
+
+/** A document deleted from a store: its id, the version it was at, and when (an ISO date). */
+export interface Deletion {
+  id: string;
+  sha: string;
+  deletedAt: string;
 }
 
 export interface PutOptions {
