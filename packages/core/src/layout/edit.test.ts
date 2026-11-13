@@ -70,6 +70,114 @@ describe('edits to keys', () => {
     expect('LHM' in o.layout.layers[1].bindings).toBe(false);
   });
 
+  it('copies onto a key of another layer, and lands there', () => {
+    const o = landed(layout, {
+      kind: 'copy',
+      layer: 'base',
+      from: 'LHM',
+      to: 'LHR',
+      toLayer: 'upper',
+    });
+    expect(o.layout.layers[1].bindings.LHR).toEqual(kp('a'));
+    expect(o.layout.layers[0]).toBe(layout.layers[0]);
+    expect(o.at).toEqual({ layer: 'upper', keys: ['LHR'] });
+  });
+
+  it('swaps keys of two layers, the same key too, and lands on the layer of the one tapped', () => {
+    const o = landed(layout, {
+      kind: 'swap',
+      layer: 'base',
+      from: 'LHM',
+      to: 'LHM',
+      toLayer: 'upper',
+    });
+    expect(o.layout.layers[0].bindings.LHM).toEqual(kp('1'));
+    expect(o.layout.layers[1].bindings.LHM).toEqual(kp('a'));
+    expect(o.at).toEqual({ layer: 'upper', keys: ['LHM'] });
+  });
+
+  it('carries what a key with no binding does on its layer, unless the other gives the same', () => {
+    // LHR does nothing on the base: Nothing, written out, since above the base it would be
+    // Transparent and show the base through.
+    const up = landed(layout, {
+      kind: 'copy',
+      layer: 'base',
+      from: 'LHR',
+      to: 'LHM',
+      toLayer: 'upper',
+    });
+    expect(up.layout.layers[1].bindings.LHM).toEqual({ kind: 'none' });
+    // Between two layers that are Transparent where nothing is set, it stays unset.
+    const three: Layout = {
+      ...layout,
+      layers: [...layout.layers, { id: 'third', name: 'Third', bindings: { LHI: kp('3') } }],
+    };
+    const across = landed(three, {
+      kind: 'copy',
+      layer: 'upper',
+      from: 'LHR',
+      to: 'LHI',
+      toLayer: 'third',
+    });
+    expect('LHI' in across.layout.layers[2].bindings).toBe(false);
+    // A swap carries both ways: the base's empty key goes up as Nothing, and the upper one's
+    // Transparent comes down as Nothing too, nothing lying below the base: the base's default, so
+    // the key is left unset.
+    const swapped = landed(layout, {
+      kind: 'swap',
+      layer: 'base',
+      from: 'LHR',
+      to: 'LHI',
+      toLayer: 'upper',
+    });
+    expect(swapped.layout.layers[1].bindings.LHI).toEqual({ kind: 'none' });
+    expect('LHR' in swapped.layout.layers[0].bindings).toBe(false);
+  });
+
+  it('takes a Transparent key to the base as Nothing, and keeps it Transparent elsewhere', () => {
+    const transparent: Layout = {
+      ...layout,
+      layers: [
+        layout.layers[0],
+        { ...layout.layers[1], bindings: { ...layout.layers[1].bindings, LHI: { kind: 'trans' } } },
+        { id: 'quiet', name: 'Quiet', bindings: { '*': { kind: 'none' } } },
+      ],
+    };
+    const down = landed(transparent, {
+      kind: 'copy',
+      layer: 'upper',
+      from: 'LHI',
+      to: 'LHM',
+      toLayer: 'base',
+    });
+    expect(down.layout.layers[0].bindings.LHM).toEqual({ kind: 'none' });
+    // A layer whose keys do Nothing where unset: Transparent is written there, and an unset key of
+    // its own carried to another such layer, Nothing, stays as the default there.
+    const across = landed(transparent, {
+      kind: 'copy',
+      layer: 'upper',
+      from: 'LHI',
+      to: 'LHM',
+      toLayer: 'quiet',
+    });
+    expect(across.layout.layers[2].bindings.LHM).toEqual({ kind: 'trans' });
+    const unset = landed(transparent, {
+      kind: 'copy',
+      layer: 'quiet',
+      from: 'LHR',
+      to: 'LHM',
+      toLayer: 'base',
+    });
+    expect('LHM' in unset.layout.layers[0].bindings).toBe(false);
+  });
+
+  it('changes nothing for a layer it cannot find, nor for a key onto itself', () => {
+    const missing: Edit = { kind: 'copy', layer: 'base', from: 'LHM', to: 'LHI', toLayer: 'nope' };
+    expect(applyEdit(layout, missing).status).toBe('unchanged');
+    const itself: Edit = { kind: 'swap', layer: 'base', from: 'LHM', to: 'LHM', toLayer: 'base' };
+    expect(applyEdit(layout, itself).status).toBe('unchanged');
+  });
+
   it('sends keys to another layer, clearing them behind only when moving, and lands there', () => {
     const moved = landed(layout, {
       kind: 'send',

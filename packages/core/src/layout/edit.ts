@@ -38,7 +38,8 @@ import {
 export type Edit =
   /** The same binding on every key listed: typing on a key, Delete, a selection's Clear. */
   | { kind: 'bind'; layer: string; keys: string[]; binding: Binding }
-  | { kind: 'swap' | 'copy'; layer: string; from: string; to: string }
+  /** `from` on `layer` with `to`, which is on `toLayer` when given and on `layer` otherwise. */
+  | { kind: 'swap' | 'copy'; layer: string; from: string; to: string; toLayer?: string }
   /** Keys on `layer` to the same places on `toLayer`, moved or copied. */
   | { kind: 'send'; layer: string; toLayer: string; keys: string[]; mode: 'move' | 'copy' }
   | { kind: 'addLayer'; name: string }
@@ -335,6 +336,13 @@ const sharesLayer = (a: ComboOf, b: ComboOf) =>
 
 const indexOf = (layout: Layout, id: string) => layout.layers.findIndex((l) => l.id === id);
 
+/**
+ * Where a swap or a copy lands: on the key it reached, and on that key's layer when it is another
+ * one, which the board turns to as it does for a key sent there.
+ */
+const landedOn = (from: number, to: number, toLayer: string | undefined, key: string): Landing =>
+  from !== to && toLayer !== undefined ? { layer: toLayer, keys: [key] } : { keys: [key] };
+
 /** The same layout with one layer changed, or the layout itself when there is no such layer. */
 function withLayer(
   layout: Layout,
@@ -365,16 +373,18 @@ const handlers: Handlers = {
     return { layout: next, at: { keys } };
   },
 
-  swap(layout, { layer, from, to }) {
+  swap(layout, { layer, from, to, toLayer }) {
     const i = indexOf(layout, layer);
-    if (i < 0 || from === to) return same(layout);
-    return { layout: swapKeys(layout, i, from, to), at: { keys: [to] } };
+    const j = indexOf(layout, toLayer ?? layer);
+    if (i < 0 || j < 0 || (i === j && from === to)) return same(layout);
+    return { layout: swapKeys(layout, i, from, to, j), at: landedOn(i, j, toLayer, to) };
   },
 
-  copy(layout, { layer, from, to }) {
+  copy(layout, { layer, from, to, toLayer }) {
     const i = indexOf(layout, layer);
-    if (i < 0 || from === to) return same(layout);
-    return { layout: copyKey(layout, i, from, to), at: { keys: [to] } };
+    const j = indexOf(layout, toLayer ?? layer);
+    if (i < 0 || j < 0 || (i === j && from === to)) return same(layout);
+    return { layout: copyKey(layout, i, from, to, j), at: landedOn(i, j, toLayer, to) };
   },
 
   // The board follows the keys to their layer, where they are still selected: the only way to

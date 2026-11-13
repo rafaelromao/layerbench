@@ -19,7 +19,7 @@ export * from './layout/home-row.js';
 export * from './layout/json.js';
 export { shiftWaysOffered } from './layout/keys.js';
 export * from './layout/labels.js';
-export { keyBinding, layerReachedFrom } from './layout/ops.js';
+export { keyBinding, layerDefault, layerReachedFrom } from './layout/ops.js';
 export * from './layout/parts.js';
 export * from './layout/rules.js';
 export * from './layout/schema.js';

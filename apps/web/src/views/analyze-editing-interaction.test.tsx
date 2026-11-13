@@ -354,6 +354,27 @@ describe('Edit', () => {
     });
   });
 
+  it('copies to a key of another layer, tapped after turning the board to it', async () => {
+    setPointerKind('touch');
+    const user = userEvent.setup();
+    await openEditWithDefaults();
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Copy to…' }));
+    await showLayer(user, 'Numbers');
+    // Still armed, and the hint says where the key armed is, the board showing another layer.
+    expect(screen.getByText(/on Base is armed — tap the key to copy it onto/)).toBeInTheDocument();
+    await user.click(svgKey('LHI'));
+
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    expect(shownLayer()).toBe('Numbers');
+    expect(screen.queryByText(/is armed/)).toBeNull();
+    // Read out with where each key is, the board showing only Numbers.
+    expect(screen.getByText('LHM on Base copied to LHI on Numbers')).toBeInTheDocument();
+    await showLayer(user, 'Base');
+    expect(key('Key LHM: d')).toBeInTheDocument();
+  }, 90_000);
+
   it('does not swap when the gesture is cancelled', async () => {
     await openEdit();
 

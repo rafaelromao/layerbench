@@ -32,31 +32,72 @@ export function setKeyBinding(
 }
 
 /**
- * Exchange the bindings of two keys on one layer. A key with no explicit binding stays implicit, so
- * swapping an explicit key with an implicit one moves the binding rather than duplicating it.
+ * What a key with no binding of its own does on a layer: the layer's `*`, else Nothing on the base
+ * and Transparent above.
  */
-export function swapKeys(layout: Layout, layerIdx: number, from: string, to: string): Layout {
-  const layer = layout.layers[layerIdx];
-  if (!layer || from === to) return layout;
-  const a: Binding | undefined = layer.bindings[from];
-  const b: Binding | undefined = layer.bindings[to];
-  const bindings: Record<string, Binding> = { ...layer.bindings };
-  delete bindings[from];
-  delete bindings[to];
-  if (b !== undefined) bindings[from] = b;
-  if (a !== undefined) bindings[to] = a;
-  const layers = layout.layers.map((l, i) => (i === layerIdx ? { ...l, bindings } : l));
-  return { ...layout, layers };
+export function layerDefault(layout: Layout, layerIdx: number): Binding {
+  return (
+    layout.layers[layerIdx]?.bindings['*'] ??
+    (layerIdx === 0 ? { kind: 'none' } : { kind: 'trans' })
+  );
 }
 
 /**
- * Put what `from` carries onto `to`, leaving `from` as it was. Overwrites whatever `to` held. A
- * adaptive key copied this way is a copy of its own, edited apart from the one it came from.
+ * What a key takes along to another layer: its own binding. A key with none takes what it does on
+ * its layer, the layer's default, written out, since at another place on another layer having no
+ * binding would mean something else; but stays implicit where that layer's default is the same.
+ * Transparent taken to the base is Nothing, as Delete makes a key there: nothing lies below the
+ * base to show through. On one layer it is the binding as written, an implicit key staying implicit.
  */
-export function copyKey(layout: Layout, layerIdx: number, from: string, to: string): Layout {
-  const layer = layout.layers[layerIdx];
-  if (!layer || from === to) return layout;
-  return setKeyBinding(layout, layerIdx, to, keyBinding(layout, layerIdx, from));
+function carried(
+  layout: Layout,
+  fromIdx: number,
+  keyId: string,
+  toIdx: number,
+): Binding | undefined {
+  const own = keyBinding(layout, fromIdx, keyId);
+  if (fromIdx === toIdx) return own;
+  const onto = (b: Binding): Binding => (toIdx === 0 && b.kind === 'trans' ? { kind: 'none' } : b);
+  if (own !== undefined) return onto(own);
+  const there = onto(layerDefault(layout, fromIdx));
+  return JSON.stringify(there) === JSON.stringify(layerDefault(layout, toIdx)) ? undefined : there;
+}
+
+/**
+ * Exchange the bindings of two keys, on one layer or `from` on `layerIdx` with `to` on `toIdx`. On
+ * one layer a key with no explicit binding stays implicit, so swapping an explicit key with an
+ * implicit one moves the binding rather than duplicating it; across layers each takes what
+ * `carried` gives it.
+ */
+export function swapKeys(
+  layout: Layout,
+  layerIdx: number,
+  from: string,
+  to: string,
+  toIdx = layerIdx,
+): Layout {
+  if (!layout.layers[layerIdx] || !layout.layers[toIdx]) return layout;
+  if (layerIdx === toIdx && from === to) return layout;
+  const a = carried(layout, layerIdx, from, toIdx);
+  const b = carried(layout, toIdx, to, layerIdx);
+  return setKeyBinding(setKeyBinding(layout, layerIdx, from, b), toIdx, to, a);
+}
+
+/**
+ * Put what `from` carries onto `to`, on the same layer or on `toIdx`, leaving `from` as it was.
+ * Overwrites whatever `to` held. An adaptive key copied this way is a copy of its own, edited apart
+ * from the one it came from.
+ */
+export function copyKey(
+  layout: Layout,
+  layerIdx: number,
+  from: string,
+  to: string,
+  toIdx = layerIdx,
+): Layout {
+  if (!layout.layers[layerIdx] || !layout.layers[toIdx]) return layout;
+  if (layerIdx === toIdx && from === to) return layout;
+  return setKeyBinding(layout, toIdx, to, carried(layout, layerIdx, from, toIdx));
 }
 
 /**
