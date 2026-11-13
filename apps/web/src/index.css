@@ -1930,6 +1930,19 @@ button.lb-combo-apart:focus-visible {
 .lb-guide-section > summary > :is(h2, h3) {
   margin: 0;
 }
+.lb-route-screen {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--color-base-300);
+}
+.lb-route-error-message {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 .lb-guide-body {
   padding: 0 0 0.75rem 1.5rem;
 }

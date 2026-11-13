@@ -23,7 +23,8 @@ export interface Press {
   readonly kind: KeyKind;
   /**
    * What the board draws for it: what it typed, else the layer or modifier it gives; the Repeat key
-   * is `⟳` whatever it repeated.
+   * is `⟳` whatever it repeated. A letter a dead key pressed before it accented is its plain letter:
+   * `´` then `o` is `´` and `o`.
    */
   readonly label: string;
   /** The layer it was pressed for, if it typed nothing and named one: see `KeyEvent.reaches`. */

@@ -493,12 +493,14 @@ describe('Analyze', () => {
       // The last report stands, but it is of what the keys were: each share says so in its name
       // and tooltip, as the key's numbers say they are updating.
       await cyanophageStarted;
-      const oldNumbers = shown().filter((k) => !Number.isNaN(k.share));
-      expect(oldNumbers.length).toBeGreaterThan(0);
-      for (const k of oldNumbers) {
-        expect(k.label, k.id).toMatch(/% of presses \(updating\)/);
-        expect(k.tooltip, k.id).toMatch(/% of presses \(updating\)/);
-      }
+      await waitFor(() => {
+        const oldNumbers = shown().filter((k) => !Number.isNaN(k.share));
+        expect(oldNumbers.length).toBeGreaterThan(0);
+        for (const k of oldNumbers) {
+          expect(k.label, k.id).toMatch(/% of presses \(updating\)/);
+          expect(k.tooltip, k.id).toMatch(/% of presses \(updating\)/);
+        }
+      });
 
       releaseCyanophage();
       await waitFor(() => {

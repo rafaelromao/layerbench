@@ -14,6 +14,7 @@ import {
   GitHubRefused,
   LIBRARY_REPO,
   openPull,
+  overLimit,
   startBranch,
 } from './pull-request.js';
 
@@ -81,7 +82,7 @@ export function checkSubmission(
 /**
  * Open (or update) the submission of a layout `checkSubmission` passed, as `login`, with the App's
  * installation token. One pull request per submitter and layout: while one is open, submitting the
- * layout again commits the new version to it.
+ * layout again commits the new version to it. One submitter has at most `OPEN_AT_ONCE` open.
  */
 export async function submit(
   doc: Record<string, unknown>,
@@ -111,6 +112,9 @@ export async function submit(
         answer: { error: 'taken', reason: `a community layout already has the id "${id}"` },
       };
     }
+
+    const limited = await overLimit(gh, [`submit/${login}/`], branch, 'layouts submitted');
+    if (limited) return limited;
 
     // Left from a submission whose pull request was closed, the branch starts over.
     const { title, commit } = libraryPull('community', 'add', id);

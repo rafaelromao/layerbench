@@ -358,6 +358,145 @@ describe('a combo is a way to type, or it is not: the cost does not decide', () 
       expect(trace(withDeadKey('command'), 'ý').out.trim()).toBe('');
     });
   });
+
+  describe('a dead key beside a macro for its letter', () => {
+    /**
+     * A circumflex dead key and `e` side by side on the base layer, and a macro for `ê` on a
+     * one-shot layer: two presses either way, the dead key's on the cheaper keys.
+     */
+    const board = (withMacro: boolean): Layout => ({
+      format: 'layerbench/layout@1',
+      name: 'Dead key and macro',
+      hostLocale: 'symbols',
+      geometry: { preset: '3x5+2' },
+      keys: { space: 'L0' },
+      layers: [
+        {
+          id: 'base',
+          bindings: {
+            L0: kp(' '),
+            LHI: { kind: 'dead_key', diacritic: '^' },
+            RHI: kp('e'),
+            R0: { kind: 'sl', layer: 'acc' },
+          },
+        },
+        {
+          id: 'acc',
+          bindings: {
+            '*': { kind: 'trans' },
+            ...(withMacro ? { LBP: { kind: 'macro', symbols: 'ê' } } : {}),
+          },
+        },
+      ],
+    });
+
+    it('types the letter with the macro, never the dead key first', () => {
+      const t = trace(board(true), 'ê');
+      expect(t.out).toBe('ê');
+      expect(t.keys).toEqual(['R0', 'LBP']);
+    });
+
+    it('types it with the dead key where nothing types it whole', () => {
+      expect(trace(board(false), 'ê').keys).toEqual(['LHI', 'RHI']);
+    });
+
+    it("names the letter's press by its key's own letter, the accent being the dead key's", () => {
+      const t = trace(board(false), 'ê');
+      expect(t.out).toBe('ê');
+      expect(t.steps.map((s) => s.label)).toEqual(['^', 'e']);
+    });
+
+    it('names a key or combo whose own macro presses the dead key by what it types', () => {
+      const accent = { kind: 'dead_key' as const, diacritic: '´' };
+      const layout: Layout = {
+        format: 'layerbench/layout@1',
+        name: 'Own dead key',
+        hostLocale: 'symbols',
+        geometry: { preset: '3x5+2' },
+        keys: { space: 'L0' },
+        layers: [
+          {
+            id: 'base',
+            bindings: {
+              L0: kp(' '),
+              RHI: { kind: 'macro', steps: [accent, kp('a')] },
+            },
+          },
+        ],
+        combos: [
+          {
+            id: 'oacute',
+            keys: ['LHI', 'LHM'],
+            binding: { kind: 'macro', steps: [accent, kp('o')] },
+            layers: ['base'],
+            timeoutMs: 30,
+            slowRelease: false,
+          },
+        ],
+      };
+      const t = trace(layout, 'áó');
+      expect(t.out).toBe('áó');
+      expect(t.steps.map((s) => s.label)).toEqual(['á', 'ó']);
+    });
+
+    it('types its capital with the macro too', () => {
+      const layout = board(true);
+      const shifted: Layout = {
+        ...layout,
+        keys: { space: 'L0', shift: { key: 'R1', kind: 'sk' } },
+        layers: [
+          {
+            ...layout.layers[0],
+            bindings: { ...layout.layers[0].bindings, R1: { kind: 'sk', mod: 'LSHIFT' } },
+          },
+          layout.layers[1],
+        ],
+      };
+      const t = trace(shifted, 'Ê', { caseMode: 'model' });
+      expect(t.out).toBe('Ê');
+      expect(t.keys).not.toContain('LHI');
+    });
+
+    it('lists the dead key last among the ways, for Typing paths', () => {
+      const ways = enumerateProducers(compileLayout(board(true)), 'fold').bySymbol.get('ê') ?? [];
+      expect(ways.map((p) => p.kind)).toEqual(['macro', 'deadkey']);
+    });
+
+    it('keeps an order set by hand that puts the dead key first', () => {
+      const layout: Layout = {
+        ...board(true),
+        typingPaths: {
+          ê: [{ producer: 'deadkey:base/LHI+direct:base/RHI' }, { producer: 'macro:acc/LBP' }],
+        },
+      };
+      expect(trace(layout, 'ê').keys).toEqual(['LHI', 'RHI']);
+    });
+
+    it('types the letter with the macro over a dead key on a combo', () => {
+      const layout = board(true);
+      const onCombo: Layout = {
+        ...layout,
+        layers: [
+          {
+            ...layout.layers[0],
+            bindings: { L0: kp(' '), RHI: kp('e'), R0: { kind: 'sl', layer: 'acc' } },
+          },
+          layout.layers[1],
+        ],
+        combos: [
+          {
+            id: 'dk',
+            keys: ['LHI', 'LHM'],
+            binding: { kind: 'dead_key', diacritic: '^' },
+            layers: ['base'],
+            timeoutMs: 30,
+            slowRelease: false,
+          },
+        ],
+      };
+      expect(trace(onCombo, 'ê').keys).toEqual(['R0', 'LBP']);
+    });
+  });
 });
 
 describe('combos that do more than type a character', () => {

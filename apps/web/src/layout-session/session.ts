@@ -11,7 +11,13 @@ import {
   toCanonicalJson,
 } from '@layerbench/core';
 import { customRef } from '../custom/ref.js';
-import { type SaveOptions, sameDocument, saveNewLayout } from '../custom/save-new.js';
+import {
+  retryingSaver,
+  type SaveOptions,
+  sameDocument,
+  saveNewLayout,
+} from '../custom/save-new.js';
+import { forgetProposal } from '../proposals/proposals.js';
 import { CompositeStorage } from '../storage/composite.js';
 import { encodeInline } from '../url/inline.js';
 import { inlineRef } from '../url/params.js';
@@ -61,6 +67,12 @@ export type SaveResult =
   /** Another custom layout has the name: save again overwriting it, or under another name. */
   | { ok: false; reason: 'name-taken'; taken: { id: string; name: string }; error: string };
 
+export type DuplicateResult =
+  | { ok: true; id: string }
+  | { ok: false; reason: 'failed'; error: string }
+  /** Another custom layout has the name: a duplicate never overwrites it, so it needs another. */
+  | { ok: false; reason: 'name-taken'; taken: { id: string; name: string }; error: string };
+
 export interface LayoutSession {
   getState(): SessionState;
   subscribe(listener: () => void): () => void;
@@ -77,6 +89,13 @@ export interface LayoutSession {
    * that one's id: the layout is then stored there, in place of it.
    */
   save(layout: Layout, opts?: SaveOptions): Promise<SaveResult>;
+  /**
+   * Store `layout` as a new custom layout of its own, under the name it has, and open it in place of
+   * this one: Analyze's Duplicate. Unlike `save`, which moves a layout it has stored to its new
+   * name, this leaves whatever this layout is stored as where it is. Where another custom layout has
+   * the name nothing is stored and it says which: a duplicate never overwrites.
+   */
+  duplicate(layout: Layout): Promise<DuplicateResult>;
   /** Open another layout, or the same one afresh: a layout picked. */
   open(ref: string): Promise<void>;
   /** The link as it is about to be: a draft still waiting to be written is written now. */
@@ -297,6 +316,20 @@ export function createLayoutSession(
   });
   void start(link.current());
 
+  /** A layout picked: written to the link as one, and opened. */
+  const openRef = async (ref: string) => {
+    own = new Set([ref]);
+    write(ref, 'open');
+    await start(ref);
+  };
+
+  /**
+   * Duplicates are stored by a saver of their own, which remembers the last one that failed: a save
+   * can fail after the browser has written the layout, and trying again must take that one over
+   * rather than make a second.
+   */
+  const duplicates = retryingSaver();
+
   return {
     getState: () => state,
 
@@ -393,11 +426,44 @@ export function createLayoutSession(
       return result;
     },
 
-    async open(ref) {
-      own = new Set([ref]);
-      write(ref, 'open');
-      await start(ref);
+    duplicate(layout) {
+      const run = async (): Promise<DuplicateResult> => {
+        const opening = state.opening;
+        saving = true;
+        publish();
+        try {
+          let id: string;
+          try {
+            ({ id } = await duplicates(ports.storage(), layout, `Duplicate layout ${layout.name}`));
+          } catch (e) {
+            if (e instanceof NameTakenError) {
+              return { ok: false, reason: 'name-taken', taken: e.taken, error: e.message };
+            }
+            return {
+              ok: false,
+              reason: 'failed',
+              error: e instanceof Error ? e.message : String(e),
+            };
+          }
+          // A layout made here is no proposal's copy, whatever a layout since gone left under its id.
+          // Best effort: the duplicate is stored, and a proposal that cannot be read is no reason
+          // to call that a failure.
+          await forgetProposal(ports.storage(), id).catch(() => false);
+          // Stored all the same, but not opened over a layout the user has opened since.
+          if (state.opening === opening) await openRef(customRef(id));
+          return { ok: true, id };
+        } finally {
+          saving = false;
+          publish();
+        }
+      };
+      // Saves and duplicates run one after another.
+      const result = saves.then(run, run);
+      saves = result;
+      return result;
     },
+
+    open: openRef,
 
     async link() {
       if (pending?.timer && editor) {

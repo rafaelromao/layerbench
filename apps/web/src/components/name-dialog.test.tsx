@@ -140,6 +140,29 @@ describe('NameDialog', () => {
       expect(screen.queryByRole('button', { name: /Overwrite/ })).not.toBeInTheDocument();
     });
 
+    it('does not say an overwrite failed when its caller never offers one', () => {
+      render(
+        <NameDialog
+          title="Duplicate Qwerty"
+          nameLabel="Name of the duplicate"
+          initialName="Magic Breeze"
+          submitLabel="Duplicate"
+          taken={() => saved[0]}
+          neverOverwrites
+          onSubmit={() => {}}
+          onClose={() => {}}
+        />,
+      );
+      const status = screen.getByRole('status');
+      expect(status).toHaveTextContent(
+        'A custom layout is already called Magic Breeze. Type another name.',
+      );
+      expect(status).not.toHaveTextContent('overwritten');
+      expect(screen.getByLabelText('Name of the duplicate')).toBeInvalid();
+      expect(screen.queryByRole('button', { name: /Overwrite/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Duplicate' })).toBeDisabled();
+    });
+
     it('saves once another name is picked', async () => {
       const user = userEvent.setup();
       const { onSubmit } = openTaken();
