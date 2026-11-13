@@ -174,6 +174,17 @@ describe('the landing page', () => {
     }
   });
 
+  it('dates the comparison by one day of the check, in the cards and over the table', () => {
+    const day =
+      /\d{1,2} (January|February|March|April|May|June|July|August|September|October|November|December) \d{4}/;
+    const dates = ['#only .section-lede', '#compare .section-lede'].map((selector) => {
+      const lede = page.querySelector(selector)?.textContent?.replace(/\s+/g, ' ') ?? '';
+      return lede.match(day)?.[0];
+    });
+    expect(dates[0], 'the cards name the day of the check').toBeDefined();
+    expect(dates[1], 'the table names the day of the check').toBe(dates[0]);
+  });
+
   it('names every bundled layout, each opening its analysis', () => {
     const linked = all('.layouts a').map((a) => new URL(attr(a, 'href'), 'https://app.invalid'));
     expect(new Set(linked.map((u) => u.searchParams.get('layout')))).toEqual(layouts);
