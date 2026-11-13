@@ -1,6 +1,6 @@
 {
   "name": "@layerbench/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LayerBench engine: geometry, keymap model, ZMK-faithful typing simulator, n-gram tables, rules, analysis",
   "license": "MIT",
   "type": "module",
