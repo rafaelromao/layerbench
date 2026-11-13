@@ -227,9 +227,9 @@ export function ConflictDialog() {
             </p>
           ) : (
             <p id="conflict-about" className="text-xs">
-              This {NOUN[current.collection]} was deleted from your GitHub account, from another
-              browser, and this browser still has it: changed here since the two last agreed, or one
-              you asked to send. Choose whether to keep it: nothing is sent or deleted until you do.
+              This {NOUN[current.collection]} was deleted from your GitHub account, and this browser
+              still has it: changed here since the two last agreed, or one you asked to send. Choose
+              whether to keep it: nothing is sent or deleted until you do.
             </p>
           )}
           <div className="grid gap-2 sm:grid-cols-2">

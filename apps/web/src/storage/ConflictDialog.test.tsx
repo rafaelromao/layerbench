@@ -394,7 +394,9 @@ describe('choosing whether to keep a layout the account deleted', () => {
     show(storage);
     const dialog = await screen.findByRole('dialog', { name: 'Gust was deleted elsewhere' });
     expect(
-      within(dialog).getByText(/deleted from your GitHub account, from another/),
+      within(dialog).getByText(
+        /was deleted from your GitHub account, and this browser still has it/,
+      ),
     ).toBeVisible();
     expect(within(dialog).getByText(/^Deleted /)).toBeVisible();
     expect(within(dialog).queryByText('What differs')).toBeNull();

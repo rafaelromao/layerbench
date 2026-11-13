@@ -281,8 +281,8 @@ on its next sync, or asked about if the document had edits not sent yet.
   very version deleted, and that is not waiting to be sent, is deleted from this browser too. A
   message names what went, and the lists show it gone. A layout renamed on another browser shows here
   under its new name only.
-- A copy waiting to be sent, or changed here since, or with no version on record (saved before
-  versions were), is neither deleted nor put back in your account. It is asked about, in the same dialog as
+- A copy waiting to be sent, or changed here since your account last held it, is neither deleted nor
+  put back in your account. It is asked about, in the same dialog as
   [When both have changed](#when-both-have-changed), titled *… was deleted elsewhere*: **Keep mine**
   sends this browser's version back to your account; **Delete it** deletes it from this browser too.
   Nothing is done until you choose, however many times this browser syncs meanwhile. If your account
@@ -291,6 +291,9 @@ on its next sync, or asked about if the document had edits not sent yet.
   the dialog showed it, nothing is written and you choose again.
 - A save, in **Analyze** or elsewhere, of a document deleted from your account since this browser
   last held it stays in this browser and is asked about in the same way, rather than putting it back.
+- A copy with no version on record (saved before versions were kept), other than the very version
+  deleted, is not taken for the one deleted, nor deleted: the status lists it as missing from your
+  account, as above, and sending it from there asks about it as below.
 - A layout made here new under the name of one deleted, where this browser holds no copy of it, by
   **New layout**, **Import** (even of the very file deleted), **Save a copy** or renaming another to
   it, is a layout of its own and is sent like any other, signed in or out, whether or not this browser
@@ -352,8 +355,9 @@ from there. One tab sends at a time.
   Three documents in a row that cannot be sent end an attempt, so documents after them wait until
   those are dealt with.
 - A gist takes no conditional write: between the check of a version and its write, one round trip,
-  another browser can save the same document, whether by a save, a delete or **Keep mine**. Deleting
-  is also not one step: if it is cut short between your account and this browser, the document is gone
+  another browser can save the same document, whether by a save, a delete or **Keep mine**. A delete
+  made in that moment over another browser's save deletes that save too, there once it follows the
+  delete; a save that lands before it refuses it. Deleting is also not one step: if it is cut short between your account and this browser, the document is gone
   from the account and still here until this browser next syncs, when it follows the delete your
   account recorded, or asks about it if it was changed here meanwhile. The record of deletes is
   rewritten whole with each delete, and with each save of a document deleted before, so two browsers

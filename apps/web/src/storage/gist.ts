@@ -350,12 +350,20 @@ export class GistAdapter implements StorageAdapter {
     return { sha: await sha1Hex(content), path };
   }
 
-  async delete(collection: Collection, id: string): Promise<void> {
+  /**
+   * `expectedSha`, checked against a fresh read as a save's is: another version is a conflict, and
+   * nothing is deleted, nor recorded as deleted for other browsers to follow.
+   */
+  async delete(
+    collection: Collection,
+    id: string,
+    opts: { message?: string; expectedSha?: string } = {},
+  ): Promise<void> {
     assertDocumentId(id);
-    return this.exclusive(() => this.deleteNow(collection, id));
+    return this.exclusive(() => this.deleteNow(collection, id, opts.expectedSha));
   }
 
-  private async deleteNow(collection: Collection, id: string): Promise<void> {
+  private async deleteNow(collection: Collection, id: string, expectedSha?: string): Promise<void> {
     const path = documentFile(collection, id);
     const gist = await this.read(collection);
     if (!gist) return;
@@ -370,6 +378,14 @@ export class GistAdapter implements StorageAdapter {
       current = gist.files[path] ? GistAdapter.content(gist, path) : null;
     } catch {
       current = null;
+    }
+    // Saved since the version the caller decided on: that save is not deleted unseen.
+    if (
+      expectedSha !== undefined &&
+      current !== null &&
+      (await versionOf(current)) !== expectedSha
+    ) {
+      throw new StorageConflictError();
     }
     const recorded =
       current === null

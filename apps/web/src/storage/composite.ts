@@ -589,7 +589,12 @@ export class CompositeStorage implements StorageAdapter {
         ) {
           throw new StorageConflictError();
         }
-        await this.remote.delete(collection, id, opts);
+        // Only the version looked at: a save from another browser between the look and the delete
+        // refuses it, rather than being deleted, and followed by that browser as if it were this one.
+        await this.remote.delete(collection, id, {
+          ...opts,
+          ...(seen && { expectedSha: seen.meta.sha }),
+        });
       }
       await this.local.delete(collection, id, opts);
       // Gone from this browser, there is nothing left of it to send.
@@ -908,8 +913,9 @@ export class CompositeStorage implements StorageAdapter {
     deletion: Deletion,
   ): Promise<boolean> {
     const remote = this.remote as StorageAdapter;
-    // An edit waiting to be sent is the sender's to ask about.
-    if (this.marks.has(collection, id)) return false;
+    // An edit waiting to be sent is the sender's to ask about; one made here new is not the one
+    // deleted, even where its mark was lost.
+    if (this.marks.has(collection, id) || this.marks.made(collection, id)) return false;
     // Saved there again since, by a version of the app that leaves the record: not deleted.
     if (await remote.get(collection, id)) return false;
     const mine = await this.local.get(collection, id);
@@ -924,7 +930,7 @@ export class CompositeStorage implements StorageAdapter {
       return false;
     }
     // Saved or marked meanwhile, by another tab: that is not the copy decided on.
-    if (this.marks.has(collection, id)) return false;
+    if (this.marks.has(collection, id) || this.marks.made(collection, id)) return false;
     try {
       await this.local.delete(collection, id, { expectedSha: mine.meta.sha });
     } catch (e) {

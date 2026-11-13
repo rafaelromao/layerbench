@@ -451,6 +451,20 @@ describe('gists as storage', () => {
     );
   });
 
+  it('refuses to delete, or record deleted, a version other than the one expected', async () => {
+    responder = (call) =>
+      json(200, call.method === 'PATCH' ? { id: 'g1', files: {} } : layoutsGist());
+    const adapter = new GistAdapter(access, memoryIds({ layouts: 'g1' }));
+
+    await expect(
+      adapter.delete('layouts', 'mine', { expectedSha: 'another-version' }),
+    ).rejects.toBeInstanceOf(StorageConflictError);
+    expect(calls.some((c) => c.method === 'PATCH')).toBe(false);
+
+    await adapter.delete('layouts', 'mine', { expectedSha: await sha1Hex(MINE) });
+    expect(calls.filter((c) => c.method === 'PATCH')).toHaveLength(1);
+  });
+
   it('deletes a document too large to read all the same, recording no version of it', async () => {
     responder = (call) =>
       json(

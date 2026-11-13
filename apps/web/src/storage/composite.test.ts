@@ -2744,6 +2744,44 @@ describe('a delete made on another browser', () => {
     expect(phoneMarks.base('layouts', 'lemon')).toBeNull();
   });
 
+  it('is not made over a save another browser lands between its look and the delete', async () => {
+    const { remote, laptop, phone, phoneLocal } = await twoBrowsers();
+    // The laptop deletes Lemon as the phone's save of an edit reaches the account.
+    const opened = await phone.get('layouts', 'lemon');
+    const real = remote.delete.bind(remote);
+    remote.delete = async (collection, id, opts) => {
+      await phone.put(
+        'layouts',
+        'lemon',
+        { name: 'Lemon', note: 'phone' },
+        { basedOn: opened?.meta.sha },
+      );
+      return real(collection, id, opts);
+    };
+    await expect(laptop.delete('layouts', 'lemon')).rejects.toBeInstanceOf(StorageConflictError);
+    remote.delete = real;
+
+    // The phone's save stays in the account, and on the phone, which has nothing to follow.
+    expect((await remote.get('layouts', 'lemon'))?.doc.note).toBe('phone');
+    expect(await remote.deleted?.('layouts')).toEqual([]);
+    expect(await phone.followDeletions()).toEqual([]);
+    expect((await phoneLocal.get('layouts', 'lemon'))?.doc.note).toBe('phone');
+  });
+
+  it('never follows a delete onto a copy made here new, even with its mark lost', async () => {
+    const { laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
+    await deleteLemon(laptop);
+    await phone.followDeletions();
+    // Imported again, the very file deleted, with no connection; then its mark is lost, as when two
+    // tabs write the marks at once.
+    await new CompositeStorage(phoneLocal, null, phoneMarks).put('layouts', 'lemon', {
+      name: 'Lemon',
+    });
+    phoneMarks.clear('layouts', 'lemon');
+    expect(await phone.followDeletions()).toEqual([]);
+    expect(await phoneLocal.get('layouts', 'lemon')).not.toBeNull();
+  });
+
   it('deletes only the version it looked at, so a save from another tab in between is never deleted', async () => {
     const { laptop, phone, phoneLocal, phoneMarks } = await twoBrowsers();
     await deleteLemon(laptop);
