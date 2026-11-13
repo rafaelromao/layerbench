@@ -2,6 +2,7 @@ import {
   type Binding,
   describeReach,
   keyBinding,
+  layerDefault,
   legend,
   legendText,
   reachKeys,
@@ -70,9 +71,7 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
   const shown = legend(compiled, drawn);
   const authored = keyBinding(layout, layer, keyId);
   // A key with nothing of its own takes the layer's default, which is what editing starts from.
-  const fallback: Binding =
-    layout.layers[layer]?.bindings['*'] ?? (layer === 0 ? { kind: 'none' } : { kind: 'trans' });
-  const current = authored ?? fallback;
+  const current: Binding = authored ?? layerDefault(layout, layer);
   const scope = useEditorScope(compiled);
   const text = scope.text;
   // How this key brings the layer on, said where a phone user can read it.

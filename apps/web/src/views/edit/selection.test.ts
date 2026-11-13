@@ -196,6 +196,7 @@ describe('where the board goes after an edit', () => {
     expect(swapped.lastEdit).toMatchObject({
       status: 'landed',
       edit: { kind: 'swap', from: 'LHM', to: 'LHI' },
+      say: 'LHM swapped with LHI',
     });
   });
 });
@@ -222,6 +223,8 @@ describe('a key armed, and its partner on another layer', () => {
     expect(copied.lastEdit).toMatchObject({
       status: 'landed',
       edit: { kind: 'copy', layer: 'base', from: 'LHM', to: 'LHI', toLayer: 'nav' },
+      // The board shows only Nav: a screen reader is told where each key is.
+      say: 'LHM on Base copied to LHI on Nav',
     });
     // One Undo takes it back, armed no more.
     const undone = reducer(copied, { type: 'undo' });
@@ -233,9 +236,13 @@ describe('a key armed, and its partner on another layer', () => {
     const turned = armedThenNav('swap');
     const swapped = reducer(turned, { type: 'keyClick', keyId: 'LHI' });
     expect(at(swapped, NAV, 'LHI')).toEqual(at(turned, 0, 'LHM'));
-    // Nav's LHI was Transparent, and goes to the base as such.
-    expect(at(swapped, 0, 'LHM')).toEqual({ kind: 'trans' });
-    expect(swapped.lastEdit).toMatchObject({ edit: { kind: 'swap', toLayer: 'nav' } });
+    // Nav's LHI was Transparent: on the base, with nothing below, that is Nothing, the base's
+    // default, so LHM is left unset.
+    expect(at(swapped, 0, 'LHM')).toBeUndefined();
+    expect(swapped.lastEdit).toMatchObject({
+      edit: { kind: 'swap', toLayer: 'nav' },
+      say: 'LHM on Base swapped with LHI on Nav',
+    });
   });
 
   it('takes the same key on another layer as its partner, and puts it down on its own', () => {

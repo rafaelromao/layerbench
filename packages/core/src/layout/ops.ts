@@ -31,7 +31,10 @@ export function setKeyBinding(
   return { ...layout, layers };
 }
 
-/** What a key with no binding of its own does on a layer: its `*`, else Nothing on the base and Transparent above. */
+/**
+ * What a key with no binding of its own does on a layer: the layer's `*`, else Nothing on the base
+ * and Transparent above.
+ */
 export function layerDefault(layout: Layout, layerIdx: number): Binding {
   return (
     layout.layers[layerIdx]?.bindings['*'] ??
@@ -42,8 +45,9 @@ export function layerDefault(layout: Layout, layerIdx: number): Binding {
 /**
  * What a key takes along to another layer: its own binding. A key with none takes what it does on
  * its layer, the layer's default, written out, since at another place on another layer having no
- * binding would mean something else; but stays implicit where that layer's default is the same. On
- * one layer, then, it is the binding as written, and an implicit key stays implicit.
+ * binding would mean something else; but stays implicit where that layer's default is the same.
+ * Transparent taken to the base is Nothing, as Delete makes a key there: nothing lies below the
+ * base to show through. On one layer it is the binding as written, an implicit key staying implicit.
  */
 function carried(
   layout: Layout,
@@ -52,15 +56,18 @@ function carried(
   toIdx: number,
 ): Binding | undefined {
   const own = keyBinding(layout, fromIdx, keyId);
-  if (own !== undefined) return own;
-  const there = layerDefault(layout, fromIdx);
+  if (fromIdx === toIdx) return own;
+  const onto = (b: Binding): Binding => (toIdx === 0 && b.kind === 'trans' ? { kind: 'none' } : b);
+  if (own !== undefined) return onto(own);
+  const there = onto(layerDefault(layout, fromIdx));
   return JSON.stringify(there) === JSON.stringify(layerDefault(layout, toIdx)) ? undefined : there;
 }
 
 /**
- * Exchange the bindings of two keys, on one layer or `from` on `layerIdx` with `to` on `toIdx`. A
- * key with no explicit binding stays implicit, so swapping an explicit key with an implicit one
- * moves the binding rather than duplicating it.
+ * Exchange the bindings of two keys, on one layer or `from` on `layerIdx` with `to` on `toIdx`. On
+ * one layer a key with no explicit binding stays implicit, so swapping an explicit key with an
+ * implicit one moves the binding rather than duplicating it; across layers each takes what
+ * `carried` gives it.
  */
 export function swapKeys(
   layout: Layout,

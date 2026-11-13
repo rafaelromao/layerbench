@@ -266,6 +266,19 @@ function dropped(
 }
 
 /**
+ * What a screen reader is told of a key swapped or copied by tapping, as a drop says it: the keys,
+ * and the layer of each when they are on two, since the board shows only the one tapped on.
+ */
+function told(layout: Layout, move: Edit): string | undefined {
+  if (move.kind !== 'swap' && move.kind !== 'copy') return undefined;
+  const name = (id: string) => layout.layers.find((l) => l.id === id)?.name ?? id;
+  const at = (key: string, layer: string) =>
+    move.toLayer === undefined ? key : `${key} on ${name(layer)}`;
+  const verb = move.kind === 'copy' ? 'copied to' : 'swapped with';
+  return `${at(move.from, move.layer)} ${verb} ${at(move.to, move.toLayer ?? move.layer)}`;
+}
+
+/**
  * A character of the tray on a key, in place of whatever the key did there: one edit, which keeps
  * the character and whatever it displaced for the tray.
  */
@@ -338,14 +351,12 @@ function reduce(state: EditState, action: EditAction): EditState {
       // mouse — so it has to reach copying too, not only swapping, and other layers, which a drag
       // cannot.
       const armed = { ...state, swapFrom: null };
-      return make(
+      const move = dropped(
         armed,
-        dropped(
-          armed,
-          { from: state.swapFrom, to: action.keyId, mode: state.swapMode },
-          state.swapLayer,
-        ),
+        { from: state.swapFrom, to: action.keyId, mode: state.swapMode },
+        state.swapLayer,
       );
+      return make(armed, move, told(state.layout, move));
     }
 
     case 'toggleSelect': {

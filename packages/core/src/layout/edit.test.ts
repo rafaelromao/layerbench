@@ -120,7 +120,9 @@ describe('edits to keys', () => {
       toLayer: 'third',
     });
     expect('LHI' in across.layout.layers[2].bindings).toBe(false);
-    // A swap carries both ways: the base's empty key goes up as Nothing, and comes back unset.
+    // A swap carries both ways: the base's empty key goes up as Nothing, and the upper one's
+    // Transparent comes down as Nothing too, nothing lying below the base: the base's default, so
+    // the key is left unset.
     const swapped = landed(layout, {
       kind: 'swap',
       layer: 'base',
@@ -129,7 +131,44 @@ describe('edits to keys', () => {
       toLayer: 'upper',
     });
     expect(swapped.layout.layers[1].bindings.LHI).toEqual({ kind: 'none' });
-    expect(swapped.layout.layers[0].bindings.LHR).toEqual({ kind: 'trans' });
+    expect('LHR' in swapped.layout.layers[0].bindings).toBe(false);
+  });
+
+  it('takes a Transparent key to the base as Nothing, and keeps it Transparent elsewhere', () => {
+    const transparent: Layout = {
+      ...layout,
+      layers: [
+        layout.layers[0],
+        { ...layout.layers[1], bindings: { ...layout.layers[1].bindings, LHI: { kind: 'trans' } } },
+        { id: 'quiet', name: 'Quiet', bindings: { '*': { kind: 'none' } } },
+      ],
+    };
+    const down = landed(transparent, {
+      kind: 'copy',
+      layer: 'upper',
+      from: 'LHI',
+      to: 'LHM',
+      toLayer: 'base',
+    });
+    expect(down.layout.layers[0].bindings.LHM).toEqual({ kind: 'none' });
+    // A layer whose keys do Nothing where unset: Transparent is written there, and an unset key of
+    // its own carried to another such layer, Nothing, stays as the default there.
+    const across = landed(transparent, {
+      kind: 'copy',
+      layer: 'upper',
+      from: 'LHI',
+      to: 'LHM',
+      toLayer: 'quiet',
+    });
+    expect(across.layout.layers[2].bindings.LHM).toEqual({ kind: 'trans' });
+    const unset = landed(transparent, {
+      kind: 'copy',
+      layer: 'quiet',
+      from: 'LHR',
+      to: 'LHM',
+      toLayer: 'base',
+    });
+    expect('LHM' in unset.layout.layers[0].bindings).toBe(false);
   });
 
   it('changes nothing for a layer it cannot find, nor for a key onto itself', () => {

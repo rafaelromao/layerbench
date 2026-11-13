@@ -369,6 +369,8 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
     expect(shownLayer()).toBe('Numbers');
     expect(screen.queryByText(/is armed/)).toBeNull();
+    // Read out with where each key is, the board showing only Numbers.
+    expect(screen.getByText('LHM on Base copied to LHI on Numbers')).toBeInTheDocument();
     await showLayer(user, 'Base');
     expect(key('Key LHM: d')).toBeInTheDocument();
   }, 90_000);
