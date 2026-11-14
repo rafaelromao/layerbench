@@ -58,6 +58,16 @@ of the two does better. Each layout's board has its own layer navigator, to look
 both. At the right of it, the **Combos** button shows the
 [combos the board does not draw](#combos).
 
+Both of Compare's boards are coloured by [heat](#heat). **Heat**, above them, chooses what the colour
+measures, the same five choices as in Analyze, and the link keeps it, so **Analyze A** and **Analyze
+B** open on it too. One scale colours both: the busiest key of either layout, on any of its layers,
+is the hottest colour, so the same colour is the same amount on both and the two boards are read
+against each other. A line under **Heat** says what the colours mean, a key's tooltip gives its
+percentage of that busiest key, and the share of the typing on the layer shown is beside each
+navigator. The colours wait until both layouts are scored, as the scale is of the two, and again
+while either is scored anew, after another layout or other settings are picked.
+A layout that could not be scored stays plain, and says so, while the other is coloured on its own.
+
 **Heatmaps**, the button beside **Sort by**, colours the keys of every card's board by [heat](#heat),
 as Analyze does. It is off until you press it, and this browser remembers whether it is on. While
 it is, **Heat** beside it chooses what the colour measures, the same five choices as in Analyze, and a
@@ -207,7 +217,7 @@ its presses, so the free home-row keys and the space bar stay cold, and travel c
 finger moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb
 tapped for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer
 below show through is warm on that layer, where the key that types is drawn. A rule set without the
-rule a choice is made of draws **Usage** instead, in the Library as here.
+rule a choice is made of draws **Usage** instead, in the Library and Compare as here.
 
 Whatever the heat measures, a key's tooltip on Analyze's board also gives its share of the
 presses, `12.34% of presses`, and a screen reader reads it with the key's name. It is the share
@@ -226,15 +236,16 @@ transparent key, like one with nothing on it, says nothing. By default the space
 off)` in place of a share, and has one like any other key once **Space** keeps it in. While the
 layout or the settings are no longer those the numbers were made on, until the new analysis lands,
 each share says `(updating)`, as the key's numbers do. A touch screen has no tooltip: tap the key,
-and its numbers say the same share. The Library's cards give the percentage of the busiest key
-instead, as above.
+and its numbers say the same share. The Library's cards and Compare's boards give the percentage of
+the busiest key instead, as above.
 
 One scale colours every layer: the busiest key of all of them is the hottest colour, and every other
 key, on whichever layer, is coloured by its share of that. A key with the same share has the same
 colour on every layer, so the layers can be compared at a glance: a layer of rarely pressed keys, such
 as Numbers or Accents, stays pale beside the base layer, where scaled on its own it would have looked
 as busy. The Library's cards have heat too, under [Heatmaps](#sorting-and-comparing), where a key's
-tooltip gives the percentage the colour stands for.
+tooltip gives the percentage the colour stands for, and so do Compare's two boards, on [one scale for
+both](#sorting-and-comparing).
 
 With heat on, the percentage at the left of the layer's name, **of presses**, is the share of the
 typing done on that layer: the key presses made on its keys, out of all the key presses counted, the
@@ -242,8 +253,8 @@ space key's left out unless **Space** keeps it in ([Case and space](#case-and-sp
 same in every heat mode, and the layers' shares add up to 100%, give or take the rounding to a tenth.
 A layer the text never reaches reads 0%, and one it reaches too rarely to show a tenth reads
 **under 0.1%**; by default **Counts** counts letters only, so a layer of digits or symbols reads
-little or nothing there. It is on every board that draws heat: Analyze's, and the Library's cards
-under Heatmaps; Compare draws none. While Analyze is **updating…** after an edit, the numbers on show
+little or nothing there. It is on every board that draws heat: Analyze's, the Library's cards under
+Heatmaps, and Compare's. While Analyze is **updating…** after an edit, the numbers on show
 are those of the layout before it, so no share is written until the new ones land.
 
 ### Combos
@@ -259,10 +270,10 @@ the layer shown. Each is drawn once, on a small board of its own with its keys f
 draws a combo apart. Under it are the layers it works on. Pick one to open it in the combo editor.
 
 The boards of the Library's cards, of **Compare** and of the import preview are drawn as Analyze
-draws its board, with the same **Combos** button. They have no heat, except the Library's, where
-[**Heatmaps**](#sorting-and-comparing) turns it on, and nothing on them is edited: the button only
-shows the combos. A Library card does not list what its numbered keys do; open the
-layout in **Analyze** for that.
+draws its board, with the same **Combos** button. Compare's have heat, the Library's have it once
+[**Heatmaps**](#sorting-and-comparing) turns it on, and the import preview's has none. Nothing on
+them is edited: the button only shows the combos. A Library card does not list what its numbered
+keys do; open the layout in **Analyze** for that.
 
 In **Analyze**, a box lights up with its keys when a word uses it; for a combo off the board, the
 button lights up. Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the

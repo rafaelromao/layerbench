@@ -3,14 +3,15 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { setCommunitySource } from '../community/community.js';
-import type { AnalysisClient, AnalyzeRequest } from '../engine/protocol.js';
+import { heatMap, heatPeak } from '../engine/heat.js';
+import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
 import { layerCounter, layerNames, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
-import { inlineRef } from '../url/params.js';
+import { type HeatMode, inlineRef } from '../url/params.js';
 
 const QWERTY_TEXT = 'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /';
 /** A text long enough to build a corpus from. */
@@ -165,6 +166,22 @@ describe('Compare', () => {
     expect([follows(boardB, nav), follows(nav, list)]).toEqual([true, true]);
   });
 
+  it('shows Settings as Analyze does: the Library’s gear on a phone, words wider', async () => {
+    const analyze = renderRoute('/analyze?layout=qwerty', { storage: freshStorage() });
+    const analyzes = (await screen.findByRole('button', { name: 'Settings' })).outerHTML;
+    analyze.unmount();
+
+    renderRoute('/compare?layout=qwerty&b=graphite&sample=20000', { storage: freshStorage() });
+    const button = await screen.findByRole('button', { name: 'Settings' });
+    expect(button.outerHTML).toBe(analyzes);
+    const gear = [...button.querySelectorAll('span')].find((s) => s.textContent === '⚙︎');
+    expect(gear).toHaveClass('sm:hidden');
+    // On a phone it shares a row with the Analyze links, as Analyze's sits beside its Compare.
+    const row = button.closest('.lb-wide') as HTMLElement;
+    expect(within(row).getByRole('link', { name: 'Analyze A' })).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Analyze B' })).toBeInTheDocument();
+  });
+
   it('compares a community layout its link names', async () => {
     setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
     renderRoute('/compare?layout=community:night-owl&b=graphite&corpus=en-general&sample=20000', {
@@ -308,6 +325,244 @@ describe('Compare', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Adaptive keys' }));
     await waitFor(() => expect(currentSearch()).toContain('off=adaptive'));
     expect(currentSearch()).toContain('b=graphite');
+  }, 60_000);
+});
+
+describe('Compare, heat', () => {
+  /** The heat of each heated key on a side's board, in percent, as drawn, lowest first. */
+  const heatPercents = (side: string) =>
+    [...(document.getElementById(`kb-${side}`)?.querySelectorAll('.lb-key-cap') ?? [])]
+      .map((cap) =>
+        Number(/var\(--lb-heat\) (\d+)%/.exec(cap.getAttribute('style') ?? '')?.[1] ?? 0),
+      )
+      .filter((pct) => pct > 0)
+      .sort((a, b) => a - b);
+
+  /** What `heatMap` gives for a layer of the report against `top`, as a board draws it. */
+  const percentsOf = (report: ReportDTO, mode: HeatMode, top?: number, layer = 0) =>
+    Object.values(heatMap(report, mode, layer, top))
+      .map((v) => Math.round(v * 100))
+      .filter((pct) => pct > 0)
+      .sort((a, b) => a - b);
+
+  const sideOf = (side: string) =>
+    screen.getByRole('group', { name: `Layers of ${side}` }).closest('section') as HTMLElement;
+
+  /**
+   * The engine, keeping every analysis it is asked for. It never answers for a layout `held` names,
+   * and fails for one `failing` names.
+   */
+  function engine({ held = [], failing = [] }: { held?: string[]; failing?: string[] } = {}) {
+    const real = testClient();
+    const requests: AnalyzeRequest[] = [];
+    const nameOf = (request: AnalyzeRequest) => String(request.layout.name);
+    const answered = (request: AnalyzeRequest) =>
+      !held.includes(nameOf(request)) && !failing.includes(nameOf(request));
+    const client = new Proxy(real, {
+      get(target, prop) {
+        if (prop === 'peek') {
+          return (request: AnalyzeRequest) =>
+            answered(request) ? target.peek(request) : Promise.resolve(null);
+        }
+        if (prop === 'analyze') {
+          return (...args: Parameters<AnalysisClient['analyze']>) => {
+            const [request, opts] = args;
+            requests.push(request);
+            if (failing.includes(nameOf(request))) {
+              return Promise.reject(new Error(`${nameOf(request)} could not be typed`));
+            }
+            if (held.includes(nameOf(request))) {
+              return new Promise<never>((_, reject) => {
+                opts?.signal?.addEventListener('abort', () =>
+                  reject(new DOMException('aborted', 'AbortError')),
+                );
+              });
+            }
+            return target.analyze(...args);
+          };
+        }
+        const member = Reflect.get(target, prop);
+        return typeof member === 'function' ? member.bind(target) : member;
+      },
+    });
+    /** The report the page was given for the layout named, asked of the engine again. */
+    const reportOf = (name: string) => {
+      const request = requests.find((r) => nameOf(r) === name);
+      if (!request) throw new Error(`${name} was never analyzed`);
+      return real.analyze(request);
+    };
+    return { client, requests, reportOf };
+  }
+
+  it('colours both boards on one scale, the busiest key of either, with one legend', async () => {
+    const { client, reportOf } = engine();
+    renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000&heat=effort', {
+      client,
+      storage: freshStorage(),
+    });
+    expect(await screen.findByRole('combobox', { name: 'Heat' })).toHaveValue('effort');
+    const legends = document.querySelectorAll('.lb-heat-legend');
+    expect(legends).toHaveLength(1);
+    expect(legends[0].textContent).toContain(
+      'Effort: its cost times its presses, against the busiest key of all layers of both layouts.',
+    );
+
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    const [a, b] = await Promise.all([reportOf('Qwerty'), reportOf('Graphite')]);
+    const top = Math.max(heatPeak(a, 'effort'), heatPeak(b, 'effort'));
+    const [expectedA, expectedB] = [percentsOf(a, 'effort', top), percentsOf(b, 'effort', top)];
+    // Only one of the two has the busiest key: a scale of each board's own would hide which.
+    expect(Math.max(...expectedA, ...expectedB)).toBe(100);
+    expect(Math.min(Math.max(...expectedA), Math.max(...expectedB))).toBeLessThan(100);
+    await waitFor(() => expect(heatPercents('A')).toEqual(expectedA));
+    expect(heatPercents('B')).toEqual(expectedB);
+
+    // A key says its colour in words, so the busiest key is named on one board only.
+    const busiest = (side: string) =>
+      [...(document.getElementById(`kb-${side}`)?.querySelectorAll('.lb-key') ?? [])].some((key) =>
+        key.getAttribute('aria-label')?.endsWith('Effort: 100% of the busiest key'),
+      );
+    expect([busiest('A'), busiest('B')].filter(Boolean)).toHaveLength(1);
+    // Each board writes the share of the typing done on the layer it shows.
+    for (const side of ['A', 'B']) {
+      expect(within(sideOf(side)).getByTestId('layer-share')).toBeInTheDocument();
+    }
+  }, 60_000);
+
+  it('colours a layer past the base against the busiest key of both layouts', async () => {
+    const user = userEvent.setup();
+    const { client, reportOf } = engine();
+    renderRoute(
+      '/compare?layout=magic-romak&b=qwerty&corpus=pt-br-general&sample=20000&heat=effort',
+      { client, storage: freshStorage() },
+    );
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    const [a, b] = await Promise.all([reportOf('Magic Romak'), reportOf('Qwerty')]);
+    // Qwerty's busiest key is the top: a scale of Magic Romak's own would colour it otherwise.
+    expect(heatPeak(b, 'effort')).toBeGreaterThan(heatPeak(a, 'effort'));
+    const top = heatPeak(b, 'effort');
+    await showLayer(user, 'Alpha 2', 'Layers of A');
+    // Alpha 2 is the second layer, where the accents are typed.
+    const expected = percentsOf(a, 'effort', top, 1);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(expected).not.toEqual(percentsOf(a, 'effort', undefined, 1));
+    await waitFor(() => expect(heatPercents('A')).toEqual(expected));
+  }, 60_000);
+
+  it('chooses what the heat measures without analyzing again, kept in the link', async () => {
+    const user = userEvent.setup();
+    const { client, requests } = engine();
+    const { currentSearch } = renderRoute(
+      '/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000',
+      { client, storage: freshStorage() },
+    );
+    // The same five measures Analyze offers, usage first.
+    const choice = await screen.findByRole('combobox', { name: 'Heat' });
+    expect(choice).toHaveValue('usage');
+    expect([...choice.querySelectorAll('option')].map((o) => o.textContent)).toEqual([
+      'Usage',
+      'SFB contribution',
+      'Effort',
+      'Finger travel',
+      'Layer taps',
+    ]);
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    await waitFor(() => expect(heatPercents('A').length).toBeGreaterThan(10));
+    const asked = requests.length;
+
+    await user.selectOptions(choice, 'SFB contribution');
+    await waitFor(() => expect(currentSearch()).toContain('heat=sfb'));
+    expect(currentSearch()).toContain('b=graphite');
+    expect(document.querySelector('.lb-heat-legend p')?.textContent).toMatch(/^SFB contribution: /);
+    // Either layout opens in Analyze in the same heat.
+    for (const name of ['Analyze A', 'Analyze B']) {
+      expect((screen.getByRole('link', { name }) as HTMLAnchorElement).href).toContain('heat=sfb');
+    }
+
+    // Neither layout reaches a layer by a tap: both boards stay plain, and say why.
+    await user.selectOptions(choice, 'Layer taps');
+    await waitFor(() => expect(heatPercents('A')).toEqual([]));
+    expect(heatPercents('B')).toEqual([]);
+    for (const side of ['A', 'B']) {
+      expect(
+        within(sideOf(side)).getByText('Nothing on this layer is coloured by Layer taps.'),
+      ).toBeInTheDocument();
+    }
+    expect(requests).toHaveLength(asked);
+  }, 60_000);
+
+  it('leaves both boards plain while either layout is being scored', async () => {
+    const user = userEvent.setup();
+    const { client } = engine({ held: ['Colemak-DH'] });
+    renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    await waitFor(() => expect(heatPercents('B').length).toBeGreaterThan(10));
+    expect(screen.queryByText(/^Heat appears/)).toBeNull();
+
+    // Graphite's heat would sit on Colemak-DH's keys, and A's colours wait for the scale both
+    // are read on.
+    await user.selectOptions(screen.getByLabelText('Layout B'), 'colemak-dh');
+    await waitFor(() => expect(heatPercents('B')).toEqual([]));
+    expect(heatPercents('A')).toEqual([]);
+    for (const side of ['A', 'B']) {
+      expect(
+        within(sideOf(side)).getByText('Heat appears once both layouts are scored.'),
+      ).toBeInTheDocument();
+      expect(within(sideOf(side)).queryByTestId('layer-share')).toBeNull();
+    }
+  }, 60_000);
+
+  it('says why a board is plain right under it, before the list of its numbered keys', async () => {
+    const { client } = engine({ held: ['Magic Romak'] });
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=en-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('group', { name: 'Layers of A' });
+    const side = sideOf('A');
+    const note = await within(side).findByText('Heat appears once both layouts are scored.');
+    const nav = within(side).getByRole('group', { name: 'Layers of A' });
+    const list = within(side).getByRole('list', { name: 'Key legend' });
+    const follows = (a: Node, b: Node) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect([follows(nav, note), follows(note, list)]).toEqual([true, true]);
+  }, 60_000);
+
+  it('colours the layout that was scored where the other could not be', async () => {
+    const { client, reportOf } = engine({ failing: ['Graphite'] });
+    renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    expect(
+      await within(sideOf('B')).findByText('No heat: the layout could not be scored.'),
+    ).toBeInTheDocument();
+    const expected = percentsOf(await reportOf('Qwerty'), 'usage');
+    expect(expected.length).toBeGreaterThan(10);
+    await waitFor(() => expect(heatPercents('A')).toEqual(expected), { timeout: 25_000 });
+    expect(heatPercents('B')).toEqual([]);
+  }, 60_000);
+
+  it('waits for one layout, on a scale of its own, where the other cannot be scored', async () => {
+    const { client } = engine({ held: ['Qwerty'], failing: ['Graphite'] });
+    renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    expect(
+      await within(sideOf('B')).findByText('No heat: the layout could not be scored.'),
+    ).toBeInTheDocument();
+    expect(
+      within(sideOf('A')).getByText('Heat appears once the layout is scored.'),
+    ).toBeInTheDocument();
+    const legend = document.querySelector('.lb-heat-legend p')?.textContent ?? '';
+    expect(legend).toContain('against the busiest key of all layers.');
+    expect(legend).not.toContain('both layouts');
   }, 60_000);
 });
 

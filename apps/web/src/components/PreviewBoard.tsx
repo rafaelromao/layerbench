@@ -1,5 +1,5 @@
 import type { CompiledLayout } from '@layerbench/core';
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { Board } from './Board.js';
 import { KeyLegend, typingCombos } from './Keyboard.js';
 
@@ -29,6 +29,8 @@ export interface PreviewBoardProps {
   heatName?: string;
   /** Whether the list of the numbered keys goes under the board. */
   legend?: boolean;
+  /** A line right under the board, before that list, such as why the board has no heat. */
+  note?: ReactNode;
 }
 
 /**
@@ -49,6 +51,7 @@ export function PreviewBoard({
   heatName,
   layerShare,
   legend = true,
+  note,
 }: PreviewBoardProps) {
   const source = typed ?? compiled;
   const combos = useMemo(() => typingCombos(source, layer), [source, layer]);
@@ -68,6 +71,7 @@ export function PreviewBoard({
         heatName={heatName}
         layerShare={layerShare}
       />
+      {note}
       {legend && (
         <div className="mt-2 empty:hidden">
           <KeyLegend compiled={compiled} layer={layer} quiet />

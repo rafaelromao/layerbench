@@ -6,14 +6,25 @@ import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
 import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
+import { HeatLegend } from '../components/HeatLegend.js';
+import { HeatNote } from '../components/HeatNote.js';
+import { HeatSelect } from '../components/HeatSelect.js';
+import { HelpLink } from '../components/HelpLink.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
-import { expandPositions } from '../engine/heat.js';
+import {
+  effectiveHeat,
+  expandPositions,
+  HEAT_LABELS,
+  heatMap,
+  heatPeak,
+  layerShare,
+} from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
-import { useAnalysis } from '../engine/use-analysis.js';
-import { rulerShown } from '../guide/help.js';
+import { type AnalysisState, useAnalysis } from '../engine/use-analysis.js';
+import { HELP, rulerShown } from '../guide/help.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
@@ -52,6 +63,21 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
       cancelled = true;
     };
   }, [key, ref, opened, layout, storedId, navigate]);
+}
+
+/**
+ * What a side's heat is drawn from: its report once it answers the layout and settings on show,
+ * `null` where there will be none, missing while it is being made. A report of the layout before,
+ * or of other settings, would put its heat on keys it was not measured on.
+ */
+function heatSource(
+  loaded: LayoutState,
+  request: AnalyzeRequest | null,
+  analysis: AnalysisState,
+  settingsFailed: boolean,
+): ReportDTO | null | undefined {
+  if (settingsFailed || loaded.error || analysis.error !== null) return null;
+  return analysis.report && analysis.answered === request ? analysis.report : undefined;
 }
 
 export function CompareView() {
@@ -100,6 +126,22 @@ export function CompareView() {
   const analysisA = useAnalysis(requestA);
   const analysisB = useAnalysis(requestB);
   const error = a.error ?? b.error ?? settings.error ?? analysisA.error ?? analysisB.error;
+
+  // Both boards are coloured on one scale, the busiest key of either layout on any layer, so the
+  // same colour is the same amount on both. The scale is of the two, so neither is coloured until
+  // both are scored, or one never will be.
+  const settingsFailed = settings.status === 'failed';
+  const heatA = heatSource(a, requestA, analysisA, settingsFailed);
+  const heatB = heatSource(b, requestB, analysisB, settingsFailed);
+  const heatSettled = heatA !== undefined && heatB !== undefined;
+  const heatTop = useMemo(
+    () => Math.max(0, ...[heatA, heatB].map((s) => (s ? heatPeak(s, params.heat) : 0))),
+    [heatA, heatB, params.heat],
+  );
+  // Both are rated on one rule set, so a rule it lacks is lacking on both.
+  const heatFallback = [heatA, heatB].some(
+    (s) => s && effectiveHeat(s, params.heat) !== params.heat,
+  );
   /**
    * Where Effort's and SFB's badges lead: the ruler of the rule set both sides are rated on. Not
    * while the numbers shown are of other rules than the link now names, as after a switch of rule
@@ -192,41 +234,49 @@ export function CompareView() {
           </select>
         </label>
 
-        <div className="lb-wide min-w-0 flex-1">
-          <SettingsDialog summary={settingsSummary(settings, corpora)}>
-            <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-              <SettingsFields
-                params={params}
-                onChange={setParams}
-                corpora={corpora}
-                verb="Compare"
-                afterCounts={
-                  <SampleSelect
-                    value={params.sample}
-                    onChange={(sample) => setParams({ sample })}
-                  />
-                }
-              />
-            </div>
-          </SettingsDialog>
-        </div>
+        {/* On a phone Settings and the two Analyze links share a row, so the gear sits beside them,
+            as Analyze's sits beside its Compare. Wider, the row is no box of its own: Settings and
+            the links are items of the bar, each wrapping onto a line of its own when the bar is
+            too narrow for them, so neither is drawn over the other. */}
+        <div className="lb-wide flex min-w-0 items-center gap-2 sm:contents">
+          {/* Never narrower than the button and a word of the summary: it wraps, not overflows. */}
+          <div className="min-w-0 sm:min-w-min sm:flex-1">
+            {/* As Analyze's: the gear on a phone, as the Library's, and its name wider. */}
+            <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
+              <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
+                <SettingsFields
+                  params={params}
+                  onChange={setParams}
+                  corpora={corpora}
+                  verb="Compare"
+                  afterCounts={
+                    <SampleSelect
+                      value={params.sample}
+                      onChange={(sample) => setParams({ sample })}
+                    />
+                  }
+                />
+              </div>
+            </SettingsDialog>
+          </div>
 
-        {/* Each opens in Analyze on the text, rules and switches compared on. */}
-        <div className="lb-wide flex gap-2">
-          <Link
-            to="/analyze"
-            search={toSearch(params) as never}
-            className="btn btn-sm btn-outline max-sm:flex-1"
-          >
-            Analyze A
-          </Link>
-          <Link
-            to="/analyze"
-            search={toSearch(params, { layoutRef: refB }) as never}
-            className="btn btn-sm btn-outline max-sm:flex-1"
-          >
-            Analyze B
-          </Link>
+          {/* Each opens in Analyze on the text, rules and switches compared on. */}
+          <div className="flex gap-2 max-sm:flex-1">
+            <Link
+              to="/analyze"
+              search={toSearch(params) as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Analyze A
+            </Link>
+            <Link
+              to="/analyze"
+              search={toSearch(params, { layoutRef: refB }) as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Analyze B
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -246,15 +296,36 @@ export function CompareView() {
       {error && <ErrorAlert message={error} />}
 
       <Collapsible id="compare.layouts" title="Layouts">
+        {/* What both boards' colours measure, and what they mean, above the two of them. */}
+        <div className="space-y-1 mb-3">
+          <div className="flex items-center gap-2">
+            <HeatSelect
+              id="compare-heat"
+              value={params.heat}
+              onChange={(heat) => setParams({ heat })}
+            />
+            <HelpLink help={HELP.heat} />
+          </div>
+          {/* The scale is of both only while neither side has failed. */}
+          <HeatLegend
+            mode={params.heat}
+            fallback={heatFallback}
+            both={heatA !== null && heatB !== null}
+          />
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, a.compiled, typedA, analysisA.report, layerA, setLayerA],
-              ['B', nameB, b.compiled, typedB, analysisB.report, layerB, setLayerB],
+              ['A', nameA, a.compiled, typedA, analysisA.report, heatA, heatB, layerA, setLayerA],
+              ['B', nameB, b.compiled, typedB, analysisB.report, heatB, heatA, layerB, setLayerB],
             ] as const
-          ).map(([side, name, compiled, typed, report, chosen, setLayer]) => {
+          ).map(([side, name, compiled, typed, report, heat, other, chosen, setLayer]) => {
             // A layer past the end, for a moment after the layout changes, is its base.
             const layer = compiled && chosen < compiled.layers.length ? chosen : 0;
+            const scored = heatSettled && heat ? heat : null;
+            const colours = scored ? heatMap(scored, params.heat, layer, heatTop) : undefined;
+            // What is really drawn: a rule set without the rule the mode asks for draws usage.
+            const drawn = heat ? HEAT_LABELS[effectiveHeat(heat, params.heat)] : undefined;
             return (
               <section key={side} className="card bg-base-100 border border-base-300 min-w-0">
                 <div className="card-body gap-3 p-4">
@@ -272,6 +343,21 @@ export function CompareView() {
                         onLayer={setLayer}
                         highlight={highlightFor(report)}
                         label={`Layers of ${side}`}
+                        heat={colours}
+                        heatName={colours ? drawn : undefined}
+                        // Room for it from the start: the arrows stay put when the score comes in.
+                        layerShare={scored ? layerShare(scored, layer) : null}
+                        // Why the board is plain, right under it, above the list of numbered keys.
+                        note={
+                          <HeatNote
+                            pending={!heatSettled && heat !== null}
+                            failed={heat === null}
+                            bare={colours !== undefined && Object.keys(colours).length === 0}
+                            drawn={drawn}
+                            // A scale of its own where the other side failed.
+                            both={other !== null}
+                          />
+                        }
                       />
                     </div>
                   )}

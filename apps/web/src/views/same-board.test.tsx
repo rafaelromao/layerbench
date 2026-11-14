@@ -19,7 +19,8 @@ const boardOf = (l: Layout | undefined) => (l && 'preset' in l.geometry ? l.geom
 /**
  * What a board shows on the layer drawn: each key's legends (tap, hold, shifted legend, badge,
  * number), each combo box with what it types and where it sits, and the button for the combos it
- * does not draw. Heat, a selection and what a click does are left out: only Analyze has them.
+ * does not draw. Heat is counted apart (`heated`); a selection and what a click does are left out:
+ * only Analyze has them.
  */
 function drawn(svg: Element, tools: HTMLElement) {
   const keys = [...svg.querySelectorAll('g.lb-key')].map((g) =>
@@ -113,6 +114,10 @@ describe('The board is the same on Analyze, a Library card and Compare', () => {
       storage: freshStorage(),
     });
     await waitFor(() => expect(document.getElementById('kb-A')).toBeTruthy());
+    // Its heat comes once both layouts are scored.
+    await waitFor(() =>
+      expect(heated(document.getElementById('kb-A') as Element)).toBeGreaterThan(0),
+    );
     const compare = await everyLayer('Layers of A', () => 'kb-A');
 
     expect(analyze.length).toBeGreaterThan(1);
@@ -126,9 +131,11 @@ describe('The board is the same on Analyze, a Library card and Compare', () => {
       'lb-board-scroll',
       'lb-board relative',
     ]);
-    // Heat is Analyze's alone.
+    // A card has no heat until Heatmaps is on. Compare has heat, on a scale shared with the other
+    // layout, so only that it is there is compared.
     const noHeat = analyze.map((l) => ({ ...l, heated: 0 }));
     expect(card).toEqual(noHeat);
-    expect(compare).toEqual(noHeat);
+    expect(compare.map((l) => ({ ...l, heated: 0 }))).toEqual(noHeat);
+    expect(compare[0]?.heated).toBeGreaterThan(0);
   });
 });

@@ -1,7 +1,7 @@
+import { HeatSelect } from '../../components/HeatSelect.js';
 import { HelpLink } from '../../components/HelpLink.js';
-import { HEAT_LABELS } from '../../engine/heat.js';
 import { HELP } from '../../guide/help.js';
-import { HEAT_MODES, type HeatMode } from '../../url/params.js';
+import type { HeatMode } from '../../url/params.js';
 
 /**
  * Whether the cards' boards are coloured by heat, and by which: a button that stays pressed while
@@ -29,26 +29,7 @@ export function HeatControls({
       >
         Heatmaps
       </button>
-      {on && (
-        <>
-          <label className="label-text text-xs" htmlFor="library-heat">
-            Heat
-          </label>
-          <select
-            id="library-heat"
-            name="library-heat"
-            className="select select-xs select-bordered w-auto"
-            value={mode}
-            onChange={(e) => onMode(e.target.value as HeatMode)}
-          >
-            {HEAT_MODES.map((m) => (
-              <option key={m} value={m}>
-                {HEAT_LABELS[m]}
-              </option>
-            ))}
-          </select>
-        </>
-      )}
+      {on && <HeatSelect id="library-heat" value={mode} onChange={onMode} />}
       <HelpLink help={HELP.heat} />
     </div>
   );
