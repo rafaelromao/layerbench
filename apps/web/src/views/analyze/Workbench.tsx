@@ -33,6 +33,7 @@ import { ErrorAlert } from '../../components/ErrorAlert.js';
 import { FamilyFilter, METRIC_FAMILIES, useFamilyShown } from '../../components/FamilyFilter.js';
 import { featureList } from '../../components/FeatureSwitches.js';
 import { describeKeys } from '../../components/format.js';
+import { HeatSelect } from '../../components/HeatSelect.js';
 import { HelpLink } from '../../components/HelpLink.js';
 import {
   comboPlace,
@@ -48,7 +49,7 @@ import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
-import { expandPositions, HEAT_LABELS, heatMap, layerShare } from '../../engine/heat.js';
+import { expandPositions, heatMap, layerShare } from '../../engine/heat.js';
 import { pressShares } from '../../engine/key-numbers.js';
 import { measureLanguagesOf } from '../../engine/measure-languages.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
@@ -67,7 +68,7 @@ import { libraryLayoutNamed } from '../../proposals/target.js';
 import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
-import { HEAT_MODES, type HeatMode, type Params, toSearch } from '../../url/params.js';
+import { type Params, toSearch } from '../../url/params.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
@@ -1221,22 +1222,11 @@ export function Workbench({
                           }
                           tools={
                             <>
-                              <label className="label-text text-xs" htmlFor="heat">
-                                Heat
-                              </label>
-                              <select
+                              <HeatSelect
                                 id="heat"
-                                name="heat"
-                                className="select select-xs select-bordered w-auto"
                                 value={params.heat}
-                                onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
-                              >
-                                {HEAT_MODES.map((m) => (
-                                  <option key={m} value={m}>
-                                    {HEAT_LABELS[m]}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(heat) => setParams({ heat })}
+                              />
                               {loading && (
                                 <span
                                   className="loading loading-spinner loading-xs"

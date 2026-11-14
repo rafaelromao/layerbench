@@ -8,6 +8,7 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue } from '../components/format.js';
 import { HeatLegend } from '../components/HeatLegend.js';
 import { HeatNote } from '../components/HeatNote.js';
+import { HeatSelect } from '../components/HeatSelect.js';
 import { HelpLink } from '../components/HelpLink.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
@@ -27,15 +28,7 @@ import { HELP, rulerShown } from '../guide/help.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
-import {
-  HEAT_MODES,
-  type HeatMode,
-  type Params,
-  parseParams,
-  type RawSearch,
-  settingsOf,
-  toSearch,
-} from '../url/params.js';
+import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
@@ -241,28 +234,30 @@ export function CompareView() {
           </select>
         </label>
 
-        <div className="lb-wide min-w-0 flex-1">
-          {/* As Analyze's: the gear on a phone, as the Library's, and its name wider. */}
-          <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
-            <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
-              <SettingsFields
-                params={params}
-                onChange={setParams}
-                corpora={corpora}
-                verb="Compare"
-                afterCounts={
-                  <SampleSelect
-                    value={params.sample}
-                    onChange={(sample) => setParams({ sample })}
-                  />
-                }
-              />
-            </div>
-          </SettingsDialog>
-        </div>
+        {/* Settings and the two Analyze links share a row, so on a phone the gear sits beside them,
+            as Analyze's sits beside its Compare. */}
+        <div className="lb-wide flex min-w-0 flex-1 items-center gap-2">
+          <div className="min-w-0 sm:flex-1">
+            {/* As Analyze's: the gear on a phone, as the Library's, and its name wider. */}
+            <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
+              <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
+                <SettingsFields
+                  params={params}
+                  onChange={setParams}
+                  corpora={corpora}
+                  verb="Compare"
+                  afterCounts={
+                    <SampleSelect
+                      value={params.sample}
+                      onChange={(sample) => setParams({ sample })}
+                    />
+                  }
+                />
+              </div>
+            </SettingsDialog>
+          </div>
 
-        {/* Each opens in Analyze on the text, rules and switches compared on. */}
-        <div className="lb-wide flex gap-2">
+          {/* Each opens in Analyze on the text, rules and switches compared on. */}
           <Link
             to="/analyze"
             search={toSearch(params) as never}
@@ -299,33 +294,27 @@ export function CompareView() {
         {/* What both boards' colours measure, and what they mean, above the two of them. */}
         <div className="space-y-1 mb-3">
           <div className="flex items-center gap-2">
-            <label className="label-text text-xs" htmlFor="compare-heat">
-              Heat
-            </label>
-            <select
+            <HeatSelect
               id="compare-heat"
-              name="compare-heat"
-              className="select select-xs select-bordered w-auto"
               value={params.heat}
-              onChange={(e) => setParams({ heat: e.target.value as HeatMode })}
-            >
-              {HEAT_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {HEAT_LABELS[m]}
-                </option>
-              ))}
-            </select>
+              onChange={(heat) => setParams({ heat })}
+            />
             <HelpLink help={HELP.heat} />
           </div>
-          <HeatLegend mode={params.heat} fallback={heatFallback} both />
+          {/* The scale is of both only while neither side has failed. */}
+          <HeatLegend
+            mode={params.heat}
+            fallback={heatFallback}
+            both={heatA !== null && heatB !== null}
+          />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {(
             [
-              ['A', nameA, a.compiled, typedA, analysisA.report, heatA, layerA, setLayerA],
-              ['B', nameB, b.compiled, typedB, analysisB.report, heatB, layerB, setLayerB],
+              ['A', nameA, a.compiled, typedA, analysisA.report, heatA, heatB, layerA, setLayerA],
+              ['B', nameB, b.compiled, typedB, analysisB.report, heatB, heatA, layerB, setLayerB],
             ] as const
-          ).map(([side, name, compiled, typed, report, heat, chosen, setLayer]) => {
+          ).map(([side, name, compiled, typed, report, heat, other, chosen, setLayer]) => {
             // A layer past the end, for a moment after the layout changes, is its base.
             const layer = compiled && chosen < compiled.layers.length ? chosen : 0;
             const scored = heatSettled && heat ? heat : null;
@@ -351,7 +340,7 @@ export function CompareView() {
                         label={`Layers of ${side}`}
                         heat={colours}
                         heatName={colours ? drawn : undefined}
-                        // Room for it from the start, so the arrows do not move when the score comes in.
+                        // Room for it from the start: the arrows stay put when the score comes in.
                         layerShare={scored ? layerShare(scored, layer) : null}
                         // Why the board is plain, right under it, above the list of numbered keys.
                         note={
@@ -360,7 +349,8 @@ export function CompareView() {
                             failed={heat === null}
                             bare={colours !== undefined && Object.keys(colours).length === 0}
                             drawn={drawn}
-                            both
+                            // A scale of its own where the other side failed.
+                            both={other !== null}
                           />
                         }
                       />

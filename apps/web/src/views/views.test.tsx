@@ -166,7 +166,7 @@ describe('Compare', () => {
     expect([follows(boardB, nav), follows(nav, list)]).toEqual([true, true]);
   });
 
-  it('shows its Settings as Analyze does: the Library’s gear on a phone, words wider', async () => {
+  it('shows Settings as Analyze does: the Library’s gear on a phone, words wider', async () => {
     const analyze = renderRoute('/analyze?layout=qwerty', { storage: freshStorage() });
     const analyzes = (await screen.findByRole('button', { name: 'Settings' })).outerHTML;
     analyze.unmount();
@@ -176,6 +176,10 @@ describe('Compare', () => {
     expect(button.outerHTML).toBe(analyzes);
     const gear = [...button.querySelectorAll('span')].find((s) => s.textContent === '⚙︎');
     expect(gear).toHaveClass('sm:hidden');
+    // On a phone it shares a row with the Analyze links, as Analyze's sits beside its Compare.
+    const row = button.closest('.lb-wide') as HTMLElement;
+    expect(within(row).getByRole('link', { name: 'Analyze A' })).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Analyze B' })).toBeInTheDocument();
   });
 
   it('compares a community layout its link names', async () => {
@@ -325,7 +329,8 @@ describe('Compare', () => {
 });
 
 describe('Compare, heat', () => {
-  /** The heat of each key of a side's board, in percent, as drawn; keys with none left out, lowest first. */
+  /** The heat of each key of a side's board, in percent, as drawn; keys with none left out, lowest
+   * first. */
   const heatPercents = (side: string) =>
     [...(document.getElementById(`kb-${side}`)?.querySelectorAll('.lb-key-cap') ?? [])]
       .map((cap) =>
@@ -390,7 +395,7 @@ describe('Compare, heat', () => {
     return { client, requests, reportOf };
   }
 
-  it('colours both boards on one scale, the busiest key of either layout, with one legend', async () => {
+  it('colours both boards on one scale, the busiest key of either, with one legend', async () => {
     const { client, reportOf } = engine();
     renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000&heat=effort', {
       client,
@@ -425,7 +430,7 @@ describe('Compare, heat', () => {
     }
   }, 60_000);
 
-  it('chooses what the heat measures without analyzing again, and keeps it in the link', async () => {
+  it('chooses what the heat measures without analyzing again, kept in the link', async () => {
     const user = userEvent.setup();
     const { client, requests } = engine();
     const { currentSearch } = renderRoute(
@@ -521,6 +526,24 @@ describe('Compare, heat', () => {
     expect(expected.length).toBeGreaterThan(10);
     await waitFor(() => expect(heatPercents('A')).toEqual(expected), { timeout: 25_000 });
     expect(heatPercents('B')).toEqual([]);
+  }, 60_000);
+
+  it('waits for one layout, on a scale of its own, where the other cannot be scored', async () => {
+    const { client } = engine({ held: ['Qwerty'], failing: ['Graphite'] });
+    renderRoute('/compare?layout=qwerty&b=graphite&corpus=en-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    expect(
+      await within(sideOf('B')).findByText('No heat: the layout could not be scored.'),
+    ).toBeInTheDocument();
+    expect(
+      within(sideOf('A')).getByText('Heat appears once the layout is scored.'),
+    ).toBeInTheDocument();
+    const legend = document.querySelector('.lb-heat-legend p')?.textContent ?? '';
+    expect(legend).toContain('against the busiest key of all layers.');
+    expect(legend).not.toContain('both layouts');
   }, 60_000);
 });
 
