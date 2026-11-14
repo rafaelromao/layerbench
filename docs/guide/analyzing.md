@@ -272,8 +272,8 @@ draws a combo apart. Under it are the layers it works on. Pick one to open it in
 The boards of the Library's cards, of **Compare** and of the import preview are drawn as Analyze
 draws its board, with the same **Combos** button. Compare's have heat, the Library's have it once
 [**Heatmaps**](#sorting-and-comparing) turns it on, and the import preview's has none. Nothing on
-them is edited: the button only shows the combos. A Library card does not list what its numbered keys do; open the
-layout in **Analyze** for that.
+them is edited: the button only shows the combos. A Library card does not list what its numbered
+keys do; open the layout in **Analyze** for that.
 
 In **Analyze**, a box lights up with its keys when a word uses it; for a combo off the board, the
 button lights up. Pointing at a box, or focusing it, outlines its keys. **Combos**, under *On the

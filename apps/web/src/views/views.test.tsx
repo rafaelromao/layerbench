@@ -338,9 +338,9 @@ describe('Compare, heat', () => {
       .filter((pct) => pct > 0)
       .sort((a, b) => a - b);
 
-  /** What `heatMap` gives for the report's first layer against `top`, as a board draws it. */
-  const percentsOf = (report: ReportDTO, mode: HeatMode, top?: number) =>
-    Object.values(heatMap(report, mode, 0, top))
+  /** What `heatMap` gives for a layer of the report against `top`, as a board draws it. */
+  const percentsOf = (report: ReportDTO, mode: HeatMode, top?: number, layer = 0) =>
+    Object.values(heatMap(report, mode, layer, top))
       .map((v) => Math.round(v * 100))
       .filter((pct) => pct > 0)
       .sort((a, b) => a - b);
@@ -432,21 +432,20 @@ describe('Compare, heat', () => {
   it('colours a layer past the base against the busiest key of both layouts', async () => {
     const user = userEvent.setup();
     const { client, reportOf } = engine();
-    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
-      client,
-      storage: freshStorage(),
-    });
+    renderRoute(
+      '/compare?layout=magic-romak&b=qwerty&corpus=pt-br-general&sample=20000&heat=effort',
+      { client, storage: freshStorage() },
+    );
     await screen.findByRole('table', undefined, { timeout: 25_000 });
-    const [a, b] = await Promise.all([reportOf('Magic Romak'), reportOf('Graphite')]);
-    const top = Math.max(heatPeak(a, 'usage'), heatPeak(b, 'usage'));
+    const [a, b] = await Promise.all([reportOf('Magic Romak'), reportOf('Qwerty')]);
+    // Qwerty's busiest key is the top: a scale of Magic Romak's own would colour it otherwise.
+    expect(heatPeak(b, 'effort')).toBeGreaterThan(heatPeak(a, 'effort'));
+    const top = heatPeak(b, 'effort');
     await showLayer(user, 'Alpha 2', 'Layers of A');
-    // Alpha 2 is the second layer: its accents are typed there, each key against the busiest of all.
-    const expected = Object.values(heatMap(a, 'usage', 1, top))
-      .map((v) => Math.round(v * 100))
-      .filter((pct) => pct > 0)
-      .sort((x, y) => x - y);
+    // Alpha 2 is the second layer, where the accents are typed.
+    const expected = percentsOf(a, 'effort', top, 1);
     expect(expected.length).toBeGreaterThan(0);
-    expect(Math.max(...expected)).toBeLessThan(100);
+    expect(expected).not.toEqual(percentsOf(a, 'effort', undefined, 1));
     await waitFor(() => expect(heatPercents('A')).toEqual(expected));
   }, 60_000);
 
