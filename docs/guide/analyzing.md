@@ -217,7 +217,7 @@ its presses, so the free home-row keys and the space bar stay cold, and travel c
 finger moved to. Each layer counts only what was pressed on it, on the key that typed it. The thumb
 tapped for Alpha 2 is warm on the layer it is tapped on, not on Alpha 2. A key that lets the layer
 below show through is warm on that layer, where the key that types is drawn. A rule set without the
-rule a choice is made of draws **Usage** instead, in the Library as here.
+rule a choice is made of draws **Usage** instead, in the Library and Compare as here.
 
 Whatever the heat measures, a key's tooltip on Analyze's board also gives its share of the
 presses, `12.34% of presses`, and a screen reader reads it with the key's name. It is the share

@@ -234,10 +234,13 @@ export function CompareView() {
           </select>
         </label>
 
-        {/* Settings and the two Analyze links share a row, so on a phone the gear sits beside them,
-            as Analyze's sits beside its Compare. */}
-        <div className="lb-wide flex min-w-0 flex-1 items-center gap-2">
-          <div className="min-w-0 sm:flex-1">
+        {/* On a phone Settings and the two Analyze links share a row, so the gear sits beside them,
+            as Analyze's sits beside its Compare. Wider, the row is no box of its own: Settings and
+            the links are items of the bar, each wrapping onto a line of its own when the bar is
+            too narrow for them, so neither is drawn over the other. */}
+        <div className="lb-wide flex min-w-0 items-center gap-2 sm:contents">
+          {/* Never narrower than the button and a word of the summary: it wraps, not overflows. */}
+          <div className="min-w-0 sm:min-w-min sm:flex-1">
             {/* As Analyze's: the gear on a phone, as the Library's, and its name wider. */}
             <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
               <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
@@ -258,20 +261,22 @@ export function CompareView() {
           </div>
 
           {/* Each opens in Analyze on the text, rules and switches compared on. */}
-          <Link
-            to="/analyze"
-            search={toSearch(params) as never}
-            className="btn btn-sm btn-outline max-sm:flex-1"
-          >
-            Analyze A
-          </Link>
-          <Link
-            to="/analyze"
-            search={toSearch(params, { layoutRef: refB }) as never}
-            className="btn btn-sm btn-outline max-sm:flex-1"
-          >
-            Analyze B
-          </Link>
+          <div className="flex gap-2 max-sm:flex-1">
+            <Link
+              to="/analyze"
+              search={toSearch(params) as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Analyze A
+            </Link>
+            <Link
+              to="/analyze"
+              search={toSearch(params, { layoutRef: refB }) as never}
+              className="btn btn-sm btn-outline max-sm:flex-1"
+            >
+              Analyze B
+            </Link>
+          </div>
         </div>
       </div>
 

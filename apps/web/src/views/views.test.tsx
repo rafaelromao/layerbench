@@ -329,8 +329,7 @@ describe('Compare', () => {
 });
 
 describe('Compare, heat', () => {
-  /** The heat of each key of a side's board, in percent, as drawn; keys with none left out, lowest
-   * first. */
+  /** The heat of each heated key on a side's board, in percent, as drawn, lowest first. */
   const heatPercents = (side: string) =>
     [...(document.getElementById(`kb-${side}`)?.querySelectorAll('.lb-key-cap') ?? [])]
       .map((cap) =>
@@ -428,6 +427,27 @@ describe('Compare, heat', () => {
     for (const side of ['A', 'B']) {
       expect(within(sideOf(side)).getByTestId('layer-share')).toBeInTheDocument();
     }
+  }, 60_000);
+
+  it('colours a layer past the base against the busiest key of both layouts', async () => {
+    const user = userEvent.setup();
+    const { client, reportOf } = engine();
+    renderRoute('/compare?layout=magic-romak&b=graphite&corpus=pt-br-general&sample=20000', {
+      client,
+      storage: freshStorage(),
+    });
+    await screen.findByRole('table', undefined, { timeout: 25_000 });
+    const [a, b] = await Promise.all([reportOf('Magic Romak'), reportOf('Graphite')]);
+    const top = Math.max(heatPeak(a, 'usage'), heatPeak(b, 'usage'));
+    await showLayer(user, 'Alpha 2', 'Layers of A');
+    // Alpha 2 is the second layer: its accents are typed there, each key against the busiest of all.
+    const expected = Object.values(heatMap(a, 'usage', 1, top))
+      .map((v) => Math.round(v * 100))
+      .filter((pct) => pct > 0)
+      .sort((x, y) => x - y);
+    expect(expected.length).toBeGreaterThan(0);
+    expect(Math.max(...expected)).toBeLessThan(100);
+    await waitFor(() => expect(heatPercents('A')).toEqual(expected));
   }, 60_000);
 
   it('chooses what the heat measures without analyzing again, kept in the link', async () => {
