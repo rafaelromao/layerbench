@@ -13,16 +13,20 @@ const HEAT_MEANING: Record<HeatMode, string> = {
 /**
  * What the colours of a heat map mean: the scale, in the board's own mix of the plain key and the
  * heat colour, and in words what it measures and that every layer is scaled against the busiest key
- * of all of them, so colour is read across layers. The scale is for the eye; the words and each
- * key's tooltip carry the same to everyone else.
+ * of all of them, so colour is read across layers, and across both layouts where two boards share
+ * the scale. The scale is for the eye; the words and each key's tooltip carry the same to everyone
+ * else.
  */
 export function HeatLegend({
   mode,
   fallback = false,
+  both = false,
 }: {
   mode: HeatMode;
   /** The rule set has no rule for the mode, so usage is what is drawn. */
   fallback?: boolean;
+  /** Two layouts' boards are coloured on one scale: the busiest key is that of either. */
+  both?: boolean;
 }) {
   return (
     <div className="lb-heat-legend flex flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-80">
@@ -47,7 +51,8 @@ export function HeatLegend({
         {fallback
           ? `This rule set has no ${HEAT_LABELS[mode]} rule, so ${HEAT_LABELS.usage}: ${HEAT_MEANING.usage}`
           : `${HEAT_LABELS[mode]}: ${HEAT_MEANING[mode]}`}
-        , against the busiest key of all layers. A key's tooltip gives its percentage of that.
+        , against the busiest key of all layers{both ? ' of both layouts' : ''}. A key's tooltip
+        gives its percentage of that.
       </p>
     </div>
   );

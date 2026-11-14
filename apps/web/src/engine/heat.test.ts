@@ -5,6 +5,7 @@ import {
   expandPositions,
   formatShare,
   heatMap,
+  heatPeak,
   heatSourceOf,
   layerShare,
   normalizeHeat,
@@ -131,6 +132,47 @@ describe('heat maps', () => {
     expect(heatMap(dto, 'effort', 1)).toEqual({ 1: 1 / 3 });
     expect(heatMap(dto, 'travel', 0)).toEqual({ 2: 0.25 });
     expect(heatMap(dto, 'travel', 1)).toEqual({ 2: 1 });
+  });
+
+  it('reads the busiest key of every layer, in what the mode counts', () => {
+    const dto = reportWith({
+      usageByLayer: [
+        [10, 4, 0],
+        [0, 4, 2],
+      ],
+      layerTapsByLayer: [
+        [0, 0, 6],
+        [0, 0, 3],
+      ],
+      results: [rule('sfb', { 0: { 0: 4 }, 1: { 0: 2, 1: 7 } })],
+    });
+    expect(heatPeak(dto, 'usage')).toBe(10);
+    expect(heatPeak(dto, 'layer_taps')).toBe(6);
+    expect(heatPeak(dto, 'sfb')).toBe(7);
+    // A rule the rule set lacks is drawn as usage, and so is its top.
+    expect(heatPeak(dto, 'effort')).toBe(10);
+    expect(heatPeak(reportWith({}), 'usage')).toBe(0);
+    expect(heatPeak(reportWith({ usageByLayer: [], usageAll: [2, 8, 0] }), 'usage')).toBe(8);
+  });
+
+  it('scales against a busiest key it is given, as two layouts read side by side are', () => {
+    const a = reportWith({ usageByLayer: [[10, 5, 0]] });
+    const b = reportWith({
+      usageByLayer: [
+        [0, 20, 4],
+        [2, 0, 0],
+      ],
+    });
+    const top = Math.max(heatPeak(a, 'usage'), heatPeak(b, 'usage'));
+    expect(top).toBe(20);
+    // The same count is the same colour on either layout, on any layer.
+    expect(heatMap(a, 'usage', 0, top)).toEqual({ 0: 0.5, 1: 0.25 });
+    expect(heatMap(b, 'usage', 0, top)).toEqual({ 1: 1, 2: 0.2 });
+    expect(heatMap(b, 'usage', 1, top)).toEqual({ 0: 0.1 });
+    // Left out, the top is the busiest key of the layout's own layers.
+    expect(heatMap(a, 'usage', 0)).toEqual({ 0: 1, 1: 0.5 });
+    // Nothing pressed on either colours nothing.
+    expect(heatMap(reportWith({}), 'usage', 0, 0)).toEqual({});
   });
 
   it('draws the usage of all positions when a report has no layers of its own', () => {

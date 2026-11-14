@@ -41,8 +41,9 @@ function Gear({ className = '' }: { className?: string }) {
 /**
  * The choices behind a view's numbers, in a dialog of their own so the bar keeps to the layouts:
  * a button, and beside it a line that says what is chosen, so nothing is hidden by being tucked
- * away. Analyze and Compare call it Settings; the Library, which filters with it too, Rank and
- * filter, shows it as a gear, and says what is left out on a line of its own.
+ * away. Analyze and Compare call it Settings, a gear on a phone; the Library, which filters with it
+ * too, Rank and filter, shows it as a gear at every width, and says what is left out on a line of
+ * its own.
  */
 export function SettingsDialog({
   title = 'Settings',

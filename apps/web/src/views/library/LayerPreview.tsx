@@ -1,5 +1,6 @@
 import type { CompiledLayout } from '@layerbench/core';
 import { memo, useMemo, useState } from 'react';
+import { HeatNote } from '../../components/HeatNote.js';
 import { PreviewBoard } from '../../components/PreviewBoard.js';
 import {
   effectiveHeat,
@@ -78,25 +79,3 @@ export const LayerPreview = memo(function LayerPreview({
     </>
   );
 });
-
-/** Why a board is plain while heat is on: not scored yet, never scored, or nothing on this layer. */
-function HeatNote({
-  pending,
-  failed,
-  bare,
-  drawn,
-}: {
-  pending: boolean;
-  failed: boolean;
-  bare: boolean;
-  drawn: string | undefined;
-}) {
-  const text = pending
-    ? 'Heat appears once the layout is scored.'
-    : failed
-      ? 'No heat: the layout could not be scored.'
-      : bare
-        ? `Nothing on this layer is coloured by ${drawn}.`
-        : null;
-  return text && <p className="lb-heat-note text-xs opacity-60">{text}</p>;
-}

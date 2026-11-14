@@ -100,14 +100,28 @@ function heatCounts(source: HeatSource, mode: HeatMode): Record<number, Record<n
 }
 
 /**
+ * The busiest key of all layers in what the mode counts, as the mode is drawn: the top of the scale
+ * `heatMap` colours a layer against. 0 where nothing was counted.
+ */
+export function heatPeak(source: HeatSource, mode: HeatMode): number {
+  const counts = heatCounts(source, mode);
+  return Math.max(0, ...Object.values(counts).flatMap((row) => Object.values(row)));
+}
+
+/**
  * Per-position heat for the selected mode on one layer, 0–1. Only what was pressed on that layer
  * counts, so each key drawn there shows its own presses and no other layer's. The scale is shared:
  * 1 is the busiest key of all layers, so an equal share of presses is an equal colour on every
- * layer, and a layer of cold keys stays cold beside a hot one.
+ * layer, and a layer of cold keys stays cold beside a hot one. Two layouts typed on the same text
+ * are read against each other by giving both the busier `top` of the two (`heatPeak`).
  */
-export function heatMap(source: HeatSource, mode: HeatMode, layer: number): Record<number, number> {
+export function heatMap(
+  source: HeatSource,
+  mode: HeatMode,
+  layer: number,
+  top = heatPeak(source, mode),
+): Record<number, number> {
   const counts = heatCounts(source, mode);
-  const top = Math.max(0, ...Object.values(counts).flatMap((row) => Object.values(row)));
   // A layer beyond the end clamps rather than blanking the board.
   const l = Math.max(0, Math.min(layer, source.usageByLayer.length - 1));
   return normalizeHeat(counts[l] ?? {}, top);
