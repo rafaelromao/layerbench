@@ -789,6 +789,11 @@ export function Workbench({
   }, [client, state.panel, state.layout, params.caseMode]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
+  // A move puts its keys down and hands focus back to the board, on the key it landed on: on a
+  // phone, where the editor is under the board, that brings the board back into view too.
+  useEffect(() => {
+    if (state.boardFocus) focusKey(state.boardFocus.keyId);
+  }, [state.boardFocus, focusKey]);
   /**
    * Measure the languages the layout performs well in and add them, one edit like any other: Undo
    * takes them back. A layout edited while it is measured is not the one measured, and is left as

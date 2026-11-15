@@ -75,6 +75,11 @@ export interface EditState {
   /** Where typing on the board should land next, if a key was typed on. */
   focusRequest: FocusRequest | null;
   /**
+   * A request to give the board focus, on a key: the one a move landed on, as the move puts the keys
+   * down. Each request is a new object, which is what tells the board to take focus again.
+   */
+  boardFocus: { keyId: string } | null;
+  /**
    * The combo, by place, open in the combo editor; null when none is. A combo and a key are never
    * open together: selecting one closes the other.
    */
@@ -154,6 +159,7 @@ export function initialState(layout: Layout, compiled: CompiledLayout, layer = 0
     jsonError: null,
     lastEdit: null,
     focusRequest: null,
+    boardFocus: null,
     combo: null,
     comboPicks: 0,
     comboPick: null,
@@ -180,8 +186,10 @@ export function refusalShownIn(edit: Edit): 'error' | 'jsonError' {
 /**
  * Adopt how an edit went. One policy for every edit: the board shows the layer it landed on, or
  * keeps the layer it showed (the one before it, if that one went); the keys it landed on become
- * the selection, or the selection stays. A refused edit leaves the layout as it was and says why,
- * so the editor never lands in a state it cannot draw.
+ * the selection, or the selection stays. A move (a swap, a copy, keys sent to another layer) is
+ * done with its keys: it puts them down and hands focus back to the board, on the key it landed on,
+ * so the next key is picked there. A refused edit leaves the layout as it was and says why, so the
+ * editor never lands in a state it cannot draw.
  */
 function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   if (outcome.status === 'unchanged') return state;
@@ -196,24 +204,29 @@ function land(state: EditState, outcome: EditOutcome, say?: string): EditState {
   const shown = shownLayer(state);
   const keepShown = edit.kind === 'renameLayer' && edit.layer !== shown;
   const followed = compiled.layerIndex.get(keepShown ? shown : (at.layer ?? shown));
+  const moved = edit.kind === 'swap' || edit.kind === 'copy' || edit.kind === 'send';
   // A combo added opens in the combo editor, which takes the place of any key that was open.
   // A key the edit took off the board is no longer selected.
   const keys =
     edit.kind === 'addCombo'
       ? []
       : (at.keys ?? selectionOf(state)).filter((k) => compiled.keyIndex.has(k));
-  const combo = keys.length > 0 ? null : comboAfter(state.combo, edit, layout);
+  const focusOn = moved ? keys[0] : undefined;
+  const selected = moved ? [] : keys;
+  // A move puts down whatever was open, a combo dragged under too.
+  const combo = selected.length > 0 || moved ? null : comboAfter(state.combo, edit, layout);
   return {
     ...state,
     layout,
     compiled,
     layer: Math.min(followed ?? Math.max(0, state.layer - 1), compiled.layers.length - 1),
-    selected: keys[0] ?? null,
-    also: keys.slice(1),
+    selected: selected[0] ?? null,
+    also: selected.slice(1),
     combo,
     dirty: true,
     error: null,
     focusRequest: null,
+    boardFocus: focusOn === undefined ? null : { keyId: focusOn },
     // An edit that lands ends a swap or a character waiting for their key and a combo being picked.
     swapFrom: null,
     placing: null,

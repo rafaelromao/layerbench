@@ -130,6 +130,13 @@ turn the board to it before tapping, and the two keys trade layers, or the copy 
 with no binding of its own takes along what it does on its layer, its layer's default, and a
 *Transparent* key taken to the base does *Nothing* there, with no layer below it to show through.
 **Send to layer…** puts a key at the same place on another layer, picked from a list.
+
+Once a move lands, by a drop, by tapping or from the list, the key is put down and the board has
+focus again, on the key where the move landed: the next key is picked from there, and on a phone the
+board comes back into view. One **Undo** takes the move back, and the keys selected before it are
+selected again. A move called off before its second key, by tapping the armed key again or with
+`Escape`, leaves the key selected and the layout as it was.
+
 `Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
 layer below show through; **Clear**, at the foot of the editor, does the same for a key with a
 binding of its own, and is greyed out on one that takes its layer's default.
@@ -140,8 +147,10 @@ Shift-click a key to select it beside the ones already selected, and again to ta
 a phone, rest your finger on it and lift. With more than one key selected, the editor gives way to
 what can be done with all of them. First, **Send to layer…** and **Copy to layer…** put them on
 another layer at the same places; **Make transparent** lets the layer below show through them, and
-**Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one **Undo** takes it back, and the keys stay
-selected for the next.
+**Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one
+**Undo** takes it back. **Make transparent** and **Clear** leave the keys selected for the next;
+**Send to layer…** and **Copy to layer…** are moves, and put them down as any move does, the board
+turned to their layer and focused on the first of them.
 
 ### Missing keys
 
@@ -518,7 +527,8 @@ keeps the page where it is, at either end too:
 
 Everything works by tapping. Selecting a key opens the editor right under the board, and the
 board scrolls away with the page as you work through the editor, leaving it the screen; scroll
-back up for the next key. Tiles and chips are sized for a finger.
+back up for the next key. A move brings the board back by itself, with the key put down. Tiles and
+chips are sized for a finger.
 
 To drag a key, rest your finger on it for a moment first. A [missing key](#missing-keys) is
 dragged straight away, or tapped and then the key tapped.

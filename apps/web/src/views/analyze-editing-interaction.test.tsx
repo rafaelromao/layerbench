@@ -14,7 +14,7 @@ import {
 } from '../test/analyze-editing.js';
 import { keyNamed } from '../test/keys.js';
 import { showLayer, shownLayer } from '../test/layers.js';
-import { setPointerKind } from '../test/setup.js';
+import { setPointerKind, setViewportWidth } from '../test/setup.js';
 
 describe('Edit', () => {
   it('makes a home-row mod out of a letter', async () => {
@@ -96,9 +96,12 @@ describe('Edit', () => {
       'Nav',
     );
 
-    // The view follows the binding to the layer it landed on, and the source is left empty.
+    // The view follows the binding to the layer it landed on, and the source is left empty. The key
+    // is put down, and the board has focus, on the key there.
     await waitFor(() => expect(shownLayer()).toBe('Nav'));
     expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(svgKey('LHM')));
     await showLayer(user, 'Base');
     expect(
       await screen.findByRole('button', { name: keyNamed('Key LHM: empty') }),
@@ -131,6 +134,9 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(key('Key LHR: transparent')).toBeInTheDocument();
+    // Put down, the board focused on the first of them.
+    expect(screen.queryByRole('group', { name: 'Edit 2 keys' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(svgKey('LHM')));
 
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(shownLayer()).toBe('Base'));
@@ -196,7 +202,7 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: keyNamed('Key LHM: ç') })).toBeInTheDocument();
   });
 
-  it('puts away whatever is picked on a click between the keys, but not after a drag or a swipe', async () => {
+  it('puts away whatever is picked on a click between the keys, but not after a swipe', async () => {
     const user = userEvent.setup();
     await openEdit();
     const board = screen.getByRole('group', { name: 'Keyboard layout' });
@@ -236,13 +242,14 @@ describe('Edit', () => {
     fireEvent.pointerUp(board, { clientX: 140, clientY: 12, pointerType: 'touch' });
     fireEvent.click(board, { clientX: 140, clientY: 12 });
     expect(await inspector('LHM')).toBeInTheDocument();
-    // So does a drop: the board holds the pointer while a key is dragged, so the click its release
-    // sends lands on the board, and must not put away the key the drop picked.
+    // A drop puts the key picked down itself, the board focused on the key dropped on. The click
+    // its release sends lands on the board, the pointer held there, and changes nothing more.
     await dragKey('LTR', 'LTM');
     expect(await screen.findByRole('button', { name: keyNamed('Key LTR: e') })).toBeInTheDocument();
-    await inspector('LTM');
+    await waitFor(() => expect(editing()).toBeNull());
+    expect(document.activeElement).toBe(svgKey('LTM'));
     fireEvent.click(board, { clientX: 20, clientY: 20 });
-    expect(await inspector('LTM')).toBeInTheDocument();
+    expect(editing()).toBeNull();
   });
 
   it('puts Swap with…, Copy to… and Send to layer… first in the editor, for one key and for several', async () => {
@@ -373,6 +380,48 @@ describe('Edit', () => {
     expect(screen.getByText('LHM on Base copied to LHI on Numbers')).toBeInTheDocument();
     await showLayer(user, 'Base');
     expect(key('Key LHM: d')).toBeInTheDocument();
+  }, 90_000);
+
+  it('puts the key down once Swap with… or Copy to… lands, the board focused on the key tapped', async () => {
+    // A phone: the editor opens under the board, and is brought into view when a key is selected.
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    const toEditor = () =>
+      scrolled.mock.contexts.filter((el) => (el as Element).matches('.lb-edit-inspector')).length;
+    const editing = () => screen.queryByRole('group', { name: /^Edit / });
+
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    expect(toEditor()).toBeGreaterThan(0);
+    scrolled.mockClear();
+    await user.click(key('Key LHI: f'));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    // Nothing is left selected, so the page stays on the board rather than going to the editor.
+    expect(editing()).toBeNull();
+    expect(document.activeElement).toBe(svgKey('LHI'));
+    expect(toEditor()).toBe(0);
+
+    await user.click(key('Key LHI: d'));
+    await user.click(within(await inspector('LHI')).getByRole('button', { name: 'Copy to…' }));
+    scrolled.mockClear();
+    await user.click(key('Key LHR: s'));
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('button', { name: keyNamed('Key LHI: d', 'Key LHR: d') }),
+      ).toHaveLength(2);
+    });
+    expect(editing()).toBeNull();
+    expect(document.activeElement).toBe(svgKey('LHR'));
+    expect(toEditor()).toBe(0);
+
+    // One Undo takes the copy back, and the key copied is selected again.
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHR: s') })).toBeInTheDocument();
+    expect(await inspector('LHI')).toBeInTheDocument();
+    scrolled.mockRestore();
   }, 90_000);
 
   it('does not swap when the gesture is cancelled', async () => {

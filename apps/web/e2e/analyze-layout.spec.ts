@@ -133,6 +133,39 @@ test.describe('on a phone', () => {
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
+  test('a move puts the key down and brings the board back, focused on the key it landed on', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const editing = page.getByRole('group', { name: /^Edit / });
+
+    // Swap with…, its partner tapped on the board.
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    await page
+      .getByRole('group', { name: 'Edit LHI' })
+      .getByRole('button', { name: 'Swap with…' })
+      .tap();
+    const partner = page.getByRole('button', { name: /^Key LHM:/ });
+    await partner.tap();
+    await expect(editing).toHaveCount(0);
+    await expect(partner).toBeFocused();
+    await expect(partner).toBeInViewport();
+
+    // Send to layer…, picked from the editor's list with the board scrolled away.
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    const send = page
+      .getByRole('group', { name: 'Edit LHI' })
+      .getByRole('combobox', { name: 'Send LHI to another layer' });
+    await expect(send).toBeVisible();
+    await page.evaluate(() => window.scrollBy(0, 2000));
+    await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
+    await send.selectOption({ index: 1 });
+    await expect(editing).toHaveCount(0);
+    const sent = page.getByRole('button', { name: /^Key LHI:/ });
+    await expect(sent).toBeFocused();
+    await expect(sent).toBeInViewport();
+  });
+
   test("the editor's layers fit the screen, each card's fields clear of its buttons", async ({
     page,
   }) => {
