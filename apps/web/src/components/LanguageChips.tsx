@@ -10,7 +10,7 @@ export interface PageText {
  * The languages a layout is for, a chip each. One it cannot fully type is shown as a warning, with
  * how many characters it lacks and which. A chip puts the whole page on its language's text, the
  * news corpus that comes with LayerBench, in place of the text or mix it was on; the chip whose
- * text is on show is pressed.
+ * text is on show is pressed, one of a set as a segment is, which pressing again leaves as it is.
  */
 export function LanguageChips({
   coverage,
@@ -28,7 +28,10 @@ export function LanguageChips({
   const chips = coverage.filter((c, i) => coverage.findIndex((d) => d.tag === c.tag) === i);
   if (chips.length === 0) return null;
   return (
-    <p className={`flex flex-wrap gap-1 ${className}`}>
+    <fieldset
+      aria-label="Languages it is for"
+      className={`lb-language-chips flex min-w-0 flex-wrap gap-1 ${className}`}
+    >
       {chips.map((c) => {
         const fits = c.missingRequired.length === 0;
         const what = fits
@@ -62,6 +65,6 @@ export function LanguageChips({
           </button>
         );
       })}
-    </p>
+    </fieldset>
   );
 }

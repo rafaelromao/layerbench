@@ -334,7 +334,7 @@ A layout's languages are chips: on its card in **Library**, under its name in **
 under each name in **Compare**. Tap or click one and the whole page is on that language's news text,
 the one that comes with the app, alone, any text mixed in taken off: **Library** ranks every layout
 on it, **Analyze** analyzes on it and **Compare** compares both on it. The chip of the text on show
-is ringed. **Analyze** shows the languages as the layout's list has them; **Library** and
+is in bold and underlined. **Analyze** shows the languages as the layout's list has them; **Library** and
 **Compare** read a layout that names none as one for English.
 
 ### The same choices in every view

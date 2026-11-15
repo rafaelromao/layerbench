@@ -896,19 +896,20 @@ export function Workbench({
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
   const corpusName = textName(settings.linked, corpora);
+  // What the layout cannot type, as it is now: the text's characters the last report found, the
+  // letters the language needs, and what edits from the tray left without a key.
+  const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
   // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
   // is of the layout as written, as on its Library card.
   const languageChips = useMemo(() => {
-    const written = producibleSymbols(state.compiled);
+    // With every feature on, the layout typed is the layout as written: what it types is known.
+    const written =
+      typedCompiled === state.compiled ? producible : producibleSymbols(state.compiled);
     return (layoutLanguages ?? []).flatMap((tag) => {
       const c = coverLanguage(written, tag);
       return c ? [c] : [];
     });
-  }, [state.compiled, layoutLanguages]);
-
-  // What the layout cannot type, as it is now: the text's characters the last report found, the
-  // letters the language needs, and what edits from the tray left without a key.
-  const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
+  }, [typedCompiled, producible, state.compiled, layoutLanguages]);
   const tray = useMemo(
     () =>
       missingKeys({

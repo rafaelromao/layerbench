@@ -221,6 +221,8 @@ test.describe('on a phone', () => {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     expect(await smallTargets(page, '#analyze-toolbar')).toEqual([]);
+    // Magic Romak's language chips, under its name, are tapped as much.
+    expect(await smallTargets(page, '.lb-editor-bar .lb-language-chips')).toEqual([]);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
