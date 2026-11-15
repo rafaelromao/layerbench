@@ -156,7 +156,8 @@ test.describe('on a phone', () => {
     // Send to layer…, picked from the editor's list with the board scrolled away.
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
     const editor = page.getByRole('group', { name: 'Edit LHI' });
-    // The editor is brought into view first: the scroll away must not race it.
+    // The editor is brought into view first. Should its smooth scroll still be running, the instant
+    // scroll away below cancels it.
     await expect(editor).toBeInViewport();
     const send = editor.getByRole('combobox', { name: 'Send LHI to another layer' });
     await page.evaluate(() => window.scrollBy(0, 2000));

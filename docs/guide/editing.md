@@ -135,8 +135,9 @@ with no binding of its own takes along what it does on its layer, its layer's de
 Once a move lands, by a drop, by tapping or from the list, nothing is left selected and the board
 has focus again, on the key where the move landed: select the next key from there, and on a phone
 the board comes back into view. One **Undo** takes the move back, and the keys selected before it are
-selected again. A swap or a copy cancelled before you tap the other key, with `Escape` or by tapping
-the same key again, leaves that key selected and the layout as it was.
+selected again. A swap or a copy cancelled before you tap the other key, with `Escape`, **Cancel**
+in the note under the board, or by tapping the same key again on its own layer, leaves that key
+selected and the layout as it was. On another layer, the same key is the other key.
 
 `Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
 layer below show through; **Clear**, at the foot of the editor, does the same for a key with a

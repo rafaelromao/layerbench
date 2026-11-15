@@ -235,7 +235,7 @@ describe('where the board goes after an edit', () => {
     expect(cancelled).toMatchObject({ swapFrom: null, selected: 'LHM' });
     expect(cancelled.layout).toBe(armed.layout);
     // The request the move before made is the one still there: no new one.
-    expect(armed.boardFocus).not.toBeNull();
+    expect(armed.boardFocus).toEqual({ keyId: 'LTM' });
     expect(cancelled.boardFocus).toBe(armed.boardFocus);
   });
 });
@@ -337,6 +337,13 @@ describe('the combo open in the combo editor', () => {
     const undone = reducer(added, { type: 'undo' });
     expect(undone.combo).toBeNull();
     expect(reducer(undone, { type: 'redo' }).combo).toBe(added.combo);
+  });
+
+  it('closes when a key is dropped on another, as any move puts everything away', () => {
+    const open = reducer(withNav(), addCombo);
+    expect(open.combo).not.toBeNull();
+    const dropped = reducer(open, { type: 'dropKey', from: 'LHI', to: 'LHR', mode: 'swap' });
+    expect(dropped).toMatchObject({ combo: null, selected: null, boardFocus: { keyId: 'LHR' } });
   });
 
   it('follows its place when a combo before it goes, and closes when it goes', () => {

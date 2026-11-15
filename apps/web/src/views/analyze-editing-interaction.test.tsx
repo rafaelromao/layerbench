@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import {
   dragKey,
   inspector,
@@ -387,6 +387,7 @@ describe('Edit', () => {
     const user = userEvent.setup();
     await openEdit();
     const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
     const toEditor = () =>
       scrolled.mock.contexts.filter((el) => (el as Element).matches('.lb-edit-inspector')).length;
     const editing = () => screen.queryByRole('group', { name: /^Edit / });
@@ -421,7 +422,6 @@ describe('Edit', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect(await screen.findByRole('button', { name: keyNamed('Key LHR: s') })).toBeInTheDocument();
     expect(await inspector('LHI')).toBeInTheDocument();
-    scrolled.mockRestore();
   }, 90_000);
 
   it('cancels a swap with Escape in the editor or the key numbers, the key staying selected', async () => {
@@ -451,6 +451,17 @@ describe('Edit', () => {
     expect(await inspector('LHM')).toBeInTheDocument();
     fireEvent.keyDown(numbers, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull());
+
+    // A missing key tapped, waiting for its key, is put down the same way.
+    await user.click(key('Key LHM: d'));
+    const chip = within(await screen.findByRole('list', { name: 'Missing keys' })).getAllByRole(
+      'button',
+    )[0];
+    await user.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(await inspector('LHM'), { key: 'Escape' });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(await inspector('LHM')).toBeInTheDocument();
   });
 
   it('does not swap when the gesture is cancelled', async () => {
