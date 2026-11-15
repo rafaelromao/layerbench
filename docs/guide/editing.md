@@ -7,7 +7,8 @@ the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos
 sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
 (under it, on a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
 board between the keys to put the selection away, cancel a swap or a [missing key](#missing-keys)
-tapped, or clear an outline; a drag or a swipe does not.
+tapped, or clear an outline; the end of a drag or a swipe does not, though a drop puts the
+selection away itself.
 
 1. **Select a key** on the board.
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
@@ -131,11 +132,11 @@ with no binding of its own takes along what it does on its layer, its layer's de
 *Transparent* key taken to the base does *Nothing* there, with no layer below it to show through.
 **Send to layer…** puts a key at the same place on another layer, picked from a list.
 
-Once a move lands, by a drop, by tapping or from the list, the key is put down and the board has
-focus again, on the key where the move landed: the next key is picked from there, and on a phone the
-board comes back into view. One **Undo** takes the move back, and the keys selected before it are
+Once a move lands, by a drop, by tapping or from the list, nothing is left selected and the board
+has focus again, on the key where the move landed: the next key is picked from there, and on a phone
+the board comes back into view. One **Undo** takes the move back, and the keys selected before it are
 selected again. A move called off before its second key, by tapping the armed key again or with
-`Escape`, leaves the key selected and the layout as it was.
+`Escape`, on the board or in the editor, leaves the key selected and the layout as it was.
 
 `Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
 layer below show through; **Clear**, at the foot of the editor, does the same for a key with a
@@ -149,8 +150,8 @@ what can be done with all of them. First, **Send to layer…** and **Copy to lay
 another layer at the same places; **Make transparent** lets the layer below show through them, and
 **Clear** makes them do nothing, as `Delete` does on any one of them. Each is one change, so one
 **Undo** takes it back. **Make transparent** and **Clear** leave the keys selected for the next;
-**Send to layer…** and **Copy to layer…** are moves, and put them down as any move does, the board
-turned to their layer and focused on the first of them.
+**Send to layer…** and **Copy to layer…** are moves, and put the selection away as any move does,
+the board turned to their layer and focused on the first of them.
 
 ### Missing keys
 
@@ -527,8 +528,8 @@ keeps the page where it is, at either end too:
 
 Everything works by tapping. Selecting a key opens the editor right under the board, and the
 board scrolls away with the page as you work through the editor, leaving it the screen; scroll
-back up for the next key. A move brings the board back by itself, with the key put down. Tiles and
-chips are sized for a finger.
+back up for the next key. A move brings the board back by itself, with nothing left selected. Tiles
+and chips are sized for a finger.
 
 To drag a key, rest your finger on it for a moment first. A [missing key](#missing-keys) is
 dragged straight away, or tapped and then the key tapped.

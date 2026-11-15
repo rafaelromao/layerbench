@@ -96,8 +96,8 @@ describe('Edit', () => {
       'Nav',
     );
 
-    // The view follows the binding to the layer it landed on, and the source is left empty. The key
-    // is put down, and the board has focus, on the key there.
+    // The view follows the binding to the layer it landed on, and the source is left empty. Nothing
+    // is left selected, and the board has focus, on the key there.
     await waitFor(() => expect(shownLayer()).toBe('Nav'));
     expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
@@ -134,7 +134,7 @@ describe('Edit', () => {
     expect(await screen.findByRole('button', { name: keyNamed('Key LHM: d') })).toBeInTheDocument();
     expect(key('Key LHI: f')).toBeInTheDocument();
     expect(key('Key LHR: transparent')).toBeInTheDocument();
-    // Put down, the board focused on the first of them.
+    // Nothing is left selected, the board focused on the first of them.
     expect(screen.queryByRole('group', { name: 'Edit 2 keys' })).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(svgKey('LHM')));
 
@@ -242,14 +242,12 @@ describe('Edit', () => {
     fireEvent.pointerUp(board, { clientX: 140, clientY: 12, pointerType: 'touch' });
     fireEvent.click(board, { clientX: 140, clientY: 12 });
     expect(await inspector('LHM')).toBeInTheDocument();
-    // A drop puts the key picked down itself, the board focused on the key dropped on. The click
-    // its release sends lands on the board, the pointer held there, and changes nothing more.
+    // A drop puts the selection away itself, the board focused on the key dropped on. (That the
+    // board swallows the click its release sends is Keyboard.test.tsx's.)
     await dragKey('LTR', 'LTM');
     expect(await screen.findByRole('button', { name: keyNamed('Key LTR: e') })).toBeInTheDocument();
     await waitFor(() => expect(editing()).toBeNull());
     expect(document.activeElement).toBe(svgKey('LTM'));
-    fireEvent.click(board, { clientX: 20, clientY: 20 });
-    expect(editing()).toBeNull();
   });
 
   it('puts Swap with…, Copy to… and Send to layer… first in the editor, for one key and for several', async () => {
@@ -382,7 +380,7 @@ describe('Edit', () => {
     expect(key('Key LHM: d')).toBeInTheDocument();
   }, 90_000);
 
-  it('puts the key down once Swap with… or Copy to… lands, the board focused on the key tapped', async () => {
+  it('selects nothing once Swap with… or Copy to… lands, the board focused on the key tapped', async () => {
     // A phone: the editor opens under the board, and is brought into view when a key is selected.
     setPointerKind('touch');
     setViewportWidth(390);
@@ -423,6 +421,25 @@ describe('Edit', () => {
     expect(await inspector('LHI')).toBeInTheDocument();
     scrolled.mockRestore();
   }, 90_000);
+
+  it('calls off a swap with Escape in the editor, the key staying selected', async () => {
+    const user = userEvent.setup();
+    await openEdit();
+
+    await user.click(key('Key LHM: d'));
+    const swap = within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' });
+    await user.click(swap);
+    expect(screen.getByText(/is armed/)).toBeInTheDocument();
+    // Focus is still on the button that armed it, in the editor.
+    expect(document.activeElement).toBe(swap);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByText(/is armed/)).toBeNull();
+    expect(await inspector('LHM')).toBeInTheDocument();
+    // The next Escape closes the editor, focus back on the key.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull());
+    expect(document.activeElement).toBe(svgKey('LHM'));
+  });
 
   it('does not swap when the gesture is cancelled', async () => {
     await openEdit();

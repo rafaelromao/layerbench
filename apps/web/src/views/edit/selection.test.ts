@@ -26,6 +26,11 @@ function withNav(): UndoState {
   return reducer(added, { type: 'selectLayer', layer: 0 });
 }
 
+/** Qwerty with Nav, LTR dropped on LTM: a move made, whose request for focus is still there. */
+function afterMove(): UndoState {
+  return reducer(withNav(), { type: 'dropKey', from: 'LTR', to: 'LTM', mode: 'swap' });
+}
+
 /** The keys picked one after another, the first as a plain click and the rest added to it. */
 function pick(state: UndoState, ...keys: string[]): UndoState {
   let next = reducer(state, { type: 'keyClick', keyId: keys[0] });
@@ -65,7 +70,7 @@ describe('several keys selected', () => {
   it('sends them to another layer in one edit, which one Undo takes back', () => {
     const before = pick(withNav(), 'LHM', 'LHI');
     const sent = reducer(before, send('move'));
-    // The board follows them; they are put down, and the board has focus, on the first of them.
+    // The board follows them; nothing is left selected, and the board has focus, on the first.
     expect(sent.layer).toBe(NAV);
     expect(selectionOf(sent)).toEqual([]);
     expect(sent.boardFocus).toEqual({ keyId: 'LHM' });
@@ -175,7 +180,7 @@ describe('where the board goes after an edit', () => {
     ).toBeNull();
   });
 
-  it('puts the keys down after a drop, the board focused on the key dropped on', () => {
+  it('puts the selection away after a drop, the board focused on the key dropped on', () => {
     const copied = reducer(pick(withNav(), 'LHM', 'LHI'), {
       type: 'dropKey',
       from: 'LHM',
@@ -207,7 +212,7 @@ describe('where the board goes after an edit', () => {
     expect(selectionOf(replaced)).toEqual([]);
   });
 
-  it('swaps an armed key with the key clicked next, puts it down and focuses where it went', () => {
+  it('swaps an armed key with the key clicked next, selecting nothing and focusing where it went', () => {
     const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap' });
     const swapped = reducer(armed, { type: 'keyClick', keyId: 'LHI' });
     expect(at(swapped, 0, 'LHI')).toEqual(at(armed, 0, 'LHM'));
@@ -224,11 +229,14 @@ describe('where the board goes after an edit', () => {
     expect(selectionOf(undone)).toEqual(['LHM']);
   });
 
-  it('leaves the key selected when the swap is put down unmade', () => {
-    const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap', mode: 'copy' });
+  it('leaves the key selected, and asks for no focus, when a swap is called off', () => {
+    const armed = reducer(pick(afterMove(), 'LHM'), { type: 'startSwap', mode: 'copy' });
     const cancelled = reducer(armed, { type: 'cancelSwap' });
-    expect(cancelled).toMatchObject({ swapFrom: null, selected: 'LHM', boardFocus: null });
+    expect(cancelled).toMatchObject({ swapFrom: null, selected: 'LHM' });
     expect(cancelled.layout).toBe(armed.layout);
+    // The request the move before made is the one still there: no new one.
+    expect(armed.boardFocus).not.toBeNull();
+    expect(cancelled.boardFocus).toBe(armed.boardFocus);
   });
 });
 
@@ -245,7 +253,7 @@ describe('a key armed, and its partner on another layer', () => {
     expect(turned).toMatchObject({ layer: NAV, swapFrom: 'LHM', swapLayer: 'base' });
   });
 
-  it('copies onto the key tapped there, staying there, the key put down and the board focused', () => {
+  it('copies onto the key tapped there, staying there with nothing selected and the board focused', () => {
     const turned = armedThenNav('copy');
     const copied = reducer(turned, { type: 'keyClick', keyId: 'LHI' });
     expect(at(copied, NAV, 'LHI')).toEqual(at(turned, 0, 'LHM'));
@@ -285,12 +293,13 @@ describe('a key armed, and its partner on another layer', () => {
   it('takes the same key on another layer as its partner, and puts it down on its own', () => {
     const copied = reducer(armedThenNav('copy'), { type: 'keyClick', keyId: 'LHM' });
     expect(at(copied, NAV, 'LHM')).toEqual(at(copied, 0, 'LHM'));
-    const armed = reducer(pick(withNav(), 'LHM'), { type: 'startSwap', mode: 'copy' });
+    const armed = reducer(pick(afterMove(), 'LHM'), { type: 'startSwap', mode: 'copy' });
     const down = reducer(armed, { type: 'keyClick', keyId: 'LHM' });
     expect(down.swapFrom).toBeNull();
     expect(down.layout).toBe(armed.layout);
-    // Put down, the key stays selected: nothing moved.
-    expect(down).toMatchObject({ selected: 'LHM', boardFocus: null });
+    // Nothing moved: the key stays selected, and no new request for focus is made.
+    expect(down.selected).toBe('LHM');
+    expect(down.boardFocus).toBe(armed.boardFocus);
   });
 
   it('makes a drag a move on the layer shown', () => {

@@ -133,7 +133,7 @@ test.describe('on a phone', () => {
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
-  test('a move puts the key down and brings the board back, focused on the key it landed on', async ({
+  test('a move puts the selection away and brings the board back, focused on the key it landed on', async ({
     page,
   }) => {
     await openEdit(page);
@@ -153,10 +153,10 @@ test.describe('on a phone', () => {
 
     // Send to layer…, picked from the editor's list with the board scrolled away.
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
-    const send = page
-      .getByRole('group', { name: 'Edit LHI' })
-      .getByRole('combobox', { name: 'Send LHI to another layer' });
-    await expect(send).toBeVisible();
+    const editor = page.getByRole('group', { name: 'Edit LHI' });
+    // The editor is brought into view first: the scroll away must not race it.
+    await expect(editor).toBeInViewport();
+    const send = editor.getByRole('combobox', { name: 'Send LHI to another layer' });
     await page.evaluate(() => window.scrollBy(0, 2000));
     await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
     await send.selectOption({ index: 1 });

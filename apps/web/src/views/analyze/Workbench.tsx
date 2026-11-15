@@ -1462,6 +1462,13 @@ export function Workbench({
                     className="lb-edit-inspector min-w-0"
                     onKeyDown={(e) => {
                       if (e.key !== 'Escape' || e.defaultPrevented) return;
+                      // One thing at a time, as on the board: a swap or a character waiting for
+                      // its key goes first, the key staying selected.
+                      if (state.swapFrom !== null || state.placing !== null) {
+                        e.preventDefault();
+                        send({ type: 'cancelSwap' });
+                        return;
+                      }
                       if (state.combo !== null) {
                         e.preventDefault();
                         send({ type: 'selectCombo', combo: null });
