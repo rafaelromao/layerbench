@@ -133,6 +133,42 @@ test.describe('on a phone', () => {
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
+  test('a move puts the selection away and brings the board back, focused on the key it landed on', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const editing = page.getByRole('group', { name: /^Edit / });
+
+    // Swap with…, its partner tapped on the board.
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    await page
+      .getByRole('group', { name: 'Edit LHI' })
+      .getByRole('button', { name: 'Swap with…' })
+      .tap();
+    const partner = page.getByRole('button', { name: /^Key LHM:/ });
+    await partner.tap();
+    // Nothing selected, so the page stays on the board. (A tap focuses the key by itself; the list
+    // below is where focus has to be handed back.)
+    await expect(editing).toHaveCount(0);
+    await expect(partner).toBeFocused();
+    await expect(partner).toBeInViewport();
+
+    // Send to layer…, picked from the editor's list with the board scrolled away.
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    const editor = page.getByRole('group', { name: 'Edit LHI' });
+    // The editor is brought into view first. Should its smooth scroll still be running, the instant
+    // scroll away below cancels it.
+    await expect(editor).toBeInViewport();
+    const send = editor.getByRole('combobox', { name: 'Send LHI to another layer' });
+    await page.evaluate(() => window.scrollBy(0, 2000));
+    await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
+    await send.selectOption({ index: 1 });
+    await expect(editing).toHaveCount(0);
+    const sent = page.getByRole('button', { name: /^Key LHI:/ });
+    await expect(sent).toBeFocused();
+    await expect(sent).toBeInViewport();
+  });
+
   test("the editor's layers fit the screen, each card's fields clear of its buttons", async ({
     page,
   }) => {
@@ -185,6 +221,8 @@ test.describe('on a phone', () => {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
     expect(await smallTargets(page, '#analyze-toolbar')).toEqual([]);
+    // Magic Romak's language chips, under its name, are tapped as much.
+    expect(await smallTargets(page, '.lb-editor-bar .lb-language-chips')).toEqual([]);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 

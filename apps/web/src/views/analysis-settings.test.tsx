@@ -112,3 +112,70 @@ describe('A mix, set and taken off where the settings are', () => {
     30_000,
   );
 });
+
+describe('A language chip, switching the whole page to the text of its language', () => {
+  /** A mix of English and Spanish: no one language's text is on show. */
+  const MIXED = 'corpus=en-general&corpus2=es-general&mix=70&sample=20000';
+  /** Where each view shows Magic Romak's chips: its card, its bar, its side. */
+  const card = async () =>
+    (await screen.findByRole('heading', { name: 'Magic Romak', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+  const bar = () => screen.findByRole('region', { name: 'Layout' });
+  const side = async () =>
+    (await screen.findByRole('heading', { name: 'A: Magic Romak', level: 2 })).closest(
+      'section',
+    ) as HTMLElement;
+
+  it.each([
+    ['the Library', `/library?${MIXED}`, card],
+    ['Analyze', `/analyze?layout=magic-romak&${MIXED}`, bar],
+    ['Compare', `/compare?layout=magic-romak&b=qwerty&${MIXED}`, side],
+  ])(
+    'in %s',
+    async (_, path, scope) => {
+      const user = userEvent.setup();
+      const client = new RecordingClient();
+      const { currentSearch } = renderRoute(path, { client, storage: freshStorage() });
+      // Magic Romak is for English and Portuguese, a chip each, neither on show in a mix.
+      const pt = await within(await scope()).findByRole('button', { name: /Português/ });
+      expect(pt).toHaveAttribute('aria-pressed', 'false');
+      expect(within(await scope()).getByRole('button', { name: /English/ })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+
+      // Portuguese's own text, the one that comes with LayerBench, in place of the mix.
+      await user.click(pt);
+      await waitFor(() => {
+        const search = new URLSearchParams(currentSearch());
+        expect(search.get('corpus')).toBe('pt-br-general');
+        expect(search.has('corpus2')).toBe(false);
+        expect(search.has('mix')).toBe(false);
+      });
+      // For the whole page: what it analyzes next is on that text.
+      await waitFor(
+        () =>
+          expect(client.analyses.at(-1)?.settings).toMatchObject({
+            corpus: 'pt-br-general',
+            corpus2: null,
+          }),
+        { timeout: 10_000 },
+      );
+      expect(within(await scope()).getByRole('button', { name: /Português/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+
+      await user.click(within(await scope()).getByRole('button', { name: /English/ }));
+      await waitFor(() =>
+        expect(new URLSearchParams(currentSearch()).get('corpus')).toBe('en-general'),
+      );
+      expect(within(await scope()).getByRole('button', { name: /English/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    },
+    60_000,
+  );
+});

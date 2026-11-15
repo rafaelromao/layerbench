@@ -1703,6 +1703,28 @@ button.lb-combo-apart:focus-visible {
     padding-inline: 0.625rem;
   }
 }
+/* A language chip puts the page on its language's text: marked on hover and focus as the category
+   is, and as tall as a finger needs. The one whose text is on show is in bold and underlined, in
+   its own text's colour, which reads on a warning chip's fill as on a plain one. */
+button.lb-language-chip {
+  cursor: pointer;
+}
+button.lb-language-chip:hover,
+button.lb-language-chip:focus-visible {
+  outline: 1px solid var(--lb-ring);
+  outline-offset: 1px;
+}
+button.lb-language-chip[aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration: underline 2px;
+  text-underline-offset: 2px;
+}
+@media (pointer: coarse) {
+  button.lb-language-chip {
+    min-height: 1.5rem;
+    padding-inline: 0.625rem;
+  }
+}
 .lb-stat-main {
   display: flex;
   flex-direction: column;

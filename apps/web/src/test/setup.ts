@@ -58,8 +58,8 @@ configure({
  * Media queries answer as a mouse on a desktop's screen would, by default.
  * `setPointerKind('touch')` makes the same run answer as a finger does, which is a different
  * interface rather than the same one at a different size: a finger cannot hover, and cannot type on
- * a key. `setViewportWidth` answers the queries on width, for a phone's screen; the layout itself
- * is not drawn.
+ * a key. `setViewportWidth` answers the queries on width, and the window's own width, for a phone's
+ * screen; the layout itself is not drawn.
  */
 let pointerKind: 'mouse' | 'touch' = 'mouse';
 const DESKTOP_WIDTH = 1024;
@@ -71,6 +71,7 @@ export function setPointerKind(kind: 'mouse' | 'touch'): void {
 
 export function setViewportWidth(px: number): void {
   viewportWidth = px;
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: px });
 }
 
 /** A query on width, `(min-width: 640px)` or `(max-width: 40rem)`, against the viewport set. */

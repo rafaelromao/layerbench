@@ -3,6 +3,7 @@ import {
   BUNDLED_LAYOUTS,
   type CompiledLayout,
   type CorpusManifest,
+  coverLanguage,
   documentMissing,
   type Layout,
   languagesToJudge,
@@ -789,6 +790,21 @@ export function Workbench({
   }, [client, state.panel, state.layout, params.caseMode]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
+  // A move puts the selection away and hands focus back to the board, on the key it landed on: on
+  // a phone, where the editor is under the board, that brings the board back into view too.
+  useEffect(() => {
+    if (state.boardFocus) focusKey(state.boardFocus.keyId);
+  }, [state.boardFocus, focusKey]);
+  /**
+   * Escape in the key's editor or its numbers, while a swap or a character waits for its key: that
+   * is cancelled first, the key staying selected, as Escape on the board does. Says whether it was.
+   */
+  const cancelWaiting = (e: ReactKeyboardEvent<Element>): boolean => {
+    if (state.swapFrom === null && state.placing === null) return false;
+    e.preventDefault();
+    send({ type: 'cancelSwap' });
+    return true;
+  };
   /**
    * Measure the languages the layout performs well in and add them, one edit like any other: Undo
    * takes them back. A layout edited while it is measured is not the one measured, and is left as
@@ -880,10 +896,20 @@ export function Workbench({
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
   const corpusName = textName(settings.linked, corpora);
-
   // What the layout cannot type, as it is now: the text's characters the last report found, the
   // letters the language needs, and what edits from the tray left without a key.
   const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
+  // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
+  // is of the layout as written, as on its Library card.
+  const languageChips = useMemo(() => {
+    // With every feature on, the layout typed is the layout as written: what it types is known.
+    const written =
+      typedCompiled === state.compiled ? producible : producibleSymbols(state.compiled);
+    return (layoutLanguages ?? []).flatMap((tag) => {
+      const c = coverLanguage(written, tag);
+      return c ? [c] : [];
+    });
+  }, [typedCompiled, producible, state.compiled, layoutLanguages]);
   const tray = useMemo(
     () =>
       missingKeys({
@@ -953,6 +979,7 @@ export function Workbench({
 
       <LayoutBar
         layout={state.layout}
+        languages={languageChips}
         dirty={state.dirty}
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
@@ -1422,13 +1449,13 @@ export function Workbench({
 
                   {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
                   {keyStatsView && (
-                    // Escape in the key's numbers closes its editor, as it does in the editor itself.
+                    // Escape in the key's numbers does what it does in the editor itself.
                     <section
                       className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
                       aria-label="Key numbers"
                       onKeyDown={(e) => {
-                        if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null)
-                          return;
+                        if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
+                        if (state.selected === null) return;
                         e.preventDefault();
                         const keyId = state.selected;
                         send({ type: 'deselect' });
@@ -1456,7 +1483,7 @@ export function Workbench({
                   <div
                     className="lb-edit-inspector min-w-0"
                     onKeyDown={(e) => {
-                      if (e.key !== 'Escape' || e.defaultPrevented) return;
+                      if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
                       if (state.combo !== null) {
                         e.preventDefault();
                         send({ type: 'selectCombo', combo: null });

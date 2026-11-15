@@ -387,8 +387,8 @@ const handlers: Handlers = {
     return { layout: copyKey(layout, i, from, to, j), at: landedOn(i, j, toLayer, to) };
   },
 
-  // The board follows the keys to their layer, where they are still selected: the only way to
-  // see that they landed.
+  // Where the keys land is the layer they went to, which the board turns to: the only way to see
+  // that they landed.
   send(layout, { layer, toLayer, keys, mode }) {
     const source = indexOf(layout, layer);
     const target = indexOf(layout, toLayer);

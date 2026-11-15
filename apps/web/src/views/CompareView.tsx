@@ -1,4 +1,4 @@
-import { type CorpusManifest, toCanonicalJson } from '@layerbench/core';
+import { type CorpusManifest, layoutLanguages, toCanonicalJson } from '@layerbench/core';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
@@ -10,6 +10,7 @@ import { HeatLegend } from '../components/HeatLegend.js';
 import { HeatNote } from '../components/HeatNote.js';
 import { HeatSelect } from '../components/HeatSelect.js';
 import { HelpLink } from '../components/HelpLink.js';
+import { LanguageChips } from '../components/LanguageChips.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
@@ -109,6 +110,9 @@ export function CompareView() {
   // was measured on either way.
   const typedA = useTypedLayout(a.compiled, params.without);
   const typedB = useTypedLayout(b.compiled, params.without);
+  // What each side can write of the languages it is for, as its Library card shows them.
+  const languagesA = useMemo(() => (a.compiled ? layoutLanguages(a.compiled) : []), [a.compiled]);
+  const languagesB = useMemo(() => (b.compiled ? layoutLanguages(b.compiled) : []), [b.compiled]);
   const settings = useAnalysisSettings(settingsOf(params));
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
@@ -329,9 +333,18 @@ export function CompareView() {
             return (
               <section key={side} className="card bg-base-100 border border-base-300 min-w-0">
                 <div className="card-body gap-3 p-4">
-                  <h2 className="font-semibold text-sm">
-                    {side}: {name}
-                  </h2>
+                  <div>
+                    <h2 className="font-semibold text-sm">
+                      {side}: {name}
+                    </h2>
+                    {/* A chip puts both sides on its language's text: they are compared on one. */}
+                    <LanguageChips
+                      coverage={side === 'A' ? languagesA : languagesB}
+                      text={params}
+                      onText={(corpus) => setParams({ corpus, corpus2: null })}
+                      className="mt-0.5"
+                    />
+                  </div>
                   {compiled && (
                     <div className="min-w-0">
                       <PreviewBoard
