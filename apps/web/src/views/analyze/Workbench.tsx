@@ -895,6 +895,16 @@ export function Workbench({
     return null;
   }, [typedCompiled, corpusLanguage, layoutLanguages]);
   const corpusName = textName(settings.linked, corpora);
+  // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
+  // is of the layout as written, as on its Library card.
+  const languageChips = useMemo(
+    () =>
+      (layoutLanguages ?? []).flatMap((tag) => {
+        const c = layoutLanguageCoverage(state.compiled, tag);
+        return c ? [c] : [];
+      }),
+    [state.compiled, layoutLanguages],
+  );
 
   // What the layout cannot type, as it is now: the text's characters the last report found, the
   // letters the language needs, and what edits from the tray left without a key.
@@ -968,6 +978,7 @@ export function Workbench({
 
       <LayoutBar
         layout={state.layout}
+        languages={languageChips}
         dirty={state.dirty}
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}

@@ -42,6 +42,7 @@ import { featureList } from '../components/FeatureSwitches.js';
 import { formatValue, qualityBorder } from '../components/format.js';
 import { HeatLegend } from '../components/HeatLegend.js';
 import { HelpLink, HelpWord } from '../components/HelpLink.js';
+import { LanguageChips, type PageText } from '../components/LanguageChips.js';
 import { BandBadge } from '../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../components/NameDialog.js';
 import { readCustom } from '../custom/read.js';
@@ -227,34 +228,6 @@ function Ranking({
   );
 }
 
-/**
- * What the layout can write. A language it declares but cannot fully type is shown struck through,
- * with the missing characters named — the difference between "supports Spanish" and "supports
- * Spanish except ñ" decides whether an analysis means anything.
- */
-function LanguageBadges({ compiled }: { compiled: CompiledLayout }) {
-  const coverage = layoutLanguages(compiled);
-  if (coverage.length === 0) return null;
-  return (
-    <p className="mt-0.5 flex flex-wrap gap-1">
-      {coverage.map((c) => (
-        <span
-          key={c.tag}
-          className={`badge badge-xs ${c.missingRequired.length === 0 ? 'badge-ghost' : 'badge-warning'}`}
-          title={
-            c.missingRequired.length === 0
-              ? `Types everything ${c.name} needs`
-              : `Cannot type ${c.missingRequired.join(' ')}`
-          }
-        >
-          {c.tag}
-          {c.missingRequired.length > 0 ? ` −${c.missingRequired.length}` : ''}
-        </span>
-      ))}
-    </p>
-  );
-}
-
 /** A layout as the list shows it, whether it came with the app, from the community, or is custom. */
 interface Listed {
   /**
@@ -323,6 +296,8 @@ function LayoutCard({
   actions,
   proposal,
   merged,
+  text,
+  onText,
 }: {
   item: Listed;
   /** The layout as it is ranked, features left out, whose combos the board draws. */
@@ -340,6 +315,9 @@ function LayoutCard({
   proposal?: string;
   /** The change is merged, and this app, built before, does not have it yet. */
   merged?: boolean;
+  /** The text the list is ranked on, which a language chip puts it on. */
+  text: PageText;
+  onText: (corpus: string) => void;
 }) {
   return (
     <article className="lb-library-card card bg-base-100 border border-base-300 min-w-0">
@@ -364,7 +342,16 @@ function LayoutCard({
               )}
             </div>
             {item.meta && <p className="text-xs opacity-60">{item.meta}</p>}
-            {item.compiled && <LanguageBadges compiled={item.compiled} />}
+            {/* What the layout can write: a language it is for but cannot fully type is marked,
+                the difference between "supports Spanish" and "supports Spanish except ñ". */}
+            {item.compiled && (
+              <LanguageChips
+                coverage={layoutLanguages(item.compiled)}
+                text={text}
+                onText={onText}
+                className="mt-0.5"
+              />
+            )}
           </div>
           <div className="ml-auto flex shrink-0 gap-1">{actions}</div>
           {/* The card's whole width, below the actions: beside them, a phone has no room for both
@@ -565,6 +552,8 @@ export function LibraryView() {
     },
     [navigate, params],
   );
+  /** A language chip ranks the whole list on its language's text, alone. */
+  const rankOn = useCallback((corpus: string) => setParams({ corpus, corpus2: null }), [setParams]);
   /**
    * Analyze opens on what the cards were ranked on, the capped sample included, so a layout opened
    * from here shows the numbers its card showed.
@@ -1191,6 +1180,8 @@ export function LibraryView() {
               heatMode={heatOn ? heatMode : null}
               proposal={item.custom ? proposalUrls.get(item.id) : undefined}
               merged={item.custom && landing.has(item.id)}
+              text={params}
+              onText={rankOn}
               actions={
                 <>
                   {maintainer && (item.custom || item.community) && (

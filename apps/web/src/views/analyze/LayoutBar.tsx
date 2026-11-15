@@ -3,6 +3,7 @@ import {
   type IndexEntry,
   isLayoutLink,
   LANGUAGE_PROFILES,
+  type LanguageCoverage,
   type LanguageVerdict,
   type Layout,
   toCanonicalJson,
@@ -10,6 +11,7 @@ import {
 } from '@layerbench/core';
 import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
+import { LanguageChips } from '../../components/LanguageChips.js';
 import { addedText, verdictText } from '../../engine/measure-languages.js';
 import { ProposedBadge } from '../../proposals/ProposedBadge.js';
 import { SyncNote } from '../../storage/SyncNote.js';
@@ -22,13 +24,14 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
- * change proposed from it is open, and the ways to save it, over itself or as a copy, the way to submit a custom layout to the Library, which layout this is, what the
+ * change proposed from it is open, the languages it is for, and the ways to save it, over itself or as a copy, the way to submit a custom layout to the Library, which layout this is, what the
  * numbers are made with, and the way to compare it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
  */
 export function LayoutBar({
   layout,
+  languages,
   dirty,
   saving,
   onMeta,
@@ -51,6 +54,8 @@ export function LayoutBar({
   showCombos,
 }: {
   layout: Layout;
+  /** What the layout can write of each language it is for, as its list has them. */
+  languages: LanguageCoverage[];
   dirty: boolean;
   saving: boolean;
   onMeta: (meta: {
@@ -159,6 +164,12 @@ export function LayoutBar({
           </button>
         )}
       </div>
+      {/* A chip puts the page on its language's text. */}
+      <LanguageChips
+        coverage={languages}
+        text={params}
+        onText={(corpus) => onParams({ corpus, corpus2: null })}
+      />
       {/* Where what was just saved is: kept in this browser only, or not sent for a reason. */}
       <SyncNote />
       {/* On a phone the picker shows the layout's name without a caption, and Settings is a gear.
