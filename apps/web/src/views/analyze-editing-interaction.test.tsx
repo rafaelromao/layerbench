@@ -424,6 +424,33 @@ describe('Edit', () => {
     expect(await inspector('LHI')).toBeInTheDocument();
   }, 90_000);
 
+  it('brings the board back on a phone once a move lands, though its key had focus all along', async () => {
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(screen.getByRole('tab', { name: 'Layers' }));
+    await user.type(screen.getByLabelText('New layer name'), 'Nav');
+    await user.click(screen.getByRole('button', { name: 'Add layer' }));
+    await showLayer(user, 'Base');
+    await user.click(await screen.findByRole('button', { name: keyNamed('Key LHM: d') }));
+    // The tap focused the key, and the list is picked from with focus left there, as a test driver
+    // picks: focusing the key again moves nothing, so focus alone would leave the page where it is.
+    expect(document.activeElement).toBe(svgKey('LHM'));
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+    const send = await screen.findByRole('combobox', { name: 'Send LHM to another layer' });
+    const nav = within(send).getByRole('option', { name: 'Nav' }) as HTMLOptionElement;
+    fireEvent.change(send, { target: { value: nav.value } });
+
+    await waitFor(() => expect(shownLayer()).toBe('Nav'));
+    expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
+    expect(document.activeElement).toBe(svgKey('LHM'));
+    expect(scrolled.mock.contexts.some((el) => (el as Element).matches('.lb-edit-board'))).toBe(
+      true,
+    );
+  }, 90_000);
+
   it('cancels a swap with Escape in the editor or the key numbers, the key staying selected', async () => {
     const user = userEvent.setup();
     await openEdit();

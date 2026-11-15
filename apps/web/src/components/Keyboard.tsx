@@ -38,7 +38,7 @@ const ARROWS: Record<string, Direction> = {
 
 export interface KeyboardHandle {
   /** Put keyboard focus back on a key, after an editor or a dialog has had it. */
-  focusKey: (keyId: string) => void;
+  focusKey: (keyId: string, options?: FocusOptions) => void;
 }
 
 /**
@@ -586,7 +586,7 @@ export function Keyboard({
   useImperativeHandle(
     ref,
     () => ({
-      focusKey: (keyId: string) => nodes.current[keyId]?.focus(),
+      focusKey: (keyId: string, options?: FocusOptions) => nodes.current[keyId]?.focus(options),
     }),
     [],
   );

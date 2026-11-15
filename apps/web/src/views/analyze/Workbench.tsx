@@ -790,11 +790,19 @@ export function Workbench({
   }, [client, state.panel, state.layout, params.caseMode]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
-  // A move puts the selection away and hands focus back to the board, on the key it landed on: on
-  // a phone, where the editor is under the board, that brings the board back into view too.
+  // A move puts the selection away and hands focus back to the board, on the key it landed on. On
+  // a phone, where the editor is under the board, the board is brought back into view as well, by
+  // a scroll of its own: focus scrolls only when it moves, and the key may have had it all along,
+  // tapped before the editor's list was picked from.
   useEffect(() => {
-    if (state.boardFocus) focusKey(state.boardFocus.keyId);
-  }, [state.boardFocus, focusKey]);
+    if (!state.boardFocus) return;
+    const phone = window.innerWidth < 1024;
+    keyboard.current?.focusKey(state.boardFocus.keyId, { preventScroll: phone });
+    if (!phone) return;
+    document
+      .querySelector('.lb-edit-board')
+      ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [state.boardFocus]);
   /**
    * Escape in the key's editor or its numbers, while a swap or a character waits for its key: that
    * is cancelled first, the key staying selected, as Escape on the board does. Says whether it was.
