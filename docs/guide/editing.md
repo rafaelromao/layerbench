@@ -7,8 +7,8 @@ the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos
 sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
 (under it, on a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
 board between the keys to put the selection away, cancel a swap or a [missing key](#missing-keys)
-tapped, or clear an outline; the end of a drag or a swipe does not, though a drop puts the
-selection away itself.
+tapped, or clear an outline; the end of a drag or a swipe does not, though a key dropped on another
+puts the selection away itself.
 
 1. **Select a key** on the board.
 2. **Choose what it does** from the tiles: *Symbol*, *Layer*, *Modifier*, *Tap-hold* and so on.
@@ -133,10 +133,10 @@ with no binding of its own takes along what it does on its layer, its layer's de
 **Send to layer…** puts a key at the same place on another layer, picked from a list.
 
 Once a move lands, by a drop, by tapping or from the list, nothing is left selected and the board
-has focus again, on the key where the move landed: the next key is picked from there, and on a phone
+has focus again, on the key where the move landed: select the next key from there, and on a phone
 the board comes back into view. One **Undo** takes the move back, and the keys selected before it are
-selected again. A move called off before its second key, by tapping the armed key again or with
-`Escape`, on the board or in the editor, leaves the key selected and the layout as it was.
+selected again. A swap or a copy cancelled before you tap the other key, with `Escape` or by tapping
+the same key again, leaves that key selected and the layout as it was.
 
 `Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
 layer below show through; **Clear**, at the foot of the editor, does the same for a key with a

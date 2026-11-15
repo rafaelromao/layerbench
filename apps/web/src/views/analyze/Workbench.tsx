@@ -789,11 +789,21 @@ export function Workbench({
   }, [client, state.panel, state.layout, params.caseMode]);
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
-  // A move puts its keys down and hands focus back to the board, on the key it landed on: on a
-  // phone, where the editor is under the board, that brings the board back into view too.
+  // A move puts the selection away and hands focus back to the board, on the key it landed on: on
+  // a phone, where the editor is under the board, that brings the board back into view too.
   useEffect(() => {
     if (state.boardFocus) focusKey(state.boardFocus.keyId);
   }, [state.boardFocus, focusKey]);
+  /**
+   * Escape in the key's editor or its numbers, while a swap or a character waits for its key: that
+   * is cancelled first, the key staying selected, as Escape on the board does. Says whether it was.
+   */
+  const cancelWaiting = (e: ReactKeyboardEvent<Element>): boolean => {
+    if (state.swapFrom === null && state.placing === null) return false;
+    e.preventDefault();
+    send({ type: 'cancelSwap' });
+    return true;
+  };
   /**
    * Measure the languages the layout performs well in and add them, one edit like any other: Undo
    * takes them back. A layout edited while it is measured is not the one measured, and is left as
@@ -1427,13 +1437,13 @@ export function Workbench({
 
                   {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
                   {keyStatsView && (
-                    // Escape in the key's numbers closes its editor, as it does in the editor itself.
+                    // Escape in the key's numbers does what it does in the editor itself.
                     <section
                       className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
                       aria-label="Key numbers"
                       onKeyDown={(e) => {
-                        if (e.key !== 'Escape' || e.defaultPrevented || state.selected === null)
-                          return;
+                        if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
+                        if (state.selected === null) return;
                         e.preventDefault();
                         const keyId = state.selected;
                         send({ type: 'deselect' });
@@ -1461,14 +1471,7 @@ export function Workbench({
                   <div
                     className="lb-edit-inspector min-w-0"
                     onKeyDown={(e) => {
-                      if (e.key !== 'Escape' || e.defaultPrevented) return;
-                      // One thing at a time, as on the board: a swap or a character waiting for
-                      // its key goes first, the key staying selected.
-                      if (state.swapFrom !== null || state.placing !== null) {
-                        e.preventDefault();
-                        send({ type: 'cancelSwap' });
-                        return;
-                      }
+                      if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
                       if (state.combo !== null) {
                         e.preventDefault();
                         send({ type: 'selectCombo', combo: null });

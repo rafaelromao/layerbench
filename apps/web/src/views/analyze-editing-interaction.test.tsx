@@ -380,7 +380,7 @@ describe('Edit', () => {
     expect(key('Key LHM: d')).toBeInTheDocument();
   }, 90_000);
 
-  it('selects nothing once Swap with… or Copy to… lands, the board focused on the key tapped', async () => {
+  it('selects nothing once Swap with… or Copy to… lands, the page left on the board', async () => {
     // A phone: the editor opens under the board, and is brought into view when a key is selected.
     setPointerKind('touch');
     setViewportWidth(390);
@@ -398,6 +398,8 @@ describe('Edit', () => {
     await user.click(key('Key LHI: f'));
     expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
     // Nothing is left selected, so the page stays on the board rather than going to the editor.
+    // (The tap itself focuses the key tapped; the focus a move hands back is the Send and drop
+    // tests'.)
     expect(editing()).toBeNull();
     expect(document.activeElement).toBe(svgKey('LHI'));
     expect(toEditor()).toBe(0);
@@ -422,7 +424,7 @@ describe('Edit', () => {
     scrolled.mockRestore();
   }, 90_000);
 
-  it('calls off a swap with Escape in the editor, the key staying selected', async () => {
+  it('cancels a swap with Escape in the editor or the key numbers, the key staying selected', async () => {
     const user = userEvent.setup();
     await openEdit();
 
@@ -439,6 +441,16 @@ describe('Edit', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull());
     expect(document.activeElement).toBe(svgKey('LHM'));
+
+    // In the key's numbers, the same.
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    const numbers = await screen.findByRole('region', { name: 'Key numbers' });
+    fireEvent.keyDown(numbers, { key: 'Escape' });
+    expect(screen.queryByText(/is armed/)).toBeNull();
+    expect(await inspector('LHM')).toBeInTheDocument();
+    fireEvent.keyDown(numbers, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull());
   });
 
   it('does not swap when the gesture is cancelled', async () => {

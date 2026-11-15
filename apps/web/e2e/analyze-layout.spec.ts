@@ -147,6 +147,8 @@ test.describe('on a phone', () => {
       .tap();
     const partner = page.getByRole('button', { name: /^Key LHM:/ });
     await partner.tap();
+    // Nothing selected, so the page stays on the board. (A tap focuses the key by itself; the list
+    // below is where focus has to be handed back.)
     await expect(editing).toHaveCount(0);
     await expect(partner).toBeFocused();
     await expect(partner).toBeInViewport();
