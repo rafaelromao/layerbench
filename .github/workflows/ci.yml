@@ -120,6 +120,50 @@ jobs:
           PACKAGE: ${{ matrix.package }}
           SCRIPT: ${{ github.event_name == 'push' && 'test:coverage' || 'test' }}
 
+  # The end-to-end checks (`apps/web/e2e`, README → Develop): layout, sizes and focus in a real
+  # browser, at two phone sizes and a desk's, against the dev server, then the production build's
+  # deferred views. They take minutes, so they run on the pull request Release Please keeps open
+  # alone, what is about to be released checked whole before its merge. Its branch is
+  # `release-please--branches--main…`, and the GitHub App opens it, so its checks run. The ruleset
+  # for `main` does not require this job: a red run says not to merge the release yet.
+  e2e:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @layerbench/web exec playwright install --with-deps chromium
+      - id: e2e
+        run: pnpm --filter @layerbench/web e2e
+      # A run starts by emptying `test-results`, so the traces of a failure are kept before the next.
+      - if: failure() && steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-results
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+      # It builds the app, then serves the build on a port of its own. It runs after a failure of
+      # the checks above too, so one run names everything that fails.
+      - id: chunks
+        if: success() || steps.e2e.outcome == 'failure'
+        run: pnpm --filter @layerbench/web e2e:chunks
+      - if: failure() && steps.chunks.outcome == 'failure'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-chunks-results
+          path: apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   # The app at https://layerbench.github.io is the GitHub Pages site of the repository
   # layerbench/layerbench.github.io. Pages publishes only the repository a workflow runs in, so the
   # build is pushed there, with a deploy key that can write to that repository and nothing else. The

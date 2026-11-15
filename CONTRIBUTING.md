@@ -184,7 +184,10 @@ Changes, Features, Bug Fixes, Performance Improvements, Reverts and Other Change
 excludes the types hidden by `changelog-sections`. Release Please runs for a feature, fix, performance gain,
 revert, breaking change, or its own release pull request; non-breaking docs, tests and workflow-only
 changes do not create releases. Merging the release pull request tags `vX.Y.Z` and publishes a
-GitHub release.
+GitHub release. The release pull request is the one that also runs the end-to-end checks (`e2e`
+in `.github/workflows/ci.yml`, README → Develop): the whole of what it releases, in a real
+browser, which takes minutes. The ruleset does not require them, so a red `e2e` is a reason not to
+merge the release yet, not a lock.
 Publishing a merged release PR and opening the next release PR are separate action calls: after
 publishing, the workflow refreshes tags and only opens the next PR for release-worthy commits after
 the new tag. This prevents housekeeping commits merged after a release from creating another PR.

@@ -252,8 +252,9 @@ other groups of languages against them (`docs/research/code-corpora.md`).
 `apps/web/e2e` checks, in a real browser at two phone sizes and a desktop one, the layout of
 Analyze, where layouts are edited (nothing wider than the screen, targets a finger can hit, the
 board in sight while a key is edited), the Library and the storage dialog on a phone, and that a
-link to an unsaved layout opens from after the `#`. No workflow runs it. Playwright's Chromium is
-downloaded once:
+link to an unsaved layout opens from after the `#`. CI runs it, with `e2e:chunks` below, on the
+release pull request alone (CONTRIBUTING.md → Releases); run it yourself on a change it checks.
+Playwright's Chromium is downloaded once:
 
 ```bash
 pnpm --filter @layerbench/web exec playwright install chromium
