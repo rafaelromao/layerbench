@@ -24,8 +24,9 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
- * change proposed from it is open, the languages it is for, and the ways to save it, over itself or as a copy, the way to submit a custom layout to the Library, which layout this is, what the
- * numbers are made with, and the way to compare it.
+ * change proposed from it is open, the languages it is for, the ways to save it, over itself or as
+ * a copy, the way to submit a custom layout to the Library, which layout this is, what the numbers
+ * are made with, and the way to compare it.
  * In the Settings dialog: its author, description and link, the text and rules the numbers come
  * from, the switches, and whether the board draws the combos that type.
  */
@@ -105,7 +106,8 @@ export function LayoutBar({
       {/* One line at a desk. A phone has no room for the name beside four buttons: the name, its
           badges and Cancel take a line, and Save, Save as copy and Submit one of their own under it,
           at its end. The bar is as tall before the first edit as after, on the narrowest phone too,
-          and what comes with an edit takes room from the name, never moving a button. */}
+          and what comes with an edit takes room from the name, never moving a button. Only the
+          row of language chips under it changes, with the languages the layout is for. */}
       <div className="flex items-center justify-end gap-1 sm:gap-2 max-sm:flex-wrap">
         <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0 max-sm:basis-full">
           <TextField

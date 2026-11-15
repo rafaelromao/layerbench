@@ -50,7 +50,8 @@ export function LanguageChips({
             key={c.tag}
             type="button"
             className={look}
-            aria-label={c.name}
+            // What it shows, then the language it is: a name a speech command can say.
+            aria-label={`${label}, ${c.name}`}
             aria-pressed={on}
             title={on ? `${what}; on its text` : `${what}; switch to its text`}
             onClick={() => {

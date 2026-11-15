@@ -138,9 +138,9 @@ describe('A language chip, switching the whole page to the text of its language'
       const client = new RecordingClient();
       const { currentSearch } = renderRoute(path, { client, storage: freshStorage() });
       // Magic Romak is for English and Portuguese, a chip each, neither on show in a mix.
-      const pt = await within(await scope()).findByRole('button', { name: 'Português' });
+      const pt = await within(await scope()).findByRole('button', { name: /Português/ });
       expect(pt).toHaveAttribute('aria-pressed', 'false');
-      expect(within(await scope()).getByRole('button', { name: 'English' })).toHaveAttribute(
+      expect(within(await scope()).getByRole('button', { name: /English/ })).toHaveAttribute(
         'aria-pressed',
         'false',
       );
@@ -162,16 +162,16 @@ describe('A language chip, switching the whole page to the text of its language'
           }),
         { timeout: 10_000 },
       );
-      expect(within(await scope()).getByRole('button', { name: 'Português' })).toHaveAttribute(
+      expect(within(await scope()).getByRole('button', { name: /Português/ })).toHaveAttribute(
         'aria-pressed',
         'true',
       );
 
-      await user.click(within(await scope()).getByRole('button', { name: 'English' }));
+      await user.click(within(await scope()).getByRole('button', { name: /English/ }));
       await waitFor(() =>
         expect(new URLSearchParams(currentSearch()).get('corpus')).toBe('en-general'),
       );
-      expect(within(await scope()).getByRole('button', { name: 'English' })).toHaveAttribute(
+      expect(within(await scope()).getByRole('button', { name: /English/ })).toHaveAttribute(
         'aria-pressed',
         'true',
       );

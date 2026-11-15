@@ -3,6 +3,7 @@ import {
   BUNDLED_LAYOUTS,
   type CompiledLayout,
   type CorpusManifest,
+  coverLanguage,
   documentMissing,
   type Layout,
   languagesToJudge,
@@ -897,14 +898,13 @@ export function Workbench({
   const corpusName = textName(settings.linked, corpora);
   // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
   // is of the layout as written, as on its Library card.
-  const languageChips = useMemo(
-    () =>
-      (layoutLanguages ?? []).flatMap((tag) => {
-        const c = layoutLanguageCoverage(state.compiled, tag);
-        return c ? [c] : [];
-      }),
-    [state.compiled, layoutLanguages],
-  );
+  const languageChips = useMemo(() => {
+    const written = producibleSymbols(state.compiled);
+    return (layoutLanguages ?? []).flatMap((tag) => {
+      const c = coverLanguage(written, tag);
+      return c ? [c] : [];
+    });
+  }, [state.compiled, layoutLanguages]);
 
   // What the layout cannot type, as it is now: the text's characters the last report found, the
   // letters the language needs, and what edits from the tray left without a key.
