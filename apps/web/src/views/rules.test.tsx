@@ -87,6 +87,8 @@ describe('Rules', () => {
 
     const sfb = sourcesOf('sfb');
     expect(sfb[0]).toHaveTextContent('Genkey');
+    // The set's own sources fold under a name of their own, apart from every rule's.
+    expect(screen.getByText('Rule set sources (2)')).toBeInTheDocument();
     expect(sfb.some((li) => /§13\.4/.test(li.textContent ?? ''))).toBe(true);
     expect(
       within(screen.getByRole('list', { name: 'Rule set sources' })).getAllByRole('link'),
@@ -94,7 +96,9 @@ describe('Rules', () => {
 
     const row = rowOf('sfb');
     expect(
-      within(row).getByRole('link', { name: 'How LayerBench uses its sources' }),
+      within(row).getByRole('link', {
+        name: /^How LayerBench uses its sources, help on implementation and attribution \(opens in a new tab\)$/,
+      }),
     ).toHaveAttribute(
       'href',
       expect.stringContaining('/guide/metrics#implementation-and-attribution'),

@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { analyze } from '../analysis/analyze.js';
+import { normalizeText } from '../corpus/normalize.js';
+import { FIXTURE_MIXED } from '../fixtures/index.js';
+import { importTextLayout } from '../layout/text.js';
 import { catalogRules } from './catalog.js';
 import { getPreset, PRESET_IDS } from './presets.js';
 import {
@@ -17,7 +21,9 @@ const catalogIds = catalogRules().map((r) => r.id);
 
 /**
  * The globals a preset may set and the rules whose count each reads. A preset that sets another
- * one away from its default must say here which rules it changes, or the test fails.
+ * one away from its default must say here which rules it changes, or the test fails; and a test
+ * below runs the engine with and without the preset's globals, so a rule they move that this
+ * table misses fails too.
  */
 const READS: Record<string, (r: Rule) => boolean> = {
   space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',
@@ -48,7 +54,8 @@ function changedBy(set: RuleSet): string[] {
 function sourceOf(ref: RuleReference): string {
   if (ref.url.startsWith(GLOSSARY_URL)) return 'glossary';
   if (ref.url.includes('docs.google.com')) return 'Doc';
-  if (ref.url.includes('cyanophage')) return 'cyanophage';
+  if (ref.url.includes('cyanophage.github.io/playground.html')) return 'playground';
+  if (ref.url.includes('keyboard_svg.js')) return 'keyboard_svg.js';
   if (ref.url.includes('genkey')) return 'Genkey';
   if (ref.url.includes('zmk')) return 'ZMK';
   return ref.url;
@@ -58,7 +65,7 @@ function sourceOf(ref: RuleReference): string {
 type Cited = readonly (readonly [source: string, says: string])[];
 
 const KEYSTROKES = [
-  'cyanophage',
+  'playground',
   'cyanophage-like percentages: pairs and skipgrams over keystrokes',
 ] as const;
 
@@ -79,22 +86,22 @@ const UNDER: Record<string, Record<string, Cited>> = {
   cyanophage: {
     sfb: [
       KEYSTROKES,
-      ['cyanophage', 'red = 128 + 6000 × share'],
+      ['keyboard_svg.js', 'red = 128 + 6000 × share'],
       ['glossary', 'cyanophage-like SFB ruler'],
       ['Doc', '§4.1'],
     ],
     sfb_2u: [KEYSTROKES, ['Doc', '§4.3']],
     repeats: [KEYSTROKES, ['Doc', '§3.8'], ['glossary', 'Repeated keys']],
     lsb: [
-      ['cyanophage', '"Lat Stretch Bigrams" — the cyanophage-like definition'],
+      ['keyboard_svg.js', '"Lat Stretch Bigrams" — the cyanophage-like definition'],
       KEYSTROKES,
-      ['Doc', '§7.2'],
+      ['Doc', '§7.2 Lateral stretch bigrams (LSBs) — the shared concept'],
       ['Doc', '§7.4'],
     ],
     fsb: [
-      ['cyanophage', '"Scissors" — the cyanophage-like definition'],
+      ['keyboard_svg.js', '"Scissors" — the cyanophage-like definition'],
       KEYSTROKES,
-      ['Doc', '§6.2'],
+      ['Doc', '§6.2 Full scissors bigrams (FSBs) — the shared concept'],
       ['Doc', '§13.4'],
     ],
     hsb: [KEYSTROKES, ['Doc', '§6.7']],
@@ -107,18 +114,18 @@ const UNDER: Record<string, Record<string, Cited>> = {
     fss: [KEYSTROKES, ['Doc', '§6.6']],
     hss: [KEYSTROKES, ['Doc', '§6.8']],
     redirect: [
-      ['cyanophage', 'the cyanophage-like definition: three different fingers'],
-      ['Doc', '§8.1'],
+      ['keyboard_svg.js', 'the cyanophage-like definition: three different fingers'],
+      ['Doc', '§8.1 Alts, rolls, 3rolls & redir — the shared concept'],
       ['Doc', '§16.1'],
       ['Doc', '§13.4'],
     ],
     weak_redirect: [
-      ['cyanophage', 'three different fingers, none an index'],
+      ['keyboard_svg.js', 'three different fingers, none an index'],
       ['Doc', '§8.9'],
     ],
     effort: [
-      ['cyanophage', 'cyanophage-like divisor'],
-      ['cyanophage', 'per-key grid'],
+      ['playground', 'cyanophage-like divisor'],
+      ['keyboard_svg.js', 'per-key grid'],
       ['glossary', 'a thumb press costs 1'],
     ],
   },
@@ -202,6 +209,32 @@ describe('rule references', () => {
     expect(Object.keys(PRESET_REFERENCES.cyanophage.rules).sort()).toEqual([...changed].sort());
   });
 
+  it('cites the preset under every rule whose number its globals move', () => {
+    // A text with letters the layout cannot type, so both of the cyanophage-like globals count.
+    const stream = normalizeText(`${FIXTURE_MIXED} çà ñö`, { caseMode: 'fold' });
+    const { layout } = importTextLayout("qwertyuiop-asdfghjkl;'zxcvbnm,./\\^", 'ansi', 'qwerty');
+    const values = (ruleSet: RuleSet) =>
+      new Map(
+        analyze(layout, stream, { ruleSet, maxSymbols: 20_000 }).results.map((r) => [
+          r.id,
+          JSON.stringify(r.value),
+        ]),
+      );
+    for (const id of PRESET_IDS) {
+      const set = getPreset(id);
+      const withGlobals = values(set);
+      const without = values({ ...set, globals: {} });
+      const moved = [...withGlobals].filter(([ruleId, v]) => without.get(ruleId) !== v);
+      for (const [ruleId] of moved) {
+        expect(PRESET_REFERENCES[id].rules[ruleId], `${id}: ${ruleId}`).toBeDefined();
+      }
+      // The text does exercise them: under the cyanophage-like set SFB and Effort both move.
+      if (id === 'cyanophage') {
+        expect(moved.map(([ruleId]) => ruleId)).toEqual(expect.arrayContaining(['sfb', 'effort']));
+      }
+    }
+  });
+
   it('shows each rule a preset changes with the sources of the definition in force', () => {
     for (const id of PRESET_IDS) {
       const changed = new Set([...changedBy(getPreset(id)), ...Object.keys(UNDER[id] ?? {})]);
@@ -227,6 +260,18 @@ describe('rule references', () => {
     expect(ruleReferences('sfb').some((r) => r.locator?.includes('§13.4'))).toBe(true);
     const fsb = ruleReferences('fsb', 'cyanophage').map((r) => r.locator);
     expect(fsb.some((l) => l?.includes('§6.5'))).toBe(false);
+    // Where it counts by its own definition, the Doc is cited for the concept, not the definition.
+    for (const ruleId of ['lsb', 'fsb', 'redirect']) {
+      const doc = ruleReferences(ruleId, 'cyanophage').filter((r) => sourceOf(r) === 'Doc');
+      expect(
+        doc.filter((r) => r.locator?.endsWith('— definition')),
+        ruleId,
+      ).toEqual([]);
+      expect(
+        ruleReferences(ruleId).some((r) => r.locator?.endsWith('— definition')),
+        ruleId,
+      ).toBe(true);
+    }
     // What is left out is a source the catalog cites for that rule, never one it does not.
     for (const id of PRESET_IDS) {
       for (const [ruleId, omitted] of Object.entries(PRESET_REFERENCES[id].omits ?? {})) {
@@ -239,7 +284,7 @@ describe('rule references', () => {
   it('keeps a preset’s own sources apart from the rules', () => {
     expect(cited(presetReferences('cyanophage'))).toEqual([
       [
-        'cyanophage',
+        'playground',
         expect.stringContaining('selected conventions, reproduced for comparable numbers'),
       ],
       ['glossary', expect.stringContaining('What the cyanophage-like rule set reproduces')],

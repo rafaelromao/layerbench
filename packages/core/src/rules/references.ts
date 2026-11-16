@@ -62,6 +62,8 @@ const glossary = (anchor: string, locator: string): RuleReference => ({
 
 const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
 const SCISSOR_WEIGHTS = kld('§6.5 Adjacent vs non adjacent scissors — weights');
+const LSB_DEFINITION = kld('§7.2 Lateral stretch bigrams (LSBs) — definition');
+const FSB_DEFINITION = kld('§6.2 Full scissors bigrams (FSBs) — definition');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
 const LAYERS = 'layers-layerbench-specific';
 const ADDITION = 'LayerBench addition';
@@ -80,11 +82,8 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   ],
   sfb_2u: [kld('§4.3 1U and 2U SFB')],
   repeats: [kld('§3.8 Double letters'), glossary('bigrams', 'Repeated keys')],
-  lsb: [
-    kld('§7.2 Lateral stretch bigrams (LSBs) — definition'),
-    kld('§7.4 Row stagger vs matrix LSBs'),
-  ],
-  fsb: [kld('§6.2 Full scissors bigrams (FSBs) — definition'), SCISSOR_WEIGHTS, THRESHOLDS],
+  lsb: [LSB_DEFINITION, kld('§7.4 Row stagger vs matrix LSBs')],
+  fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS, THRESHOLDS],
   hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition')],
   thumb_bigrams: [
     kld('§12.2 On what hand should the thumb letter be? — background'),
@@ -194,14 +193,19 @@ export interface PresetReferences {
    */
   rules: Readonly<Record<string, readonly RuleReference[]>>;
   /**
-   * Catalog sources that no longer describe a rule under the preset, left out of its list: a
-   * ruler or a weight the preset does not use.
+   * Catalog sources that no longer describe a rule as the preset counts it, left out of its list:
+   * a ruler or a weight the preset does not use, or a definition it replaces, which its own list
+   * then cites as the concept the two share.
    */
   omits?: Readonly<Record<string, readonly RuleReference[]>>;
 }
 
 /** Where the glossary says what each preset reproduces, and where the methods differ. */
 const DIFFERENCES = 'where-the-methods-differ';
+
+/** A section of the Doc whose definition a preset replaces, cited for the concept they share. */
+const shared = (section: string): RuleReference =>
+  kld(`${section} — the shared concept; the definition in force differs`);
 
 /**
  * The cyanophage-like percentages: pairs and skipgrams over the playground's keystrokes
@@ -257,12 +261,14 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
           '"Lat Stretch Bigrams" — the cyanophage-like definition: an index finger’s inner column with the middle finger’s, any rows',
         ),
         KEYSTROKES,
+        shared('§7.2 Lateral stretch bigrams (LSBs)'),
       ],
       fsb: [
         cyanophage(
           '"Scissors" — the cyanophage-like definition: adjacent columns, two or more rows apart, two fingers of one hand, unweighted',
         ),
         KEYSTROKES,
+        shared('§6.2 Full scissors bigrams (FSBs)'),
       ],
       hsb: [KEYSTROKES],
       thumb_bigrams: [KEYSTROKES],
@@ -277,6 +283,7 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
         cyanophage(
           '"redirect" and "weak redirect" trigram categories — the cyanophage-like definition: three different fingers',
         ),
+        shared('§8.1 Alts, rolls, 3rolls & redir'),
       ],
       weak_redirect: [
         cyanophage(
@@ -292,8 +299,10 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
     omits: {
       // Its SFB ruler is the playground's ramp, not the Doc's thresholds.
       sfb: [THRESHOLDS],
-      // Its scissors are unweighted.
-      fsb: [SCISSOR_WEIGHTS],
+      // Its own definitions, cited above with the Doc's concept; its scissors are unweighted.
+      lsb: [LSB_DEFINITION],
+      fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS],
+      redirect: [TRIGRAMS],
     },
   },
 };

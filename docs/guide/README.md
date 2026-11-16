@@ -28,10 +28,11 @@ Every layout gets the same two headline numbers, wherever it is shown:
 **Library** sorts layouts by either, or by name or home row. The other numbers, and how each is
 worked out, are in [Analyzing a layout](analyzing.md).
 
-The definitions follow the Keyboard Layouts Doc, and Effort and the *cyanophage-like* rules follow
-cyanophage's playground, for numbers that compare with its. LayerBench is an independent project,
-not affiliated with or endorsed by cyanophage; what it takes from each source, and what is its own,
-is in [Implementation and attribution](../METRICS.md#implementation-and-attribution).
+The definitions follow the Keyboard Layouts Doc. Effort uses cyanophage's cost for each key, and the
+*cyanophage-like* rules reproduce selected conventions of cyanophage's playground, for numbers that
+compare with its. LayerBench is an independent project, not affiliated with or endorsed by
+cyanophage; what it takes from each source, and what is its own, is in
+[Implementation and attribution](../METRICS.md#implementation-and-attribution).
 
 ## Editing keys and layers
 

@@ -1,5 +1,6 @@
 import { PRESET_IDS, presetReferences, type RuleReference, ruleReferences } from '@layerbench/core';
 import { glossaryHash, HELP, helpHref } from '../guide/help.js';
+import { HelpWord } from './HelpLink.js';
 
 /** The glossary is part of the guide, so a rule citing it opens it here rather than on GitHub. */
 function hrefOf(url: string): string {
@@ -20,7 +21,9 @@ export function presetOf(ref: string | undefined): string | undefined {
 function SourceList({ refs, label }: { refs: readonly RuleReference[]; label: string }) {
   return (
     <details className="text-[10px]">
-      <summary className="cursor-pointer opacity-60 select-none">Sources ({refs.length})</summary>
+      <summary className="cursor-pointer opacity-60 select-none">
+        {label} ({refs.length})
+      </summary>
       <ul className="opacity-80 space-y-0.5 list-none p-0 m-0 pt-1" aria-label={label}>
         {refs.map((r) => (
           <li key={`${r.url}|${r.locator ?? ''}`}>
@@ -36,14 +39,11 @@ function SourceList({ refs, label }: { refs: readonly RuleReference[]; label: st
           </li>
         ))}
       </ul>
-      <a
+      <HelpWord
+        help={HELP.attribution}
+        word="How LayerBench uses its sources"
         className="link link-hover opacity-60"
-        href={helpHref(HELP.attribution)}
-        target="_blank"
-        rel="noopener"
-      >
-        How LayerBench uses its sources
-      </a>
+      />
     </details>
   );
 }

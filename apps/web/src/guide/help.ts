@@ -36,7 +36,7 @@ export const HELP = {
   attribution: {
     page: 'metrics',
     section: 'implementation-and-attribution',
-    topic: 'how LayerBench uses its sources',
+    topic: 'implementation and attribution',
   },
   rulers: { page: 'analyzing', section: 'the-rulers', topic: 'the rulers' },
   rulerLayoutsDoc: {
