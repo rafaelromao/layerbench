@@ -3,8 +3,8 @@
  *
  * Kept apart from the rules themselves on purpose: a rule set is a document, written and read by
  * another engine too, and citations are facts about the catalog rather than settings of a set. A
- * custom or shared rule set therefore shows the same sources as the catalog rule it was made from,
- * without carrying them.
+ * custom or shared rule set therefore carries no sources: each of its rules shows those of the
+ * preset whose rule it still counts as (`citeRule`), or the catalog's, marked as changed.
  *
  * Every locator was checked against its source when it was written. A rule LayerBench added
  * cites the glossary and says so, rather than borrowing another tool's authority. A definition
@@ -13,6 +13,9 @@
  * preset adopts it. How LayerBench uses each source is in the glossary's "Implementation and
  * attribution".
  */
+import { getPreset, PRESET_IDS, type PresetId } from './presets.js';
+import { DEFAULT_GLOBALS, type Globals, type Rule, type RuleSet } from './types.js';
+
 export interface RuleReference {
   title: string;
   url: string;
@@ -358,4 +361,100 @@ export function ruleReferences(ruleId: string, presetId?: string): RuleReference
 /** What a preset as a whole follows; nothing for a rule set that is not a preset. */
 export function presetReferences(presetId?: string): readonly RuleReference[] {
   return presetId ? (PRESET_REFERENCES[presetId]?.preset ?? []) : [];
+}
+
+/**
+ * The globals a preset sets away from their defaults, and the rules whose count each one reads. A
+ * rule counts as a preset's only if it reads these as the preset sets them. A test runs the engine
+ * with and without each preset's globals, so a rule they move that this table misses fails it.
+ */
+export const PRESET_GLOBAL_READS: Readonly<
+  Partial<Record<keyof Globals, (rule: Rule) => boolean>>
+> = {
+  space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',
+  untyped_in_keystrokes: (r) =>
+    r.aggregate === 'percent_of_keystrokes' || r.aggregate === 'weighted_sum',
+};
+
+/** JSON with object keys in a stable order, and no key whose value is undefined. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+
+/** What names, shows, turns on, scores or rates a rule: none of it changes what the rule counts. */
+const NOT_COUNTED = new Set(['label', 'description', 'enabled', 'score', 'bands']);
+
+/** What a rule counts, and nothing else of it. */
+function counting(rule: Rule): string {
+  return canonical(Object.fromEntries(Object.entries(rule).filter(([k]) => !NOT_COUNTED.has(k))));
+}
+
+interface PresetRules {
+  globals: Partial<Globals>;
+  rules: Map<string, { rule: Rule; counts: string }>;
+}
+
+let presetRules: Map<PresetId, PresetRules> | undefined;
+
+/** Each preset's rules by id, read once. */
+function presetsByRule(): Map<PresetId, PresetRules> {
+  presetRules ??= new Map(
+    PRESET_IDS.map((id) => {
+      const set = getPreset(id);
+      const rules = new Map(set.rules.map((r) => [r.id, { rule: r, counts: counting(r) }]));
+      return [id, { globals: set.globals, rules }];
+    }),
+  );
+  return presetRules;
+}
+
+function globalOf(globals: Partial<Globals>, name: keyof Globals): unknown {
+  return globals[name] ?? DEFAULT_GLOBALS[name];
+}
+
+/** The sources of a rule as a rule set has it. */
+export interface RuleCitation {
+  refs: RuleReference[];
+  /**
+   * The preset whose rule this one counts as, whose sources these are: none when it counts as no
+   * preset's, or is not a built-in rule.
+   */
+  follows?: PresetId;
+  /**
+   * Changed in the set from the rule whose sources these are: from the preset's in its bands, or,
+   * when it counts as no preset's, from the catalog's.
+   */
+  edited: boolean;
+}
+
+/**
+ * The sources of a rule as a set has it, chosen by what the rule counts rather than by the set's
+ * name. A rule that counts as a preset's, reading the globals that preset sets as it sets them,
+ * shows that preset's sources: a copy of the cyanophage-like set shows its sources, and a rule of
+ * a preset edited into another preset's shows the other's. A built-in rule that counts as no
+ * preset's shows the catalog's, marked as edited; a rule composed in the Rules view has none.
+ */
+export function citeRule(rule: Rule, ruleSet: RuleSet): RuleCitation {
+  if (!RULE_REFERENCES[rule.id]) return { refs: [], edited: false };
+  const counts = counting(rule);
+  for (const [id, preset] of presetsByRule()) {
+    const own = preset.rules.get(rule.id);
+    if (own?.counts !== counts) continue;
+    const reads = Object.entries(PRESET_GLOBAL_READS) as [keyof Globals, (r: Rule) => boolean][];
+    const sameGlobals = reads.every(
+      ([name, read]) =>
+        !read(rule) || globalOf(ruleSet.globals, name) === globalOf(preset.globals, name),
+    );
+    if (!sameGlobals) continue;
+    return {
+      refs: ruleReferences(rule.id, id),
+      follows: id,
+      edited: canonical(rule.bands ?? null) !== canonical(own.rule.bands ?? null),
+    };
+  }
+  return { refs: ruleReferences(rule.id), edited: true };
 }

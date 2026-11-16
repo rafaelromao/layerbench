@@ -11,6 +11,7 @@ import {
   nameTaken,
   producibleSymbols,
   type RuleItem,
+  type RuleSet,
   sameName,
   toCanonicalJson,
   withAddedLanguages,
@@ -46,7 +47,6 @@ import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
-import { presetOf } from '../../components/RuleSources.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
@@ -1534,7 +1534,7 @@ export function Workbench({
           selectedRule={selectedRule}
           selectedItem={selectedItem}
           onHighlightItem={highlightItem}
-          presetId={presetOf(params.preset)}
+          ruleSet={shownRules ?? ready?.rules}
           ruler={ruler}
           compiled={typedCompiled}
         />
@@ -1700,7 +1700,7 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedRule,
   selectedItem,
   onHighlightItem,
-  presetId,
+  ruleSet,
   ruler,
   compiled,
 }: {
@@ -1708,7 +1708,8 @@ const MetricFamilies = memo(function MetricFamilies({
   selectedRule: string | null;
   selectedItem: number | null;
   onHighlightItem: (ruleId: string, index: number) => void;
-  presetId?: string;
+  /** The rule set the numbers were counted on, whose rules' sources each card cites. */
+  ruleSet?: RuleSet;
   /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
   ruler?: HelpTopic;
   /** The layout the report was typed on, whose keys an item's label does not name. */
@@ -1733,7 +1734,7 @@ const MetricFamilies = memo(function MetricFamilies({
                     result={r}
                     selectedItem={selectedRule === r.id ? selectedItem : null}
                     onHighlightItem={onHighlightItem}
-                    presetId={presetId}
+                    ruleSet={ruleSet}
                     ruler={ruler}
                     describeItem={describeItem}
                   />
