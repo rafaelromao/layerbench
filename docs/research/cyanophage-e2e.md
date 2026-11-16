@@ -30,8 +30,8 @@ Read on 2026-11-15, at the same `keyboard_svg.js` the fixture pins (its SHA-256 
   and `bigram_effort.json`; the capture waits for all three before it reads a number. LayerBench
   has none of them.
 - The per-key `effort` array's comments name the key of each column and nothing more, and the 577
-  stands on the line that prints Effort, `577 × m_effort ÷ m_input_length`, with no comment: the
-  source gives no reason for the costs or the scale.
+  stands on the line that prints Effort, `577 × m_effort ÷ m_input_length`: no comment in the
+  source gives a reason for the costs or the scale.
 
 ## What is compared
 

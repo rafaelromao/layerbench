@@ -66,13 +66,13 @@ type Cited = readonly (readonly [source: string, says: string])[];
 
 const KEYSTROKES = [
   'playground',
-  'cyanophage-like percentages: pairs and skipgrams over keystrokes',
+  'the cyanophage-like denominator: pairs and skipgrams as a percent of the playground’s keystrokes',
 ] as const;
 
 /**
  * Every rule a preset changes, with the sources it then shows: what the preset follows first, then
- * the catalog's that still describe it. Under the Layouts Doc set only SFB's denominator is
- * another tool's; under the cyanophage-like set every rule it changes cites the playground, and the
+ * the catalog's that still describe it. Under the Layouts Doc set only the denominator of SFB and
+ * of its part two or more rows apart is another tool's; under the cyanophage-like set every rule it changes cites the playground, and the
  * Doc stays cited for the concepts the two share.
  */
 const UNDER: Record<string, Record<string, Cited>> = {
@@ -81,6 +81,10 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['Genkey', 'SFBs as a percent of the letters'],
       ['Doc', '§4.1'],
       ['Doc', '§13.4'],
+    ],
+    sfb_2u: [
+      ['Genkey', 'SFBs as a percent of the letters'],
+      ['Doc', '§4.3'],
     ],
   },
   cyanophage: {
@@ -117,10 +121,12 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['Doc', '§8.1 Alts, rolls, 3rolls & redir — the shared concept'],
       ['Doc', '§16.1 Rolls & redirects — the shared concept'],
       ['Doc', '§13.4'],
+      ['glossary', 'no thumb key, space included'],
     ],
     weak_redirect: [
       ['keyboard_svg.js', 'three different fingers, none an index'],
       ['Doc', '§8.9 “Weak” redirects — the shared concept'],
+      ['glossary', 'no thumb key, space included'],
     ],
     effort: [
       ['playground', 'cyanophage-like divisor'],
@@ -248,6 +254,32 @@ describe('rule references', () => {
         for (const [i, [, says]] of got.entries()) {
           expect(says, `${id}: ${ruleId} #${i + 1}`).toContain(expected?.[i][1]);
         }
+      }
+    }
+  });
+
+  it('cites LayerBench’s thumb rule under every trigram rule that leaves thumbs out', () => {
+    // Rolls and alternation leave out thumb presses but space; redirects and one-hand rolls leave
+    // out every thumb key. Neither is the Doc's, which counts a space thumb in them (§16.4.2).
+    for (const set of [{ id: undefined, rules: catalogRules() }, ...PRESET_IDS.map(getPreset)]) {
+      for (const r of set.rules) {
+        if (r.family !== 'trigram' || !r.where) continue;
+        const where = JSON.stringify(r.where);
+        const locators = ruleReferences(r.id, set.id).map((ref) => ref.locator ?? '');
+        const at = `${set.id ?? 'catalog'}: ${r.id}`;
+        const keys = where.includes('"any_thumb":false');
+        const presses = where.includes('"key_kind":"space"');
+        expect(keys || presses, at).toBe(true);
+        if (keys)
+          expect(
+            locators.some((l) => l.includes('no thumb key, space included')),
+            at,
+          ).toBe(true);
+        if (presses)
+          expect(
+            locators.some((l) => l.includes('no thumb press rolls')),
+            at,
+          ).toBe(true);
       }
     }
   });

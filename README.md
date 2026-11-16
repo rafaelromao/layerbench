@@ -483,7 +483,8 @@ give comparable numbers. Both rule sets use the playground's published per-key E
 its scale, with LayerBench's own changes for layers and thumb presses.
 
 LayerBench has its own analysis engine and does not bundle the playground's code or its word lists:
-of the playground, it has only the numbers and the layout strings the glossary names.
+of the playground, it has only the numbers and the layout strings the glossary names, and its
+import reads layouts written in the playground's string format.
 
 LayerBench is an independent project, and is not affiliated with or endorsed by cyanophage.
 
@@ -499,7 +500,7 @@ their own licences, recorded with their sources in `packages/corpora/raw/sources
 LayerBench cites or takes from other work for compatibility, such as the Keyboard Layouts Doc's
 definitions and thresholds, cyanophage's Effort costs and the numbers the playground printed in
 `apps/web/e2e/cyanophage/fixture.json`, is credited to its source, and LayerBench does not
-relicense it.
+relicense it. [NOTICE](NOTICE) lists what the MIT licence does not cover.
 
 <a href="https://github.com/rafaelromao/sandman">
   <img src="https://raw.githubusercontent.com/rafaelromao/sandman/main/assets/badge-built-with-sandman.svg" alt="Built with Sandman" width="154" />

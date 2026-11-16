@@ -79,6 +79,10 @@ const NO_THUMB_TRIGRAM = glossary(
   COUNTS,
   'Thumbs — no thumb press rolls or alternates, a LayerBench departure',
 );
+const NO_THUMB_REDIRECT = glossary(
+  COUNTS,
+  'Thumbs — no thumb key, space included, in a redirect or a one-hand roll, a LayerBench departure',
+);
 
 /** The catalog definitions. */
 export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>> = {
@@ -116,15 +120,23 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   hss: [kld('§6.8 Half scissor skipgrams (HSSs)'), SCISSOR_WEIGHTS],
 
   alternation: [TRIGRAMS, kld('§18.1 Alternation'), THRESHOLDS, NO_THUMB_TRIGRAM],
-  alt_sfs: [cyanophage('"alt sfs" trigram category'), NO_THUMB_TRIGRAM],
+  alt_sfs: [
+    cyanophage('"alt sfs" trigram category'),
+    {
+      title: 'Oxeylyzer source, O-X-E-Y/oxeylyzer',
+      url: 'https://github.com/O-X-E-Y/oxeylyzer/blob/main/oxeylyzer-core/src/trigram_patterns.rs',
+      locator: 'AlternateSfs — the same category',
+    },
+    NO_THUMB_TRIGRAM,
+  ],
   roll_in: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
   roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
   rolls: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_TRIGRAM],
   in_out_ratio: [kld('§15.5 In-roll ratio'), THRESHOLDS],
-  onehand_in: [TRIGRAMS, kld('§17.1 3rolls')],
-  onehand_out: [TRIGRAMS, kld('§17.1 3rolls')],
-  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS],
-  weak_redirect: [WEAK_REDIRECTS],
+  onehand_in: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
+  onehand_out: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
+  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_REDIRECT],
+  weak_redirect: [WEAK_REDIRECTS, NO_THUMB_REDIRECT],
 
   finger_usage: [
     kld('§4.8 Distributing movement across the fingers'),
@@ -211,6 +223,13 @@ export interface PresetReferences {
 const DIFFERENCES = 'where-the-methods-differ';
 
 /** A section of the Doc whose definition a preset replaces, cited for the concept they share. */
+const GENKEY_SFB: RuleReference = {
+  title: 'Genkey source, semilin/genkey',
+  url: 'https://github.com/semilin/genkey',
+  locator:
+    'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
+};
+
 const shared = (section: string): RuleReference =>
   kld(`${section} — the shared concept; the definition in force differs`);
 
@@ -219,7 +238,7 @@ const shared = (section: string): RuleReference =>
  * (`m_input_length`, every character of a word plus one for its space).
  */
 const KEYSTROKES = playground(
-  'cyanophage-like percentages: pairs and skipgrams over keystrokes, one space per word, every character typed or not',
+  'the cyanophage-like denominator: pairs and skipgrams as a percent of the playground’s keystrokes, one space per word, every character typed or not',
 );
 
 export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
@@ -232,15 +251,10 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       ),
     ],
     rules: {
-      // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types.
-      sfb: [
-        {
-          title: 'Genkey source, semilin/genkey',
-          url: 'https://github.com/semilin/genkey',
-          locator:
-            'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
-        },
-      ],
+      // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types; SFB's
+      // part two or more rows apart divides the same way.
+      sfb: [GENKEY_SFB],
+      sfb_2u: [GENKEY_SFB],
     },
   },
   cyanophage: {

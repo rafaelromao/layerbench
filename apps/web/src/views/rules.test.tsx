@@ -58,13 +58,13 @@ describe('Rules', () => {
     // and is still the Doc's same finger bigram.
     const sfb = sourcesOf('sfb');
     expect(sfb[0]).toHaveTextContent(
-      /cyanophage keyboard layout playground — cyanophage-like percentages/,
+      /cyanophage keyboard layout playground — the cyanophage-like denominator/,
     );
     expect(sfb.some((li) => /128 \+ 6000 × share/.test(li.textContent ?? ''))).toBe(true);
     expect(sfb.some((li) => /§13\.4/.test(li.textContent ?? ''))).toBe(false);
     expect(sfb.some((li) => /Keyboard Layouts Doc.*§4\.1/.test(li.textContent ?? ''))).toBe(true);
     // A skipgram rule it changes only by its denominator cites that too.
-    expect(sourcesOf('sfs')[0]).toHaveTextContent('cyanophage-like percentages');
+    expect(sourcesOf('sfs')[0]).toHaveTextContent('the cyanophage-like denominator');
     // A rule it leaves alone cites the Doc alone.
     expect(sourcesOf('alternation').some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(
       false,
