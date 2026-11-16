@@ -1,8 +1,9 @@
 import {
   citeRule,
-  getPreset,
   PRESET_IDS,
+  presetName,
   presetReferences,
+  type Rule,
   type RuleReference,
   type RuleSet,
   ruleReferences,
@@ -74,8 +75,18 @@ function SourceList({
  * whose rule the sources are for; one composed in the Rules view has no published source, and
  * says so rather than showing nothing.
  */
-export function RuleSources({ ruleId, ruleSet }: { ruleId: string; ruleSet?: RuleSet }) {
-  const rule = ruleSet?.rules.find((r) => r.id === ruleId);
+export function RuleSources({
+  ruleId,
+  ruleSet,
+  rule: given,
+}: {
+  ruleId: string;
+  /** The set the rule is in, which decides whose sources it shows. */
+  ruleSet?: RuleSet;
+  /** The rule itself, where the caller has it: a composed rule may share a built-in's id. */
+  rule?: Rule;
+}) {
+  const rule = given ?? ruleSet?.rules.find((r) => r.id === ruleId);
   const cited = rule && ruleSet ? citeRule(rule, ruleSet) : undefined;
   const refs = cited?.refs ?? ruleReferences(ruleId);
   if (refs.length === 0) {
@@ -84,7 +95,7 @@ export function RuleSources({ ruleId, ruleSet }: { ruleId: string; ruleSet?: Rul
   const note = !cited?.edited
     ? undefined
     : cited.follows
-      ? `Its bands are changed in this rule set: these sources are for the rule as the ${getPreset(cited.follows).name} rule set has it.`
+      ? `Its bands are changed in this rule set: these sources are for the rule as the ${presetName(cited.follows)} rule set has it.`
       : 'Changed in this rule set: these sources are for the built-in rule.';
   return <SourceList refs={refs} label="Sources" note={note} />;
 }

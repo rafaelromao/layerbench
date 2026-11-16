@@ -550,8 +550,8 @@ a line of another analyzer's code, or the glossary where the rule is LayerBench'
 rule, what the preset follows for it comes first; what the preset follows as a whole is under the
 rule set's description in **Rules**. A rule of a custom set, or one edited in **Rules**, shows the
 sources of the preset's rule it still counts as, so a copy of the cyanophage-like set cites what that
-set follows; a rule changed into none of the presets' shows the built-in rule's sources, and says
-so. Each list ends with
+set follows; a rule changed into none of the presets', by its definition or by a setting of the set
+such as **Word boundary** or **Skip weights**, shows the built-in rule's sources, and says so. Each list ends with
 [how LayerBench uses its sources](../METRICS.md#implementation-and-attribution): what it shares with
 them, what it adopts for compatibility, and what is its own.
 

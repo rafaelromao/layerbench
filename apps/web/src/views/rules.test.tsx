@@ -134,6 +134,27 @@ describe('Rules', () => {
     expect(screen.queryByRole('list', { name: 'Rule set sources', hidden: true })).toBeNull();
   });
 
+  it('marks a rule a setting of the set changes, and cites the built-in rule for it', async () => {
+    const user = userEvent.setup();
+    renderRoute('/rules?rules=cyanophage', { storage: freshStorage() });
+    await screen.findByText('Scissors (adjacent columns, 2 rows)');
+    const changed = 'Changed in this rule set: these sources are for the built-in rule.';
+    expect(within(rowOf('sfs_weighted')).queryByText(changed)).toBeNull();
+
+    const weights = screen.getByLabelText('Skip weights');
+    await user.clear(weights);
+    await user.type(weights, '1, 1, 1');
+    await user.tab();
+
+    // The weighted skipgrams read the weights; the skipgrams one apart do not.
+    expect(within(rowOf('sfs_weighted')).getByText(changed)).toBeInTheDocument();
+    expect(sourcesOf('sfs_weighted').some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(
+      false,
+    );
+    expect(within(rowOf('sfs')).queryByText(changed)).toBeNull();
+    expect(sourcesOf('sfs')[0]).toHaveTextContent('the cyanophage-like denominator');
+  });
+
   it('adds a composed rule to the set', async () => {
     const user = userEvent.setup();
     renderRoute('/rules', { storage: freshStorage() });
