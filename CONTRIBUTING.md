@@ -185,8 +185,11 @@ excludes the types hidden by `changelog-sections`. Release Please runs for a fea
 revert, breaking change, or its own release pull request; non-breaking docs, tests and workflow-only
 changes do not create releases. Merging the release pull request tags `vX.Y.Z` and publishes a
 GitHub release. The release pull request is the one that also runs the end-to-end checks (`e2e`
-in `.github/workflows/ci.yml`, README → Develop): the whole of what it releases, in a real
-browser, which takes minutes. The ruleset does not require them, so a red `e2e` is a reason not to
+in `.github/workflows/ci.yml`, README → Develop), in a real browser, which takes many minutes. A
+run checks it merged into `main` as `main` was when Release Please last pushed to it, and a change
+it writes no changelog line for (a refactor, a dependency) pushes nothing to it: before merging the
+release, close the pull request and reopen it to check `main` as it is now (re-running the old run
+checks the old merge). The ruleset does not require the checks, so a red `e2e` is a reason not to
 merge the release yet, not a lock.
 Publishing a merged release PR and opening the next release PR are separate action calls: after
 publishing, the workflow refreshes tags and only opens the next PR for release-worthy commits after

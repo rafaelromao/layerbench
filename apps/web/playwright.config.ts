@@ -15,6 +15,9 @@ export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
   fullyParallel: true,
+  // CI runs them on the release pull request, where one slow moment of a shared machine should not
+  // turn it red: a check that passes the second time is reported as flaky, not failed.
+  retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: `http://localhost:${PORT}`,

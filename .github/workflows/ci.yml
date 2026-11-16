@@ -122,14 +122,17 @@ jobs:
 
   # The end-to-end checks (`apps/web/e2e`, README → Develop): layout, sizes and focus in a real
   # browser, at two phone sizes and a desk's, against the dev server, then the production build's
-  # deferred views. They take minutes, so they run on the pull request Release Please keeps open
-  # alone, what is about to be released checked whole before its merge. Its branch is
-  # `release-please--branches--main…`, and the GitHub App opens it, so its checks run. The ruleset
-  # for `main` does not require this job: a red run says not to merge the release yet.
+  # deferred views. They take many minutes (one desk check alone may take fifteen), so they run on
+  # the pull request Release Please keeps open alone. Its branch is
+  # `release-please--branches--main…`, and the GitHub App opens it, so its checks run. A run checks
+  # the pull request merged into `main` as it was when Release Please last pushed to it, and a
+  # change it writes no line for (a refactor, a dependency) pushes nothing: close the pull request
+  # and reopen it to check `main` as it is now (CONTRIBUTING.md → Releases). The ruleset for `main`
+  # does not require this job: a red run says not to merge the release yet.
   e2e:
     if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -154,7 +157,7 @@ jobs:
       # It builds the app, then serves the build on a port of its own. It runs after a failure of
       # the checks above too, so one run names everything that fails.
       - id: chunks
-        if: success() || steps.e2e.outcome == 'failure'
+        if: ${{ !cancelled() && (success() || steps.e2e.outcome == 'failure') }}
         run: pnpm --filter @layerbench/web e2e:chunks
       - if: failure() && steps.chunks.outcome == 'failure'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

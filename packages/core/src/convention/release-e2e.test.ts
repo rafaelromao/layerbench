@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const CI = readFileSync(`${ROOT}.github/workflows/ci.yml`, 'utf8');
+const expression = (value: string) => `\${{ ${value} }}`;
 
 /** One job of the `ci` workflow, from its name to the next job's. */
 function job(name: string): string {
@@ -31,9 +32,21 @@ describe('the end-to-end checks in CI', () => {
     expect(e2e).toMatch(/run: pnpm --filter @layerbench\/web e2e:chunks$/m);
   });
 
-  it('keep what a failure leaves, its traces, for a week', () => {
-    expect(e2e).toContain('if: failure()');
-    expect(e2e).toContain('path: apps/web/test-results');
+  it('run the production build one after a failure of the other too, so one run names both', () => {
+    expect(e2e).toContain(
+      `if: ${expression("!cancelled() && (success() || steps.e2e.outcome == 'failure')")}`,
+    );
+  });
+
+  it('keep what a failure of each leaves, its traces, for a week', () => {
+    expect(e2e).toContain("if: failure() && steps.e2e.outcome == 'failure'");
+    expect(e2e).toContain("if: failure() && steps.chunks.outcome == 'failure'");
+    expect(e2e.match(/path: apps\/web\/test-results$/gm)).toHaveLength(2);
+    expect(e2e.match(/retention-days: 7$/gm)).toHaveLength(2);
+  });
+
+  it('leave room for the longest check, a quarter of an hour on its own', () => {
+    expect(e2e).toContain('timeout-minutes: 60');
   });
 
   it('write nothing with the job token, as the rest of the workflow', () => {
