@@ -216,7 +216,8 @@ pnpm dev          # http://localhost:4011
 ### Checks
 
 CI runs `pnpm check`, `pnpm typecheck` and `pnpm build` in one job, and each package's tests in a
-job of its own beside it: the tests on a pull request, `test:coverage` on a push to main.
+job of its own beside it: the tests on a pull request, `test:coverage` on a push to main. The
+release pull request alone also runs the end-to-end checks, `e2e` (see below).
 Locally, `pnpm test` runs the workspace test scripts in parallel: the core engine and web app suites
 run side by side (the corpora package has no tests). Each Vitest pool is capped at three workers, so
 the full command uses up to six test workers and leaves headroom on an 8-core laptop. Three full runs

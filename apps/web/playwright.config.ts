@@ -18,6 +18,8 @@ export default defineConfig({
   // CI runs them on the release pull request, where one slow moment of a shared machine should not
   // turn it red: a check that passes the second time is reported as flaky, not failed.
   retries: process.env.CI ? 1 : 0,
+  // A `test.only` left in would have that run check one test and pass.
+  forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: `http://localhost:${PORT}`,
