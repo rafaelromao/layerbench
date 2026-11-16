@@ -84,6 +84,24 @@ describe('a metric card’s sources', () => {
     render(<MetricCard result={lsb} />);
     expect(sources().some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(false);
   });
+
+  it('are those of the last rule of its id that is on, where ids repeat', () => {
+    // The preset's LSB turned off, and a changed one added after it.
+    const preset = getPreset('cyanophage');
+    const own = preset.rules.find((r) => r.id === 'lsb');
+    if (!own) throw new Error('lsb');
+    const set = {
+      ...preset,
+      rules: [
+        ...preset.rules.map((r) => (r.id === 'lsb' ? { ...r, enabled: false } : r)),
+        { ...own, where: null },
+      ],
+    };
+    render(<MetricCard result={{ ...result, id: 'lsb', label: 'LSB' }} ruleSet={set} />);
+    expect(
+      screen.getByText('Changed in this rule set: these sources are for the built-in rule.'),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('a metric card’s items', () => {

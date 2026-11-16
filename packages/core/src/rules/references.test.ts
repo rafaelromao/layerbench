@@ -559,6 +559,12 @@ describe('the sources of a rule as a set has it', () => {
         s.rules.push({ ...changed, enabled: false });
       }).edited,
     ).toBe(false);
+    // A ratio is never a part: one named after a part leaves the ratio dividing the part.
+    expect(
+      ratio((s) => {
+        s.rules.push({ ...rule(s, 'in_out_ratio'), id: 'roll_in' });
+      }).edited,
+    ).toBe(false);
   });
 
   it('reads a copy the same whatever order its keys come in', () => {
