@@ -431,7 +431,7 @@
                 <p>
                   Every rule cites its sources. Switch one off, move its thresholds and bands,
                   weight it, or compose a new one from predicates, and save the set. Presets follow the
-                  Keyboard Layouts Doc and cyanophage's playground.
+                  Keyboard Layouts Doc, or reproduce selected conventions of cyanophage's playground.
                 </p>
               </div>
               <figure class="shot">
@@ -683,6 +683,12 @@
                 presses with a thumb among them are never a roll or an alternation: a one-shot tap or
                 a thumb held for a layer is a press like any other, neither free nor good typing. The
                 space bar still costs nothing.
+              </li>
+              <li>
+                Effort is a heuristic: a cost for each key position, one model of how hard each is to
+                reach, not a measure of comfort. Two Efforts compare when they were counted on the same
+                text, rules and settings, as every layout in the Library is.
+                <a href="/guide/analyzing#effort-and-sfb">More on Effort</a>.
               </li>
             </ul>
           </aside>
@@ -1050,8 +1056,9 @@
             <li>
               <h3>Read two numbers</h3>
               <p>
-                <strong>Effort</strong> is how hard the keys are to reach, and <strong>SFB</strong> how
-                often one finger presses two keys in a row. Lower is better for both.
+                <strong>Effort</strong> estimates how hard the keys are to reach, and
+                <strong>SFB</strong> how often one finger presses two keys in a row. Lower is better
+                for both.
               </p>
             </li>
             <li>
@@ -1088,9 +1095,13 @@
           Metric definitions follow the
           <a href="https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o"
             >Keyboard Layouts Doc</a
-          >, 3rd edition; Effort is
-          <a href="https://cyanophage.github.io/playground.html">cyanophage's</a>, with thumb presses
-          charged. Keymaps come and go as
+          >, 3rd edition. Effort uses the per-key costs and scale of
+          <a href="https://cyanophage.github.io/playground.html">cyanophage's playground</a>, with
+          thumb presses charged, and the cyanophage-like rules reproduce selected conventions of the
+          playground for comparable numbers. LayerBench is developed independently and is not
+          affiliated with or endorsed by cyanophage:
+          <a href="/guide/metrics#implementation-and-attribution">what it takes from each source</a>.
+          Keymaps come and go as
           <a href="https://github.com/caksoylar/keymap-drawer">keymap-drawer</a> YAML, and the
           simulator follows <a href="https://zmk.dev/">ZMK</a> and these ZMK modules: urob's
           <a href="https://github.com/urob/zmk-adaptive-key">adaptive key</a>,

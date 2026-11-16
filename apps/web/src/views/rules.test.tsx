@@ -7,6 +7,22 @@ import { renderRoute } from '../test/render.js';
 let counter = 0;
 const freshStorage = () => new IndexedDbAdapter(`layerbench-rules-${++counter}`);
 
+/** The row of a rule, by the id printed under its name. */
+function rowOf(id: string): HTMLElement {
+  const row = [...document.querySelectorAll('tbody tr')].find((r) =>
+    [...r.querySelectorAll('.font-mono')].some((el) => el.textContent === id),
+  );
+  if (!row) throw new Error(`no row for ${id}`);
+  return row as HTMLElement;
+}
+
+/** The sources listed under a rule, in order. */
+function sourcesOf(id: string): HTMLElement[] {
+  return within(
+    within(rowOf(id)).getByRole('list', { name: 'Sources', hidden: true }),
+  ).getAllByRole('listitem', { hidden: true });
+}
+
 describe('Rules', () => {
   it('lists the built-in rules by family', async () => {
     renderRoute('/rules', { storage: freshStorage() });
@@ -32,6 +48,61 @@ describe('Rules', () => {
     const first = within(fsb).getAllByRole('link')[0];
     expect(first).toHaveTextContent('cyanophage layout playground');
     expect(first).toHaveAttribute('href', expect.stringContaining('cyanophage'));
+  });
+
+  it('cites what a preset changes under the rule it changes, and the Doc for what they share', async () => {
+    renderRoute('/rules?rules=cyanophage', { storage: freshStorage() });
+    await screen.findByText('Same finger bigrams');
+
+    // SFB is divided by keystrokes and rated on the playground's ramp, not the Doc's thresholds,
+    // and is still the Doc's same finger bigram.
+    const sfb = sourcesOf('sfb');
+    expect(sfb[0]).toHaveTextContent(
+      /cyanophage keyboard layout playground — the cyanophage-like denominator/,
+    );
+    expect(sfb.some((li) => /128 \+ 6000 × share/.test(li.textContent ?? ''))).toBe(true);
+    expect(sfb.some((li) => /§13\.4/.test(li.textContent ?? ''))).toBe(false);
+    expect(sfb.some((li) => /Keyboard Layouts Doc.*§4\.1/.test(li.textContent ?? ''))).toBe(true);
+    // A skipgram rule it changes only by its denominator cites that too.
+    expect(sourcesOf('sfs')[0]).toHaveTextContent('the cyanophage-like denominator');
+    // A rule it leaves alone cites the Doc alone.
+    expect(sourcesOf('alternation').some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(
+      false,
+    );
+
+    // What the set as a whole follows is listed with the set, and says where the methods differ.
+    const set = screen.getByRole('list', { name: 'Rule set sources' });
+    expect(
+      within(set).getByRole('link', { name: 'cyanophage keyboard layout playground' }),
+    ).toBeInTheDocument();
+    expect(within(set).getByRole('link', { name: 'LayerBench metric glossary' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/guide/metrics#where-the-methods-differ'),
+    );
+  });
+
+  it('cites the Doc’s thresholds for SFB under the Layouts Doc rules, and leads to how sources are used', async () => {
+    renderRoute('/rules', { storage: freshStorage() });
+    await screen.findByText('Same finger bigrams');
+
+    const sfb = sourcesOf('sfb');
+    expect(sfb[0]).toHaveTextContent('Genkey');
+    // The set's own sources fold under a name of their own, apart from every rule's.
+    expect(screen.getByText('Rule set sources (2)')).toBeInTheDocument();
+    expect(sfb.some((li) => /§13\.4/.test(li.textContent ?? ''))).toBe(true);
+    expect(
+      within(screen.getByRole('list', { name: 'Rule set sources' })).getAllByRole('link'),
+    ).toHaveLength(2);
+
+    const row = rowOf('sfb');
+    expect(
+      within(row).getByRole('link', {
+        name: /^How LayerBench uses its sources, help on implementation and attribution \(opens in a new tab\)$/,
+      }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('/guide/metrics#implementation-and-attribution'),
+    );
   });
 
   it('adds a composed rule to the set', async () => {

@@ -7,15 +7,15 @@ Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend**, *
 **Numbers**, folds away under its heading, and so do **Layouts** and **Metric comparison** in
 **Compare**. This browser remembers which you folded.
 
-Two numbers lead: **Effort**, how hard the keys are to reach, and **SFB**, how often one finger
-presses two keys in a row. Lower is better for both. Both, and some other numbers, also carry a
-badge that places them among other layouts: green is good, red is poor.
+Two numbers lead: **Effort**, an estimate of how hard the keys are to reach, and **SFB**, how often
+one finger presses two keys in a row. Lower is better for both. Both, and some other numbers, also
+carry a badge that places them among other layouts: green is good, red is poor.
 
 ## Effort and SFB
 
 These are the two numbers every layout is shown and ranked by.
 
-**Effort** is [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
+**Effort** is built on [cyanophage's](https://cyanophage.github.io/playground.html) measure. Each key
 position has a cost, from 0 under the index, middle and ring fingers on the home row to 8 in the
 inner bottom corners. Effort is the average cost of a keystroke, multiplied by 577 as cyanophage's
 playground does. Under the cyanophage-like rules, ten layouts whose thumb types nothing but space
@@ -27,6 +27,14 @@ the keystrokes, where he counts them, so they read a little higher on a layout t
 one-shot tap, a thumb held for a layer and a letter on a thumb are presses too. A space counts as
 a keystroke that costs nothing.
 
+Effort is a heuristic, not a measure of comfort. Its costs are one model of how hard each position
+is, cyanophage's, and it adds them up key by key without looking at which keys follow which, which
+SFB and the other rules do. Efforts compare directly only when they were counted the same way: on
+the same text and sample, under the same rule set, with the same **Space**, **Shift** and typing
+settings, as every layout in the Library is. A number from another tool or another setting may not.
+The [glossary](../METRICS.md#effort) says more, and
+[where the methods differ](../METRICS.md#where-the-methods-differ) how it compares with cyanophage's.
+
 **SFB**, same finger bigrams, counts the consecutive key pairs that one finger presses on two
 different keys, as a share of the letters typed (the cyanophage-like rules divide by keystrokes
 instead). It is the first measure of the
@@ -37,8 +45,10 @@ instead). It is the first measure of the
 
 **Library**, where the site opens, sorts every layout by Effort, by SFB, by name or by home row,
 and shows both numbers on each card with their badges, all scored on the same sample of the same
-text. By home row, layouts go in the alphabetical order of the letters their base layer types on the
-home row, left to right: Qwerty as `asdfghjkl`, a home row mod as the letter it taps, and a key that
+text. Sorted by Effort, the order is that of a heuristic, one model of how hard each key is to
+reach (see [Effort and SFB](#effort-and-sfb)), and holds for that text and those rules. By home
+row, layouts go in the alphabetical order of the letters their base layer types on the home row,
+left to right: Qwerty as `asdfghjkl`, a home row mod as the letter it taps, and a key that
 types no letter left out. **Rank and filter**, the gear (⚙︎) beside **Sort by**, holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
@@ -536,13 +546,19 @@ nothing is measured with other rules in its place.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
 a line of another analyzer's code, or the glossary where the rule is LayerBench's own. Open
-**Sources** under a rule in **Rules**, or on its card in **Analyze**.
+**Sources** under a rule in **Rules**, or on its card in **Analyze**. Under a preset that changes the
+rule, what the preset follows for it comes first; what the preset follows as a whole is under the
+rule set's description in **Rules**. Each list ends with
+[how LayerBench uses its sources](../METRICS.md#implementation-and-attribution): what it shares with
+them, what it adopts for compatibility, and what is its own.
 
 ### Presets
 
-A preset is a rule set that follows another analyzer's definitions: *Layouts Doc* (the default),
-and *cyanophage-like*. The [glossary](../METRICS.md#presets) says what each one
-changes.
+A preset is a rule set that follows a published source: *Layouts Doc*, the default, follows the
+Keyboard Layouts Doc's definitions and bands, and *cyanophage-like* reproduces selected conventions
+of cyanophage's playground, so that the two give comparable numbers. The
+[glossary](../METRICS.md#presets) says what each one changes, and
+[where the methods differ](../METRICS.md#where-the-methods-differ).
 
 ### Writing a rule
 

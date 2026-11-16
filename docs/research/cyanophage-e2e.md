@@ -9,6 +9,30 @@ two decimals it prints, or the test fails. His numbers are pinned in
 `packages/core/src/rules/cyanophage-playground.test.ts` holds the engine to the same fixture without
 a browser, so CI catches a change to the rules that would move a number.
 
+The fixture's numbers are reference outputs observed on the playground's public page, not
+LayerBench's measurements: what that page printed for each layout on this text, on the day it was
+read. The fixture keeps them with the page's address, its script's hash and the ten layout strings,
+and nothing else of the playground; beyond these numbers and the Effort costs and scale the
+glossary names, LayerBench has none of its code, word lists or data files. A
+match to two decimals shows that the cyanophage-like rules count what the playground counts for
+these rules, layouts and text, not that the two tools are the same. How the rule sets differ from
+the playground and from the Keyboard Layouts Doc is in the glossary,
+[Where the methods differ](../METRICS.md#where-the-methods-differ).
+
+## The playground's repository
+
+Read on 2026-11-15, at the same `keyboard_svg.js` the fixture pins (its SHA-256 is the fixture's
+`script.sha256`):
+
+- GitHub reports no licence for [cyanophage/cyanophage.github.io](https://github.com/cyanophage/cyanophage.github.io),
+  and its root has no licence file.
+- `keyboard_svg.js` loads a word list per language (`words-<language>.json`), `dictionary.json`
+  and `bigram_effort.json`; the capture waits for all three before it reads a number. LayerBench
+  has none of them.
+- The per-key `effort` array's comments name the key of each column and nothing more, and the 577
+  stands on the line that prints Effort, `577 × m_effort ÷ m_input_length`: no comment in the
+  source gives a reason for the costs or the scale.
+
 ## What is compared
 
 | His page prints | LayerBench rule | Panel and view |
@@ -65,8 +89,9 @@ layouts and he would type a plain letter, so each is pasted as `#`, which his pa
     on `'q#ea '` three hundred times his page prints Skip Bigrams 19.99%, three hundred skipgrams
     LayerBench does not count.
   - Ending the word there, LayerBench counts two words and so two of the spaces the pair rules add
-    per word (`caf#s`), where he counts one; and a text that ends in a space gives his popup one more,
-    empty, word and keystroke.
+    per word (`caf#s`), where he counts one; a word with nothing the layout can type, a lone `?`, is
+    no word to LayerBench and one to the playground; and a text that ends in a space gives his popup
+    one more, empty, word and keystroke.
 
   On the pinned text these move a number by about 0.0005 points, so every one of them reads the
   same to his two decimals; on another text a number near a rounding edge could read 0.01 apart.

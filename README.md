@@ -15,9 +15,10 @@ metrics (SFB, SFS, scissors, LSB, alternation, rolls, redirects, usage, effort) 
 **physical key stream**. Every rule is data: toggle it, re-parameterize it, remove it, or compose a
 new one.
 
-Every layout is shown and ranked by two numbers: **Effort**, cyanophage's measure of how hard the
-keys are to reach, with thumb presses charged too, and **SFB**, how often one finger presses two
-keys in a row.
+Every layout is shown and ranked by two numbers: **Effort**, a heuristic of how hard the keys are to
+reach, on cyanophage's cost for each key position with thumb presses charged too, and **SFB**, how
+often one finger presses two keys in a row. Where the definitions and costs come from is under
+[Implementation and attribution](#implementation-and-attribution).
 
 Everything runs in the browser, and no account is needed. None of your work leaves the page unless
 you sign in with GitHub to keep it in your own account.
@@ -282,11 +283,12 @@ pnpm --filter @layerbench/web e2e keymapdb --project=desktop
 
 `e2e/cyanophage.spec.ts` holds the cyanophage-like rules to cyanophage's playground: ten layouts
 built from the strings his index gives them, on the text LayerBench types, must read what his page
-prints, to two decimals. His numbers are pinned in `e2e/cyanophage/fixture.json`, so it runs
-offline. It is a project of its own, which runs only when `E2E_CYANOPHAGE=1` is set, so the checks
-above leave it out. `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture (run on his
-live page on 2026-11-10, it rewrote the pinned fixture unchanged). What differs between
-the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
+prints, to two decimals. The numbers the page printed are pinned in `e2e/cyanophage/fixture.json`
+as reference outputs observed there, not as LayerBench's own measurements; with them pinned, the
+test runs offline. It is a project of its own, which runs only when `E2E_CYANOPHAGE=1` is set, so
+the checks above leave it out. `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the
+fixture (run on his live page on 2026-11-10, it rewrote the pinned fixture unchanged). What differs
+between the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
 
 ```bash
 E2E_CYANOPHAGE=1 pnpm --filter @layerbench/web e2e --project=cyanophage
@@ -472,11 +474,41 @@ Actions**, and the repository variable `APP_ORIGIN`, the app's address
 (`https://layerbench.github.io`). The page links to the app's views by path; the workflow rewrites
 those links to name it.
 
+## Implementation and attribution
+
+LayerBench independently implements keyboard-layout analysis methods described in the
+[Keyboard Layouts Doc](https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o)
+and used by cyanophage's [Keyboard Layout Playground](https://cyanophage.github.io/playground.html).
+
+The *cyanophage-like* rule set reproduces selected conventions of the playground so that the two
+give comparable numbers. Both rule sets use the playground's published per-key Effort weights and
+its scale, with LayerBench's own changes for layers and thumb presses.
+
+LayerBench has its own analysis engine and does not bundle the playground's code or its word lists:
+of the playground, it has only the numbers and the layout strings the glossary names, and its
+import reads layouts written in the playground's string format. Its Library bundles cyanophage's
+own layout, Sunlight, credited to cyanophage as each bundled layout is to its author.
+
+LayerBench's own additions and changes include typing on layers, with one-shots, combos, macros,
+adaptive and repeat keys, and the rules that measure them; how thumbs count, in Effort and in the
+trigram rules; the scissor weights; and the bands for Effort and LSB, and SFB's past the Doc's
+table.
+
+LayerBench is an independent project, and is not affiliated with or endorsed by cyanophage.
+
+What is a shared concept, what is cyanophage's, what is LayerBench's implementation and what is its
+own addition, and where the rule sets differ from the Doc and the playground, is in the glossary's
+[Implementation and attribution](docs/METRICS.md#implementation-and-attribution).
+
 ## Licence
 
-The code is under the [MIT licence](LICENSE). The corpus texts, in `packages/corpora/raw` and in
-the samples built from them in `apps/web/public/corpora`, keep their own licences, recorded with
-their sources in `packages/corpora/raw/sources.json`.
+The code is under the [MIT licence](LICENSE), which covers LayerBench's own work. The corpus texts,
+in `packages/corpora/raw` and in the samples built from them in `apps/web/public/corpora`, keep
+their own licences, recorded with their sources in `packages/corpora/raw/sources.json`. What
+LayerBench cites or takes from other work for compatibility, such as the Keyboard Layouts Doc's
+definitions and thresholds, cyanophage's Effort costs and the numbers the playground printed in
+`apps/web/e2e/cyanophage/fixture.json`, and the bundled layouts other authors designed, is credited
+to its source, and LayerBench does not relicense it. [NOTICE](NOTICE) lists what the MIT licence does not cover.
 
 <a href="https://github.com/rafaelromao/sandman">
   <img src="https://raw.githubusercontent.com/rafaelromao/sandman/main/assets/badge-built-with-sandman.svg" alt="Built with Sandman" width="154" />

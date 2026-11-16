@@ -7,7 +7,11 @@
  * without carrying them.
  *
  * Every locator was checked against its source when it was written. A rule LayerBench added
- * cites the glossary and says so, rather than borrowing another tool's authority.
+ * cites the glossary and says so, rather than borrowing another tool's authority. A definition
+ * LayerBench shares with the Keyboard Layouts Doc cites the Doc, wherever else it is also counted;
+ * a convention a preset adopts to read as another tool does cites that tool, and says which
+ * preset adopts it. How LayerBench uses each source is in the glossary's "Implementation and
+ * attribution".
  */
 export interface RuleReference {
   title: string;
@@ -28,6 +32,11 @@ const CYANOPHAGE_SOURCE =
 const cyanophage = (locator: string): RuleReference => ({
   title: 'cyanophage layout playground, keyboard_svg.js',
   url: CYANOPHAGE_SOURCE,
+  locator,
+});
+const playground = (locator: string): RuleReference => ({
+  title: 'cyanophage keyboard layout playground',
+  url: 'https://cyanophage.github.io/playground.html',
   locator,
 });
 
@@ -52,13 +61,27 @@ const glossary = (anchor: string, locator: string): RuleReference => ({
 });
 
 const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
+const SCISSOR_PRIORITY = kld('§6.5 Adjacent vs non adjacent scissors — adjacent fingers first');
+const LSB_DEFINITION = kld('§7.2 Lateral stretch bigrams (LSBs) — definition');
+const FSB_DEFINITION = kld('§6.2 Full scissors bigrams (FSBs) — definition');
+const LSB_STAGGER = kld('§7.4 Row stagger vs matrix LSBs');
+const WEAK_REDIRECTS = kld('§8.9 “Weak” redirects');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
+const ROLLS_AND_REDIRECTS = kld('§16.1 Rolls & redirects');
 const LAYERS = 'layers-layerbench-specific';
 const ADDITION = 'LayerBench addition';
 const COUNTS = 'how-layerbench-counts';
+const SCISSOR_WEIGHTS = glossary(
+  'bigrams',
+  `Scissor weights — adjacent fingers weigh 1, others 0.5: ${ADDITION}`,
+);
 const NO_THUMB_TRIGRAM = glossary(
   COUNTS,
   'Thumbs — no thumb press rolls or alternates, a LayerBench departure',
+);
+const NO_THUMB_REDIRECT = glossary(
+  COUNTS,
+  'Thumbs — no thumb key, space included, in a redirect or a one-hand roll, a LayerBench departure',
 );
 
 /** The catalog definitions. */
@@ -70,16 +93,9 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   ],
   sfb_2u: [kld('§4.3 1U and 2U SFB')],
   repeats: [kld('§3.8 Double letters'), glossary('bigrams', 'Repeated keys')],
-  lsb: [
-    kld('§7.2 Lateral stretch bigrams (LSBs) — definition'),
-    kld('§7.4 Row stagger vs matrix LSBs'),
-  ],
-  fsb: [
-    kld('§6.2 Full scissors bigrams (FSBs) — definition'),
-    kld('§6.5 Adjacent vs non adjacent scissors — weights'),
-    THRESHOLDS,
-  ],
-  hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition')],
+  lsb: [LSB_DEFINITION, LSB_STAGGER],
+  fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS, THRESHOLDS],
+  hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition'), SCISSOR_WEIGHTS],
   thumb_bigrams: [
     kld('§12.2 On what hand should the thumb letter be? — background'),
     glossary('bigrams', `Thumb bigrams — ${ADDITION}`),
@@ -100,19 +116,27 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     genkey('Finger speed — r = c × ((d + k) × F) / n'),
   ],
   lss: [kld('§7.3 Lateral stretch skipgrams (LSSs)')],
-  fss: [kld('§6.6 Full scissor skipgrams (FSSs)')],
-  hss: [kld('§6.8 Half scissor skipgrams (HSSs)')],
+  fss: [kld('§6.6 Full scissor skipgrams (FSSs)'), SCISSOR_WEIGHTS],
+  hss: [kld('§6.8 Half scissor skipgrams (HSSs)'), SCISSOR_WEIGHTS],
 
   alternation: [TRIGRAMS, kld('§18.1 Alternation'), THRESHOLDS, NO_THUMB_TRIGRAM],
-  alt_sfs: [cyanophage('"alt sfs" trigram category'), NO_THUMB_TRIGRAM],
+  alt_sfs: [
+    cyanophage('"alt sfs" trigram category'),
+    {
+      title: 'Oxeylyzer source, O-X-E-Y/oxeylyzer',
+      url: 'https://github.com/O-X-E-Y/oxeylyzer/blob/main/oxeylyzer-core/src/trigram_patterns.rs',
+      locator: 'AlternateSfs — the same category',
+    },
+    NO_THUMB_TRIGRAM,
+  ],
   roll_in: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
   roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
-  rolls: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS, NO_THUMB_TRIGRAM],
+  rolls: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_TRIGRAM],
   in_out_ratio: [kld('§15.5 In-roll ratio'), THRESHOLDS],
-  onehand_in: [TRIGRAMS, kld('§17.1 3rolls')],
-  onehand_out: [TRIGRAMS, kld('§17.1 3rolls')],
-  redirect: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS],
-  weak_redirect: [kld('§8.9 “Weak” redirects')],
+  onehand_in: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
+  onehand_out: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
+  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_REDIRECT],
+  weak_redirect: [WEAK_REDIRECTS, NO_THUMB_REDIRECT],
 
   finger_usage: [
     kld('§4.8 Distributing movement across the fingers'),
@@ -139,11 +163,13 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   finger_travel: [kld('§4.6 Distance on a layout')],
 
   effort: [
-    cyanophage('Effort — per-key grid, 577 × Σ effort ÷ input length'),
+    cyanophage('Effort — per-key grid and its scale of 577'),
     glossary('effort', 'Effort — a thumb press costs 1, a LayerBench departure'),
   ],
   hard_words: [
-    cyanophage('"Hard Words"'),
+    cyanophage(
+      '"Hard Words" — the name only: the playground ranks words by pairwise costs (bigram_effort.json) LayerBench does not have',
+    ),
     glossary('effort', 'Hard words — per-key effort plus the extra presses a word needs'),
   ],
 
@@ -179,50 +205,157 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
 };
 
 export interface PresetReferences {
-  /** What the preset as a whole follows. */
+  /** What the preset as a whole follows: shown with the rule set, before any one rule. */
   preset: readonly RuleReference[];
-  /** Rules the preset redefines, which then answer to a different source first. */
+  /**
+   * What the preset follows for each rule it changes, cited before the catalog's sources: its
+   * definition, its denominator or its ruler. A test holds the keys to the rules the preset
+   * changes, by their definition or by a global their count reads.
+   */
   rules: Readonly<Record<string, readonly RuleReference[]>>;
+  /**
+   * Catalog sources that no longer describe a rule as the preset counts it, left out of its list:
+   * a ruler or a weight the preset does not use, or a definition it replaces, which its own list
+   * then cites as the concept the two share.
+   */
+  omits?: Readonly<Record<string, readonly RuleReference[]>>;
 }
+
+/** Where the glossary says what each preset reproduces, and where the methods differ. */
+const DIFFERENCES = 'where-the-methods-differ';
+
+/** SFB's denominator as Genkey divides it, which the Doc's SFB figures use (§13.3). */
+const GENKEY_SFB: RuleReference = {
+  title: 'Genkey source, semilin/genkey',
+  url: 'https://github.com/semilin/genkey',
+  locator:
+    'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
+};
+
+/** SFB's part two or more rows apart, which Genkey does not print, divided as Genkey divides SFB. */
+const GENKEY_SFB_2U: RuleReference = {
+  ...GENKEY_SFB,
+  locator:
+    'output.go, layout.go — the denominator only: the letters on the layout’s keys (Total), no space; Genkey prints no part two or more rows apart',
+};
+
+/** A section of the Doc whose definition a preset replaces, cited for the concept they share. */
+const shared = (section: string): RuleReference =>
+  kld(`${section} — the shared concept; the definition in force differs`);
+
+/**
+ * The cyanophage-like percentages: pairs and skipgrams over the playground's keystrokes
+ * (`m_input_length`, every character of a word plus one for its space).
+ */
+const KEYSTROKES = playground(
+  'the cyanophage-like denominator: pairs and skipgrams as a percent of the playground’s keystrokes, one space per word, every character typed or not',
+);
 
 export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
   layouts_doc: {
-    preset: [kld('definitions throughout; §13.4 Stats thresholds')],
+    preset: [
+      kld('definitions throughout; §13.4 Stats thresholds'),
+      glossary(
+        DIFFERENCES,
+        'What the Layouts Doc rule set reproduces of the Doc’s numbers, and what not',
+      ),
+    ],
     rules: {
-      // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types.
-      sfb: [
-        {
-          title: 'Genkey source, semilin/genkey',
-          url: 'https://github.com/semilin/genkey',
-          locator:
-            'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
-        },
-      ],
+      // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types; SFB's
+      // part two or more rows apart divides the same way.
+      sfb: [GENKEY_SFB],
+      sfb_2u: [GENKEY_SFB_2U],
     },
   },
   cyanophage: {
     preset: [
-      {
-        title: 'cyanophage keyboard layout playground',
-        url: 'https://cyanophage.github.io/playground.html',
-        locator:
-          'bigram percentages over keystrokes: one space per word, and every character, typed or not',
-      },
+      playground(
+        'selected conventions, reproduced for comparable numbers: LSB, scissors, redirects, percentages over keystrokes',
+      ),
+      glossary(DIFFERENCES, 'What the cyanophage-like rule set reproduces, and where it differs'),
     ],
     rules: {
-      lsb: [cyanophage('"Lat Stretch Bigrams" — fixed column pairs')],
-      fsb: [cyanophage('"Scissors" — adjacent columns, two or more rows apart, two fingers')],
-      redirect: [cyanophage('"redirect" trigram category')],
+      sfb: [
+        KEYSTROKES,
+        cyanophage(
+          '"Same Finger Bigrams" finger bars, red = 128 + 6000 × share — the ramp the cyanophage-like SFB ruler is drawn on',
+        ),
+        glossary(
+          'bands',
+          'The cyanophage-like SFB ruler — LayerBench reads a finger’s ramp as a layout’s total',
+        ),
+      ],
+      sfb_2u: [KEYSTROKES],
+      repeats: [KEYSTROKES],
+      lsb: [
+        cyanophage(
+          '"Lat Stretch Bigrams" — the cyanophage-like definition: an index finger’s inner column with the middle finger’s, any rows',
+        ),
+        KEYSTROKES,
+        shared('§7.2 Lateral stretch bigrams (LSBs)'),
+      ],
+      fsb: [
+        cyanophage(
+          '"Scissors" — the cyanophage-like definition: adjacent columns, two or more rows apart, two fingers of one hand, unweighted',
+        ),
+        KEYSTROKES,
+        shared('§6.2 Full scissors bigrams (FSBs)'),
+      ],
+      hsb: [KEYSTROKES],
+      thumb_bigrams: [KEYSTROKES],
+      thumb_double: [KEYSTROKES],
+      layer_tap_sfb: [KEYSTROKES],
+      sfs: [KEYSTROKES],
+      sfs_weighted: [KEYSTROKES],
+      lss: [KEYSTROKES],
+      fss: [KEYSTROKES],
+      hss: [KEYSTROKES],
+      redirect: [
+        cyanophage(
+          '"redirect" and "weak redirect" trigram categories — the cyanophage-like definition: three different fingers',
+        ),
+        shared('§8.1 Alts, rolls, 3rolls & redir'),
+        shared('§16.1 Rolls & redirects'),
+      ],
+      weak_redirect: [
+        cyanophage(
+          '"weak redirect" trigram category — the cyanophage-like definition: three different fingers, none an index',
+        ),
+        shared('§8.9 “Weak” redirects'),
+      ],
+      effort: [
+        playground(
+          'cyanophage-like divisor: the characters the layout cannot type count among the keystrokes, as in the playground’s input length',
+        ),
+      ],
+    },
+    omits: {
+      // Its SFB ruler is the playground's ramp, not the Doc's thresholds.
+      sfb: [THRESHOLDS],
+      // Its own definitions, cited above with the Doc's concept: column pairs, which no stagger
+      // changes, unweighted scissors (its half scissors and skipgrams keep the weights), and
+      // redirects on three different fingers.
+      lsb: [LSB_DEFINITION, LSB_STAGGER],
+      fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS],
+      redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS],
+      weak_redirect: [WEAK_REDIRECTS],
     },
   },
 };
 
 /**
- * The sources for one rule. Under a preset that redefines the rule, the preset's source comes
- * first, since that is the definition in force; the catalog's follow as background.
+ * The sources for one rule. Under a preset that changes the rule, what the preset follows for it
+ * comes first, since that is the definition in force; the catalog's follow as background, but for
+ * those the preset leaves out because they no longer describe the rule.
  */
 export function ruleReferences(ruleId: string, presetId?: string): RuleReference[] {
-  const base = RULE_REFERENCES[ruleId] ?? [];
-  const override = presetId ? (PRESET_REFERENCES[presetId]?.rules[ruleId] ?? []) : [];
-  return [...override, ...base];
+  const preset = presetId ? PRESET_REFERENCES[presetId] : undefined;
+  const omitted = preset?.omits?.[ruleId] ?? [];
+  const base = (RULE_REFERENCES[ruleId] ?? []).filter((r) => !omitted.includes(r));
+  return [...(preset?.rules[ruleId] ?? []), ...base];
+}
+
+/** What a preset as a whole follows; nothing for a rule set that is not a preset. */
+export function presetReferences(presetId?: string): readonly RuleReference[] {
+  return presetId ? (PRESET_REFERENCES[presetId]?.preset ?? []) : [];
 }

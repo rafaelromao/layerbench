@@ -11,7 +11,8 @@ import { cyanophage } from './presets.js';
 
 /**
  * The engine held to cyanophage's playground without a browser: the numbers his page printed for
- * each layout, pinned in the e2e's fixture (`apps/web/e2e/cyanophage/fixture.json`), against what
+ * each layout, pinned in the e2e's fixture (`apps/web/e2e/cyanophage/fixture.json`) as reference
+ * outputs observed on the playground, not LayerBench's measurements, against what
  * the cyanophage-like rules give the same string on the same text, at the two decimals he prints.
  * The e2e (`apps/web/e2e/cyanophage.spec.ts`) checks the same through the app.
  */
