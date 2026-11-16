@@ -282,10 +282,11 @@ pnpm --filter @layerbench/web e2e keymapdb --project=desktop
 `e2e/cyanophage.spec.ts` holds the cyanophage-like rules to cyanophage's playground: ten layouts
 built from the strings his index gives them, on the text LayerBench types, must read what his page
 prints, to two decimals. The numbers the page printed are pinned in `e2e/cyanophage/fixture.json`
-as reference outputs observed there, not as LayerBench's own measurements, so it runs offline. It is a project of its own, which runs only when `E2E_CYANOPHAGE=1` is set, so the checks
-above leave it out. `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the fixture (run on his
-live page on 2026-11-10, it rewrote the pinned fixture unchanged). What differs between
-the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
+as reference outputs observed there, not as LayerBench's own measurements; with them pinned, the
+test runs offline. It is a project of its own, which runs only when `E2E_CYANOPHAGE=1` is set, so
+the checks above leave it out. `CYANOPHAGE_CAPTURE=1` reads his page again and rewrites the
+fixture (run on his live page on 2026-11-10, it rewrote the pinned fixture unchanged). What differs
+between the two tools and how it is settled is in `docs/research/cyanophage-e2e.md`.
 
 ```bash
 E2E_CYANOPHAGE=1 pnpm --filter @layerbench/web e2e --project=cyanophage
@@ -481,7 +482,8 @@ The *cyanophage-like* rule set reproduces selected conventions of the playground
 give comparable numbers. Both rule sets use the playground's published per-key Effort weights and
 its scale, with LayerBench's own changes for layers and thumb presses.
 
-LayerBench has its own analysis engine and does not bundle the playground's code or its word lists.
+LayerBench has its own analysis engine and does not bundle the playground's code or its word lists:
+of the playground, it has only the numbers the glossary names.
 
 LayerBench is an independent project, and is not affiliated with or endorsed by cyanophage.
 
@@ -496,8 +498,8 @@ in `packages/corpora/raw` and in the samples built from them in `apps/web/public
 their own licences, recorded with their sources in `packages/corpora/raw/sources.json`. What
 LayerBench cites or takes from other work for compatibility, such as the Keyboard Layouts Doc's
 definitions and thresholds, cyanophage's Effort costs and the numbers the playground printed in
-`apps/web/e2e/cyanophage/fixture.json`, is credited to its source, and the MIT licence does not
-cover it.
+`apps/web/e2e/cyanophage/fixture.json`, is credited to its source, and LayerBench does not
+relicense it.
 
 <a href="https://github.com/rafaelromao/sandman">
   <img src="https://raw.githubusercontent.com/rafaelromao/sandman/main/assets/badge-built-with-sandman.svg" alt="Built with Sandman" width="154" />

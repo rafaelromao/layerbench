@@ -115,7 +115,7 @@ const UNDER: Record<string, Record<string, Cited>> = {
     redirect: [
       ['keyboard_svg.js', 'the cyanophage-like definition: three different fingers'],
       ['Doc', '§8.1 Alts, rolls, 3rolls & redir — the shared concept'],
-      ['Doc', '§16.1'],
+      ['Doc', '§16.1 Rolls & redirects — the shared concept'],
       ['Doc', '§13.4'],
     ],
     weak_redirect: [
@@ -259,22 +259,24 @@ describe('rule references', () => {
     expect(ruleReferences('sfb').some((r) => r.locator?.includes('§13.4'))).toBe(true);
     const fsb = ruleReferences('fsb', 'cyanophage').map((r) => r.locator);
     expect(fsb.some((l) => l?.includes('§6.5'))).toBe(false);
-    // Where it counts by its own definition, every section of the Doc that defined the rule is
-    // cited for the concept the two share, and none as the definition in force.
+    expect(fsb.some((l) => l?.includes('weigh 1'))).toBe(false);
+    // The catalog's weights are LayerBench's: the Doc says only which scissors to cut first.
+    const weights = ruleReferences('fsb').filter((r) => r.locator?.includes('weigh 1'));
+    expect(weights.map(sourceOf)).toEqual(['glossary']);
+    const priority = ruleReferences('fsb').find((r) => r.locator?.includes('§6.5'));
+    expect(priority?.locator).not.toContain('weigh');
+    // Where it counts by its own definition, the Doc is cited for the concept the two share and
+    // for its bands, never as the definition in force.
+    const SHARED = 'the shared concept; the definition in force differs';
     for (const ruleId of ['lsb', 'fsb', 'redirect', 'weak_redirect']) {
-      const catalogDoc = ruleReferences(ruleId).filter((r) => sourceOf(r) === 'Doc');
       const doc = ruleReferences(ruleId, 'cyanophage').filter((r) => sourceOf(r) === 'Doc');
+      for (const r of doc) {
+        expect(r.locator, ruleId).toMatch(new RegExp(`(${SHARED}|§13\\.4 .* — bands)$`));
+      }
       expect(
-        doc.filter((r) => r.locator?.endsWith('— definition')),
-        ruleId,
-      ).toEqual([]);
-      expect(
-        doc.some((r) => r.locator?.endsWith('the shared concept; the definition in force differs')),
+        doc.some((r) => r.locator?.endsWith(SHARED)),
         ruleId,
       ).toBe(true);
-      for (const ref of PRESET_REFERENCES.cyanophage.omits?.[ruleId] ?? []) {
-        expect(catalogDoc, ruleId).toContain(ref);
-      }
     }
     // What is left out is a source the catalog cites for that rule, never one it does not, and
     // only for a rule the preset changes, whose own sources then take its place.

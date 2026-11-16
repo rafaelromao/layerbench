@@ -56,7 +56,8 @@ All from the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/documen
   statement about one layout, not a threshold. Dvorak has "noticeably higher SFBs than modern
   layouts" (§14.1).
 - **§13.3** says SFB, SFS, alternation, roll and redirect stats came from the Genkey analyzer
-  (scissors from keysolve, the in:out roll ratio and hand use from a200), on the MonkeyRacer corpus
+  (scissors from keysolve, the in:out roll ratio and hand use from a200, pinky off from a simple
+  count of the characters on the pinkies' top and bottom row keys), on the MonkeyRacer corpus
   (MonkeyType and TypeRacer quotes, duplicates removed, more punctuation than other texts).
 - **§16.4** says stats are given "disregarding space": with it they would differ wildly and need
   giving twice, for the left and the right thumb.

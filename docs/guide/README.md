@@ -30,8 +30,7 @@ worked out, are in [Analyzing a layout](analyzing.md).
 
 The definitions follow the Keyboard Layouts Doc. Effort uses cyanophage's cost for each key, and the
 *cyanophage-like* rules reproduce selected conventions of cyanophage's playground, for numbers that
-compare with its. LayerBench is an independent project, not affiliated with or endorsed by
-cyanophage; what it takes from each source, and what is its own, is in
+compare with its. What LayerBench takes from each source, and what is its own, is in
 [Implementation and attribution](../METRICS.md#implementation-and-attribution).
 
 ## Editing keys and layers

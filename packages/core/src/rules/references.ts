@@ -61,15 +61,20 @@ const glossary = (anchor: string, locator: string): RuleReference => ({
 });
 
 const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
-const SCISSOR_WEIGHTS = kld('§6.5 Adjacent vs non adjacent scissors — weights');
+const SCISSOR_PRIORITY = kld('§6.5 Adjacent vs non adjacent scissors — adjacent fingers first');
 const LSB_DEFINITION = kld('§7.2 Lateral stretch bigrams (LSBs) — definition');
 const FSB_DEFINITION = kld('§6.2 Full scissors bigrams (FSBs) — definition');
 const LSB_STAGGER = kld('§7.4 Row stagger vs matrix LSBs');
 const WEAK_REDIRECTS = kld('§8.9 “Weak” redirects');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
+const ROLLS_AND_REDIRECTS = kld('§16.1 Rolls & redirects');
 const LAYERS = 'layers-layerbench-specific';
 const ADDITION = 'LayerBench addition';
 const COUNTS = 'how-layerbench-counts';
+const SCISSOR_WEIGHTS = glossary(
+  'bigrams',
+  `Full scissor bigrams — adjacent fingers weigh 1, others 0.5: ${ADDITION}`,
+);
 const NO_THUMB_TRIGRAM = glossary(
   COUNTS,
   'Thumbs — no thumb press rolls or alternates, a LayerBench departure',
@@ -85,7 +90,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   sfb_2u: [kld('§4.3 1U and 2U SFB')],
   repeats: [kld('§3.8 Double letters'), glossary('bigrams', 'Repeated keys')],
   lsb: [LSB_DEFINITION, LSB_STAGGER],
-  fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS, THRESHOLDS],
+  fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS, THRESHOLDS],
   hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition')],
   thumb_bigrams: [
     kld('§12.2 On what hand should the thumb letter be? — background'),
@@ -114,11 +119,11 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   alt_sfs: [cyanophage('"alt sfs" trigram category'), NO_THUMB_TRIGRAM],
   roll_in: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
   roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
-  rolls: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS, NO_THUMB_TRIGRAM],
+  rolls: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_TRIGRAM],
   in_out_ratio: [kld('§15.5 In-roll ratio'), THRESHOLDS],
   onehand_in: [TRIGRAMS, kld('§17.1 3rolls')],
   onehand_out: [TRIGRAMS, kld('§17.1 3rolls')],
-  redirect: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS],
+  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS],
   weak_redirect: [WEAK_REDIRECTS],
 
   finger_usage: [
@@ -286,6 +291,7 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
           '"redirect" and "weak redirect" trigram categories — the cyanophage-like definition: three different fingers',
         ),
         shared('§8.1 Alts, rolls, 3rolls & redir'),
+        shared('§16.1 Rolls & redirects'),
       ],
       weak_redirect: [
         cyanophage(
@@ -305,8 +311,8 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       // Its own definitions, cited above with the Doc's concept: column pairs, which no stagger
       // changes, unweighted scissors, and redirects on three different fingers.
       lsb: [LSB_DEFINITION, LSB_STAGGER],
-      fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS],
-      redirect: [TRIGRAMS],
+      fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS],
+      redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS],
       weak_redirect: [WEAK_REDIRECTS],
     },
   },
