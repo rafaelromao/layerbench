@@ -791,7 +791,8 @@ export function Workbench({
 
   const focusKey = useCallback((keyId: string) => keyboard.current?.focusKey(keyId), []);
   // A move puts the selection away and hands focus back to the board, on the key it landed on: on
-  // a phone, where the editor is under the board, that brings the board back into view too.
+  // a phone, where the editor is under the board, that brings the board back into view too, the
+  // key having had focus all along or not.
   useEffect(() => {
     if (state.boardFocus) focusKey(state.boardFocus.keyId);
   }, [state.boardFocus, focusKey]);

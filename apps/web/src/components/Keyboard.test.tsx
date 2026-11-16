@@ -7,11 +7,20 @@ import {
 } from '@layerbench/core';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { createRef } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { Board } from './Board.js';
 import { CombosApart, worksOn } from './CombosApart.js';
 import { type PlacedKey, placeCombos } from './combo-layout.js';
-import { combosApart, drawnX, Keyboard, KeyLegend, reach, typingCombos } from './Keyboard.js';
+import {
+  combosApart,
+  drawnX,
+  Keyboard,
+  type KeyboardHandle,
+  KeyLegend,
+  reach,
+  typingCombos,
+} from './Keyboard.js';
 
 const qwerty = compileLayout(bundledLayout('qwerty')!);
 const romak = compileLayout(bundledLayout('magic-romak')!);
@@ -293,6 +302,70 @@ describe('Keyboard', () => {
     const { container } = render(<Keyboard compiled={qwerty} highlight={[pos]} />);
     const cap = container.querySelector('g[data-key="RHI"] .lb-key-cap');
     expect(cap?.classList.contains('lb-key-highlight')).toBe(true);
+  });
+});
+
+describe('focus put back on a key', () => {
+  /** The key drawn at `top` and `left`, 40px square, in jsdom's window of 1024×768. */
+  const drawnAt = (el: Element, top: number, left = 10) =>
+    vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
+      top,
+      bottom: top + 40,
+      left,
+      right: left + 40,
+      width: 40,
+      height: 40,
+      x: left,
+      y: top,
+      toJSON: () => ({}),
+    });
+  const board = () => {
+    const ref = createRef<KeyboardHandle>();
+    render(<Keyboard ref={ref} compiled={qwerty} onKeyClick={() => {}} />);
+    const key = screen.getByRole('button', { name: 'Key LHM: d' });
+    const scrolled = vi.spyOn(key, 'scrollIntoView');
+    return { focusKey: (id: string) => ref.current?.focusKey(id), key, scrolled };
+  };
+
+  it('moves focus to the key, which the browser brings into view itself', () => {
+    const { focusKey, key, scrolled } = board();
+    drawnAt(key, -400);
+    focusKey('LHM');
+    expect(document.activeElement).toBe(key);
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  it('brings a key that had focus already into view, as focus would, once it is out of sight', () => {
+    const { focusKey, key, scrolled } = board();
+    key.focus();
+    drawnAt(key, -400);
+    focusKey('LHM');
+    expect(document.activeElement).toBe(key);
+    expect(scrolled).toHaveBeenCalledWith({ block: 'center', inline: 'nearest' });
+  });
+
+  it('brings a key that had focus already and is partly out of sight in by as little as it takes', () => {
+    const { focusKey, key, scrolled } = board();
+    key.focus();
+    drawnAt(key, -20);
+    focusKey('LHM');
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+  });
+
+  it('scrolls a key that had focus already only the way it is out of sight, as sideways', () => {
+    const { focusKey, key, scrolled } = board();
+    key.focus();
+    drawnAt(key, 300, -100);
+    focusKey('LHM');
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'center' });
+  });
+
+  it('leaves a key that had focus already where it is while it is in sight', () => {
+    const { focusKey, key, scrolled } = board();
+    key.focus();
+    drawnAt(key, 300);
+    focusKey('LHM');
+    expect(scrolled).not.toHaveBeenCalled();
   });
 });
 
