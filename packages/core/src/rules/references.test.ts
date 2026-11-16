@@ -83,7 +83,7 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['Doc', '§13.4'],
     ],
     sfb_2u: [
-      ['Genkey', 'SFBs as a percent of the letters'],
+      ['Genkey', 'the denominator only: the letters on the layout’s keys'],
       ['Doc', '§4.3'],
     ],
   },
@@ -347,6 +347,15 @@ describe('rule references', () => {
     expect(doc[0].url).toContain('semilin/genkey');
     expect(doc.slice(1)).toEqual(ruleReferences('sfb'));
     expect(ruleReferences('sfb').some((r) => r.url.includes('genkey'))).toBe(false);
+  });
+
+  it('cites the playground only for the name of a rule it defines another way', () => {
+    // The playground ranks its Hard Words by pairwise costs; LayerBench's by its per-key grid.
+    const hard = ruleReferences('hard_words');
+    expect(cited(hard)).toEqual([
+      ['keyboard_svg.js', expect.stringContaining('"Hard Words" — the name only')],
+      ['glossary', expect.stringContaining('per-key effort')],
+    ]);
   });
 
   it('links only to headings the glossary actually has', () => {

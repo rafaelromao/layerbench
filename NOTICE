@@ -9,6 +9,11 @@ it:
   its per-key Effort costs and their scale of 577, the colour ramp of its per-finger SFB bars, and
   the numbers it printed for ten layouts, pinned with the layout strings its index uses in
   apps/web/e2e/cyanophage/. The playground's repository declares no licence.
+- The bundled layouts other authors designed, each credited in its definition to its author, and
+  to its source where the definition links one (packages/core/src/layouts, and their copies in
+  packages/core/golden/layouts). Among them is cyanophage's Sunlight
+  (https://cyanophage.github.io/#sunlight), kept in the playground's repository, which declares no
+  licence.
 - The corpus texts in packages/corpora/raw and the samples built from them in
   apps/web/public/corpora, each under the licence recorded with its source in
   packages/corpora/raw/sources.json.

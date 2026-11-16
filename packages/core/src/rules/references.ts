@@ -167,7 +167,9 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     glossary('effort', 'Effort — a thumb press costs 1, a LayerBench departure'),
   ],
   hard_words: [
-    cyanophage('"Hard Words"'),
+    cyanophage(
+      '"Hard Words" — the name only: the playground ranks words by pairwise costs (bigram_effort.json) LayerBench does not have',
+    ),
     glossary('effort', 'Hard words — per-key effort plus the extra presses a word needs'),
   ],
 
@@ -230,6 +232,13 @@ const GENKEY_SFB: RuleReference = {
     'output.go, layout.go — SFBs as a percent of the letters on the layout’s keys (Total), no space',
 };
 
+/** SFB's part two or more rows apart, which Genkey does not print, divided as Genkey divides SFB. */
+const GENKEY_SFB_2U: RuleReference = {
+  ...GENKEY_SFB,
+  locator:
+    'output.go, layout.go — the denominator only: the letters on the layout’s keys (Total), no space; Genkey prints no part two or more rows apart',
+};
+
 const shared = (section: string): RuleReference =>
   kld(`${section} — the shared concept; the definition in force differs`);
 
@@ -254,7 +263,7 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       // The Doc took its SFB from Genkey (§13.3), which divides by the letters it types; SFB's
       // part two or more rows apart divides the same way.
       sfb: [GENKEY_SFB],
-      sfb_2u: [GENKEY_SFB],
+      sfb_2u: [GENKEY_SFB_2U],
     },
   },
   cyanophage: {
