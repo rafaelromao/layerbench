@@ -64,6 +64,8 @@ const THRESHOLDS = kld('§13.4 Stats thresholds — bands');
 const SCISSOR_WEIGHTS = kld('§6.5 Adjacent vs non adjacent scissors — weights');
 const LSB_DEFINITION = kld('§7.2 Lateral stretch bigrams (LSBs) — definition');
 const FSB_DEFINITION = kld('§6.2 Full scissors bigrams (FSBs) — definition');
+const LSB_STAGGER = kld('§7.4 Row stagger vs matrix LSBs');
+const WEAK_REDIRECTS = kld('§8.9 “Weak” redirects');
 const TRIGRAMS = kld('§8.1 Alts, rolls, 3rolls & redir — definition');
 const LAYERS = 'layers-layerbench-specific';
 const ADDITION = 'LayerBench addition';
@@ -82,7 +84,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   ],
   sfb_2u: [kld('§4.3 1U and 2U SFB')],
   repeats: [kld('§3.8 Double letters'), glossary('bigrams', 'Repeated keys')],
-  lsb: [LSB_DEFINITION, kld('§7.4 Row stagger vs matrix LSBs')],
+  lsb: [LSB_DEFINITION, LSB_STAGGER],
   fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS, THRESHOLDS],
   hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition')],
   thumb_bigrams: [
@@ -117,7 +119,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   onehand_in: [TRIGRAMS, kld('§17.1 3rolls')],
   onehand_out: [TRIGRAMS, kld('§17.1 3rolls')],
   redirect: [TRIGRAMS, kld('§16.1 Rolls & redirects'), THRESHOLDS],
-  weak_redirect: [kld('§8.9 “Weak” redirects')],
+  weak_redirect: [WEAK_REDIRECTS],
 
   finger_usage: [
     kld('§4.8 Distributing movement across the fingers'),
@@ -289,6 +291,7 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
         cyanophage(
           '"weak redirect" trigram category — the cyanophage-like definition: three different fingers, none an index',
         ),
+        shared('§8.9 “Weak” redirects'),
       ],
       effort: [
         playground(
@@ -299,10 +302,12 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
     omits: {
       // Its SFB ruler is the playground's ramp, not the Doc's thresholds.
       sfb: [THRESHOLDS],
-      // Its own definitions, cited above with the Doc's concept; its scissors are unweighted.
-      lsb: [LSB_DEFINITION],
+      // Its own definitions, cited above with the Doc's concept: column pairs, which no stagger
+      // changes, unweighted scissors, and redirects on three different fingers.
+      lsb: [LSB_DEFINITION, LSB_STAGGER],
       fsb: [FSB_DEFINITION, SCISSOR_WEIGHTS],
       redirect: [TRIGRAMS],
+      weak_redirect: [WEAK_REDIRECTS],
     },
   },
 };

@@ -18,6 +18,20 @@ these rules, layouts and text, not that the two tools are the same. How the rule
 the playground and from the Keyboard Layouts Doc is in the glossary,
 [Where the methods differ](../METRICS.md#where-the-methods-differ).
 
+## The playground's repository
+
+Read on 2026-11-15, at the same `keyboard_svg.js` the fixture pins (its SHA-256 is the fixture's
+`script.sha256`):
+
+- GitHub reports no licence for [cyanophage/cyanophage.github.io](https://github.com/cyanophage/cyanophage.github.io),
+  and its root has no licence file.
+- `keyboard_svg.js` loads a word list per language (`words-<language>.json`), `dictionary.json`
+  and `bigram_effort.json`; the capture waits for all three before it reads a number. LayerBench
+  has none of them.
+- The per-key `effort` array's comments name the key of each column and nothing more, and the 577
+  stands on the line that prints Effort, `577 × m_effort ÷ m_input_length`, with no comment: the
+  source gives no reason for the costs or the scale.
+
 ## What is compared
 
 | His page prints | LayerBench rule | Panel and view |

@@ -96,7 +96,6 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['keyboard_svg.js', '"Lat Stretch Bigrams" — the cyanophage-like definition'],
       KEYSTROKES,
       ['Doc', '§7.2 Lateral stretch bigrams (LSBs) — the shared concept'],
-      ['Doc', '§7.4'],
     ],
     fsb: [
       ['keyboard_svg.js', '"Scissors" — the cyanophage-like definition'],
@@ -121,7 +120,7 @@ const UNDER: Record<string, Record<string, Cited>> = {
     ],
     weak_redirect: [
       ['keyboard_svg.js', 'three different fingers, none an index'],
-      ['Doc', '§8.9'],
+      ['Doc', '§8.9 “Weak” redirects — the shared concept'],
     ],
     effort: [
       ['playground', 'cyanophage-like divisor'],
@@ -260,21 +259,28 @@ describe('rule references', () => {
     expect(ruleReferences('sfb').some((r) => r.locator?.includes('§13.4'))).toBe(true);
     const fsb = ruleReferences('fsb', 'cyanophage').map((r) => r.locator);
     expect(fsb.some((l) => l?.includes('§6.5'))).toBe(false);
-    // Where it counts by its own definition, the Doc is cited for the concept, not the definition.
-    for (const ruleId of ['lsb', 'fsb', 'redirect']) {
+    // Where it counts by its own definition, every section of the Doc that defined the rule is
+    // cited for the concept the two share, and none as the definition in force.
+    for (const ruleId of ['lsb', 'fsb', 'redirect', 'weak_redirect']) {
+      const catalogDoc = ruleReferences(ruleId).filter((r) => sourceOf(r) === 'Doc');
       const doc = ruleReferences(ruleId, 'cyanophage').filter((r) => sourceOf(r) === 'Doc');
       expect(
         doc.filter((r) => r.locator?.endsWith('— definition')),
         ruleId,
       ).toEqual([]);
       expect(
-        ruleReferences(ruleId).some((r) => r.locator?.endsWith('— definition')),
+        doc.some((r) => r.locator?.endsWith('the shared concept; the definition in force differs')),
         ruleId,
       ).toBe(true);
+      for (const ref of PRESET_REFERENCES.cyanophage.omits?.[ruleId] ?? []) {
+        expect(catalogDoc, ruleId).toContain(ref);
+      }
     }
-    // What is left out is a source the catalog cites for that rule, never one it does not.
+    // What is left out is a source the catalog cites for that rule, never one it does not, and
+    // only for a rule the preset changes, whose own sources then take its place.
     for (const id of PRESET_IDS) {
       for (const [ruleId, omitted] of Object.entries(PRESET_REFERENCES[id].omits ?? {})) {
+        expect(PRESET_REFERENCES[id].rules[ruleId], `${id}: ${ruleId}`).toBeDefined();
         for (const ref of omitted)
           expect(RULE_REFERENCES[ruleId], `${id}: ${ruleId}`).toContain(ref);
       }

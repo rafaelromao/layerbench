@@ -55,8 +55,9 @@ All from the [Keyboard Layouts Doc, 3rd edition](https://docs.google.com/documen
   another". It ends, of Qwerty, that it "will always have high SFBs, regardless of the analyzer": a
   statement about one layout, not a threshold. Dvorak has "noticeably higher SFBs than modern
   layouts" (§14.1).
-- **§13.3** says SFB came from the Genkey analyzer, on the MonkeyRacer corpus (MonkeyType and
-  TypeRacer quotes, duplicates removed, more punctuation than other texts).
+- **§13.3** says SFB, SFS, alternation, roll and redirect stats came from the Genkey analyzer
+  (scissors from keysolve, the in:out roll ratio and hand use from a200), on the MonkeyRacer corpus
+  (MonkeyType and TypeRacer quotes, duplicates removed, more punctuation than other texts).
 - **§16.4** says stats are given "disregarding space": with it they would differ wildly and need
   giving twice, for the left and the right thumb.
 - §10.7's thresholds (dark red above 0.25% and so on) are for one punctuation pair's share, not a
@@ -171,7 +172,7 @@ to 3 are all the engine records; the weights of skips 4 to 9 add 0.246 to these 
 | Graphite | 5.60 | 3.34 *min* | 5.76 |
 
 The Doc's own row for Colemak DH has SFS 7.483 (*High*, as listed under the other rules below): that
-fits its SFS being Genkey's stat, without proving it (one layout, another corpus). Genkey weighs skip
+fits its SFS being Genkey's stat, as §13.3 says it is (one layout, another corpus). Genkey weighs skip
 1 at 1, then ½, ¼; the Doc's §4.6 example, which `sfs_weighted` follows, weighs skips 1 to 3 at 0.5,
 0.25, 0.125 against 1 for an SFB: the same ratios between skips, on another scale. Making SFS the Doc's means changing what it counts
 first, then its divisor.
