@@ -251,10 +251,16 @@ test.describe('on a phone', () => {
 
     // An edit brings the unsaved mark and Cancel to the name's line: no button moves, and the bar
     // is as tall as it was, on the narrowest phone too. Places are taken from the bar's corner, as
-    // focusing the key may scroll the page.
+    // the page may scroll: the edit selects the key, and on a phone its editor is brought into view
+    // with a smooth scroll. Both boxes are read in one frame, as two reads apart would each catch
+    // the page at another point of that scroll.
     const inBar = async (control: Locator) => {
-      const [b, at] = [await box(control), await box(bar)];
-      return { x: b.x - at.x, y: b.y - at.y, width: b.width, height: b.height };
+      const at = await bar.elementHandle();
+      return control.evaluate((el, corner) => {
+        const b = el.getBoundingClientRect();
+        const a = (corner as Element).getBoundingClientRect();
+        return { x: b.x - a.x, y: b.y - a.y, width: b.width, height: b.height };
+      }, at);
     };
     const saveAt = await inBar(save);
     const nameAt = await inBar(name);
