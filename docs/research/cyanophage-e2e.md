@@ -89,8 +89,9 @@ layouts and he would type a plain letter, so each is pasted as `#`, which his pa
     on `'q#ea '` three hundred times his page prints Skip Bigrams 19.99%, three hundred skipgrams
     LayerBench does not count.
   - Ending the word there, LayerBench counts two words and so two of the spaces the pair rules add
-    per word (`caf#s`), where he counts one; and a text that ends in a space gives his popup one more,
-    empty, word and keystroke.
+    per word (`caf#s`), where he counts one; a word with nothing the layout can type, a lone `?`, is
+    no word to LayerBench and one to the playground; and a text that ends in a space gives his popup
+    one more, empty, word and keystroke.
 
   On the pinned text these move a number by about 0.0005 points, so every one of them reads the
   same to his two decimals; on another text a number near a rounding edge could read 0.01 apart.

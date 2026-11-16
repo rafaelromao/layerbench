@@ -487,7 +487,7 @@ of the playground, it has only the numbers and the layout strings the glossary n
 import reads layouts written in the playground's string format. Its Library bundles cyanophage's
 own layout, Sunlight, credited to cyanophage as each bundled layout is to its author.
 
-LayerBench's own additions and changes are typing on layers, with one-shots, combos, macros,
+LayerBench's own additions and changes include typing on layers, with one-shots, combos, macros,
 adaptive and repeat keys, and the rules that measure them; how thumbs count, in Effort and in the
 trigram rules; the scissor weights; and the bands for Effort and LSB, and SFB's past the Doc's
 table.
