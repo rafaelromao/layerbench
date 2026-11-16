@@ -306,16 +306,16 @@ describe('Keyboard', () => {
 });
 
 describe('focus put back on a key', () => {
-  /** The key drawn at `top`, 40px tall, in a window 768px tall. */
-  const drawnAt = (el: Element, top: number) =>
+  /** The key drawn at `top` and `left`, 40px square, in jsdom's window of 1024×768. */
+  const drawnAt = (el: Element, top: number, left = 10) =>
     vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({
       top,
       bottom: top + 40,
-      left: 10,
-      right: 50,
+      left,
+      right: left + 40,
       width: 40,
       height: 40,
-      x: 10,
+      x: left,
       y: top,
       toJSON: () => ({}),
     });
@@ -350,6 +350,14 @@ describe('focus put back on a key', () => {
     drawnAt(key, -20);
     focusKey('LHM');
     expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+  });
+
+  it('scrolls a key that had focus already only the way it is out of sight, as sideways', () => {
+    const { focusKey, key, scrolled } = board();
+    key.focus();
+    drawnAt(key, 300, -100);
+    focusKey('LHM');
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'center' });
   });
 
   it('leaves a key that had focus already where it is while it is in sight', () => {

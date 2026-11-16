@@ -596,13 +596,17 @@ export function Keyboard({
           node.focus();
           return;
         }
-        // Focus scrolls only when it moves: a key that has it already (tapped, then an editor's
-        // list picked from) is brought into view as focus would bring it, once out of sight.
+        // Focus scrolls only when it moves, and a key can keep it through an edit made elsewhere
+        // (by a test driver, or assistive technology, that sets a list's value without focusing
+        // it). Such a key is brought into view as focus would bring it: each way, left alone where
+        // it is in sight, centred where it is gone, and in by as little as it takes where partly.
         const box = node.getBoundingClientRect();
-        const [width, height] = [window.innerWidth, window.innerHeight];
-        if (box.top >= 0 && box.bottom <= height && box.left >= 0 && box.right <= width) return;
-        const gone = box.bottom <= 0 || box.top >= height || box.right <= 0 || box.left >= width;
-        node.scrollIntoView({ block: gone ? 'center' : 'nearest', inline: 'nearest' });
+        const along = (start: number, end: number, size: number): ScrollLogicalPosition | null =>
+          start >= 0 && end <= size ? null : end <= 0 || start >= size ? 'center' : 'nearest';
+        const block = along(box.top, box.bottom, window.innerHeight);
+        const inline = along(box.left, box.right, window.innerWidth);
+        if (block === null && inline === null) return;
+        node.scrollIntoView({ block: block ?? 'nearest', inline: inline ?? 'nearest' });
       },
     }),
     [],
