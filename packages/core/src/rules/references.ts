@@ -73,7 +73,7 @@ const ADDITION = 'LayerBench addition';
 const COUNTS = 'how-layerbench-counts';
 const SCISSOR_WEIGHTS = glossary(
   'bigrams',
-  `Full scissor bigrams — adjacent fingers weigh 1, others 0.5: ${ADDITION}`,
+  `Scissor weights — adjacent fingers weigh 1, others 0.5: ${ADDITION}`,
 );
 const NO_THUMB_TRIGRAM = glossary(
   COUNTS,
@@ -91,7 +91,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   repeats: [kld('§3.8 Double letters'), glossary('bigrams', 'Repeated keys')],
   lsb: [LSB_DEFINITION, LSB_STAGGER],
   fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS, THRESHOLDS],
-  hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition')],
+  hsb: [kld('§6.7 Half scissors bigrams (HSBs) — definition'), SCISSOR_WEIGHTS],
   thumb_bigrams: [
     kld('§12.2 On what hand should the thumb letter be? — background'),
     glossary('bigrams', `Thumb bigrams — ${ADDITION}`),
@@ -112,8 +112,8 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     genkey('Finger speed — r = c × ((d + k) × F) / n'),
   ],
   lss: [kld('§7.3 Lateral stretch skipgrams (LSSs)')],
-  fss: [kld('§6.6 Full scissor skipgrams (FSSs)')],
-  hss: [kld('§6.8 Half scissor skipgrams (HSSs)')],
+  fss: [kld('§6.6 Full scissor skipgrams (FSSs)'), SCISSOR_WEIGHTS],
+  hss: [kld('§6.8 Half scissor skipgrams (HSSs)'), SCISSOR_WEIGHTS],
 
   alternation: [TRIGRAMS, kld('§18.1 Alternation'), THRESHOLDS, NO_THUMB_TRIGRAM],
   alt_sfs: [cyanophage('"alt sfs" trigram category'), NO_THUMB_TRIGRAM],
@@ -151,7 +151,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   finger_travel: [kld('§4.6 Distance on a layout')],
 
   effort: [
-    cyanophage('Effort — per-key grid, 577 × Σ effort ÷ input length'),
+    cyanophage('Effort — per-key grid and its scale of 577'),
     glossary('effort', 'Effort — a thumb press costs 1, a LayerBench departure'),
   ],
   hard_words: [
@@ -309,7 +309,8 @@ export const PRESET_REFERENCES: Readonly<Record<string, PresetReferences>> = {
       // Its SFB ruler is the playground's ramp, not the Doc's thresholds.
       sfb: [THRESHOLDS],
       // Its own definitions, cited above with the Doc's concept: column pairs, which no stagger
-      // changes, unweighted scissors, and redirects on three different fingers.
+      // changes, unweighted scissors (its half scissors and skipgrams keep the weights), and
+      // redirects on three different fingers.
       lsb: [LSB_DEFINITION, LSB_STAGGER],
       fsb: [FSB_DEFINITION, SCISSOR_PRIORITY, SCISSOR_WEIGHTS],
       redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS],

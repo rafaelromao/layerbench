@@ -483,7 +483,7 @@ give comparable numbers. Both rule sets use the playground's published per-key E
 its scale, with LayerBench's own changes for layers and thumb presses.
 
 LayerBench has its own analysis engine and does not bundle the playground's code or its word lists:
-of the playground, it has only the numbers the glossary names.
+of the playground, it has only the numbers and the layout strings the glossary names.
 
 LayerBench is an independent project, and is not affiliated with or endorsed by cyanophage.
 

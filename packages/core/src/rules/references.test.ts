@@ -103,15 +103,15 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['Doc', '§6.2 Full scissors bigrams (FSBs) — the shared concept'],
       ['Doc', '§13.4'],
     ],
-    hsb: [KEYSTROKES, ['Doc', '§6.7']],
+    hsb: [KEYSTROKES, ['Doc', '§6.7'], ['glossary', 'Scissor weights']],
     thumb_bigrams: [KEYSTROKES, ['Doc', '§12.2'], ['glossary', 'Thumb bigrams']],
     thumb_double: [KEYSTROKES, ['Doc', '§12.3'], ['glossary', 'Thumb double taps']],
     layer_tap_sfb: [KEYSTROKES, ['glossary', 'Layer tap → same finger'], ['ZMK', 'behaviour']],
     sfs: [KEYSTROKES, ['Doc', '§4.5'], ['Doc', '§13.4']],
     sfs_weighted: [KEYSTROKES, ['Doc', '§4.6']],
     lss: [KEYSTROKES, ['Doc', '§7.3']],
-    fss: [KEYSTROKES, ['Doc', '§6.6']],
-    hss: [KEYSTROKES, ['Doc', '§6.8']],
+    fss: [KEYSTROKES, ['Doc', '§6.6'], ['glossary', 'Scissor weights']],
+    hss: [KEYSTROKES, ['Doc', '§6.8'], ['glossary', 'Scissor weights']],
     redirect: [
       ['keyboard_svg.js', 'the cyanophage-like definition: three different fingers'],
       ['Doc', '§8.1 Alts, rolls, 3rolls & redir — the shared concept'],
@@ -265,6 +265,14 @@ describe('rule references', () => {
     expect(weights.map(sourceOf)).toEqual(['glossary']);
     const priority = ruleReferences('fsb').find((r) => r.locator?.includes('§6.5'));
     expect(priority?.locator).not.toContain('weigh');
+    // Every rule that weighs its pairs by fingers cites the weights, under every rule set, and no
+    // other rule does.
+    for (const set of [{ id: undefined, rules: catalogRules() }, ...PRESET_IDS.map(getPreset)]) {
+      for (const r of set.rules) {
+        const cites = ruleReferences(r.id, set.id).some((ref) => ref.locator?.includes('weigh 1'));
+        expect(cites, `${set.id ?? 'catalog'}: ${r.id}`).toBe(Boolean(r.weight));
+      }
+    }
     // Where it counts by its own definition, the Doc is cited for the concept the two share and
     // for its bands, never as the definition in force.
     const SHARED = 'the shared concept; the definition in force differs';
