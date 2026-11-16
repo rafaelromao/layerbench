@@ -1,4 +1,4 @@
-import { getPreset, type RuleResult } from '@layerbench/core';
+import { getPreset, type Rule, type RuleResult } from '@layerbench/core';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -86,21 +86,21 @@ describe('a metric card’s sources', () => {
   });
 
   it('are those of the last rule of its id that is on, where ids repeat', () => {
-    // The preset's LSB turned off, and a changed one added after it.
     const preset = getPreset('cyanophage');
     const own = preset.rules.find((r) => r.id === 'lsb');
     if (!own) throw new Error('lsb');
-    const set = {
-      ...preset,
-      rules: [
-        ...preset.rules.map((r) => (r.id === 'lsb' ? { ...r, enabled: false } : r)),
-        { ...own, where: null },
-      ],
+    const changed = 'Changed in this rule set: these sources are for the built-in rule.';
+    const card = (added: Rule) => {
+      const set = { ...preset, rules: [...preset.rules, added] };
+      return render(<MetricCard result={{ ...result, id: 'lsb', label: 'LSB' }} ruleSet={set} />);
     };
-    render(<MetricCard result={{ ...result, id: 'lsb', label: 'LSB' }} ruleSet={set} />);
-    expect(
-      screen.getByText('Changed in this rule set: these sources are for the built-in rule.'),
-    ).toBeInTheDocument();
+    // A changed LSB after the preset's, both on: the last is the card's.
+    const { unmount } = card({ ...own, where: null });
+    expect(screen.getByText(changed)).toBeInTheDocument();
+    unmount();
+    // The same LSB turned off: the preset's, which is on, is the card's.
+    card({ ...own, where: null, enabled: false });
+    expect(screen.queryByText(changed)).toBeNull();
   });
 });
 

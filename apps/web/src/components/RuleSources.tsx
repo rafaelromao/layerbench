@@ -86,8 +86,7 @@ export function RuleSources({
   /** The rule itself, where the caller has it: a composed rule may share a built-in's id. */
   rule?: Rule;
 }) {
-  // A card knows its rule by id alone: where ids repeat, take the last that is on, the one a ratio
-  // divides by that id.
+  // A card knows its rule by id alone: where ids repeat, take the last that is on.
   const rule = given ?? ruleSet?.rules.findLast((r) => r.id === ruleId && r.enabled !== false);
   const cited = rule && ruleSet ? citeRule(rule, ruleSet) : undefined;
   const refs = cited?.refs ?? ruleReferences(ruleId);
