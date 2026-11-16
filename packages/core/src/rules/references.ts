@@ -224,7 +224,7 @@ export interface PresetReferences {
 /** Where the glossary says what each preset reproduces, and where the methods differ. */
 const DIFFERENCES = 'where-the-methods-differ';
 
-/** A section of the Doc whose definition a preset replaces, cited for the concept they share. */
+/** SFB's denominator as Genkey divides it, which the Doc's SFB figures use (§13.3). */
 const GENKEY_SFB: RuleReference = {
   title: 'Genkey source, semilin/genkey',
   url: 'https://github.com/semilin/genkey',
@@ -239,6 +239,7 @@ const GENKEY_SFB_2U: RuleReference = {
     'output.go, layout.go — the denominator only: the letters on the layout’s keys (Total), no space; Genkey prints no part two or more rows apart',
 };
 
+/** A section of the Doc whose definition a preset replaces, cited for the concept they share. */
 const shared = (section: string): RuleReference =>
   kld(`${section} — the shared concept; the definition in force differs`);
 

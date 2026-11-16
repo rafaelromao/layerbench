@@ -4,7 +4,8 @@ The MIT licence in LICENSE covers LayerBench's own work. It does not cover the m
 which the repository cites or keeps and credits to its source, and LayerBench does not relicense
 it:
 
-- The definitions and band thresholds cited from the Keyboard Layouts Doc (3rd edition).
+- The definitions and band thresholds cited from the Keyboard Layouts Doc (3rd edition,
+  https://docs.google.com/document/d/1W0jhfqJI2ueJ2FNseR4YAFpNfsUM-_FlREHbpNGmC2o).
 - From cyanophage's Keyboard Layout Playground (https://cyanophage.github.io/playground.html):
   its per-key Effort costs and their scale of 577, the colour ramp of its per-finger SFB bars, and
   the numbers it printed for ten layouts, pinned with the layout strings its index uses in
