@@ -10,7 +10,7 @@ import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert.js';
 import { HelpLink } from '../components/HelpLink.js';
-import { presetOf, RuleSources } from '../components/RuleSources.js';
+import { PresetSources, presetOf, RuleSources } from '../components/RuleSources.js';
 import { customRef } from '../custom/ref.js';
 import { useRuleSet } from '../custom/use-rule-set.js';
 import { HELP } from '../guide/help.js';
@@ -278,7 +278,10 @@ export function RulesView() {
           <div className="lb-toolbar flex flex-wrap items-end gap-3">
             {picker}
 
-            <p className="lb-wide text-xs opacity-70 max-w-xl">{ruleSet.description}</p>
+            <div className="lb-wide max-w-xl">
+              <p className="text-xs opacity-70">{ruleSet.description}</p>
+              <PresetSources presetId={presetOf(ref)} />
+            </div>
             {state.dirty && (
               <span className="lb-wide justify-self-start badge badge-warning badge-sm">
                 unsaved changes

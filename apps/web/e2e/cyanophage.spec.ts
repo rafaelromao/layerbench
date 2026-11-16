@@ -17,7 +17,8 @@ import { CORPUS, pastedText, SAMPLE } from './cyanophage/text.ts';
 /**
  * LayerBench's cyanophage-like rules held to cyanophage's playground: the same layouts, typed on the
  * same text, must read what his page prints, to the two decimals it prints. His numbers are a pinned
- * fixture, `cyanophage/fixture.json`, read from his page once; the comparison runs offline.
+ * fixture, `cyanophage/fixture.json`, read from his page once: reference outputs observed on the
+ * playground, not LayerBench's measurements. The comparison runs offline.
  * `CYANOPHAGE_CAPTURE=1` reads his page again and writes the fixture instead. It runs as its own
  * Playwright project, `--project=cyanophage`, which the other projects leave out. What differs between
  * the two tools, and how each difference is settled, is in docs/research/cyanophage-e2e.md.

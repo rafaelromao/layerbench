@@ -33,6 +33,11 @@ export const HELP = {
   categories: { page: 'analyzing', section: 'categories', topic: 'how layouts are categorized' },
   importing: { page: 'importing', topic: 'importing from keymap-drawer' },
   rules: { page: 'analyzing', section: 'rules-and-their-sources', topic: 'rules and sources' },
+  attribution: {
+    page: 'metrics',
+    section: 'implementation-and-attribution',
+    topic: 'how LayerBench uses its sources',
+  },
   rulers: { page: 'analyzing', section: 'the-rulers', topic: 'the rulers' },
   rulerLayoutsDoc: {
     page: 'analyzing',

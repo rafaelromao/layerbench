@@ -7,8 +7,8 @@ keep it in your own account.
 
 1. **Pick a layout.** The site opens on **Library**, first ranked by Effort; choose one, or bring
    your own from a [keymap-drawer file](importing.md).
-2. **Read two numbers.** On **Analyze**, *Effort* is how hard the keys are to reach, and *SFB* how
-   often one finger presses two keys in a row. Lower is better for both.
+2. **Read two numbers.** On **Analyze**, *Effort* estimates how hard the keys are to reach, and *SFB*
+   how often one finger presses two keys in a row. Lower is better for both.
 3. **Change a key.** On **Analyze** too, tap or click a key and choose what it does. Every change
    is kept as you make it, every number follows it, and **Undo** (↶) takes it back.
 4. **Compare.** **Compare** puts two layouts side by side, number by number.
@@ -19,13 +19,19 @@ Each topic below starts short. Open it for more, and follow its links for the re
 
 Every layout gets the same two headline numbers, wherever it is shown:
 
-- **Effort**: how hard the keys are to reach, averaged over everything typed, from
+- **Effort**: an estimate of how hard the keys are to reach, averaged over everything typed, from
   [cyanophage's](https://cyanophage.github.io/playground.html) cost for each key, and 1 for each
-  thumb press, a layer tap included.
+  thumb press, a layer tap included. It is a heuristic of where the keys are, and
+  [Effort and SFB](analyzing.md#effort-and-sfb) says when two Efforts compare.
 - **SFB**, same finger bigrams: how often one finger presses two different keys in a row.
 
 **Library** sorts layouts by either, or by name or home row. The other numbers, and how each is
 worked out, are in [Analyzing a layout](analyzing.md).
+
+The definitions follow the Keyboard Layouts Doc, and Effort and the *cyanophage-like* rules follow
+cyanophage's playground, for numbers that compare with its. LayerBench is an independent project,
+not affiliated with or endorsed by cyanophage; what it takes from each source, and what is its own,
+is in [Implementation and attribution](../METRICS.md#implementation-and-attribution).
 
 ## Editing keys and layers
 

@@ -9,6 +9,15 @@ two decimals it prints, or the test fails. His numbers are pinned in
 `packages/core/src/rules/cyanophage-playground.test.ts` holds the engine to the same fixture without
 a browser, so CI catches a change to the rules that would move a number.
 
+The fixture's numbers are reference outputs observed on the playground's public page, not
+LayerBench's measurements: what that page printed for each layout on this text, on the day it was
+read. The fixture keeps them with the page's address, its script's hash and the ten layout strings,
+and nothing else of the playground; LayerBench has none of its code, word lists or data files. A
+match to two decimals shows that the cyanophage-like rules count what the playground counts for
+these rules, layouts and text, not that the two tools are the same. How the rule sets differ from
+the playground and from the Keyboard Layouts Doc is in the glossary,
+[Where the methods differ](../METRICS.md#where-the-methods-differ).
+
 ## What is compared
 
 | His page prints | LayerBench rule | Panel and view |

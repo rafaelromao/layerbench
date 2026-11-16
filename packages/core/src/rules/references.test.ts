@@ -2,10 +2,131 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { catalogRules } from './catalog.js';
-import { PRESET_IDS } from './presets.js';
-import { GLOSSARY_URL, PRESET_REFERENCES, RULE_REFERENCES, ruleReferences } from './references.js';
+import { getPreset, PRESET_IDS } from './presets.js';
+import {
+  GLOSSARY_URL,
+  PRESET_REFERENCES,
+  presetReferences,
+  RULE_REFERENCES,
+  type RuleReference,
+  ruleReferences,
+} from './references.js';
+import { DEFAULT_GLOBALS, type Rule, type RuleSet } from './types.js';
 
 const catalogIds = catalogRules().map((r) => r.id);
+
+/**
+ * The globals a preset may set and the rules whose count each reads. A preset that sets another
+ * one away from its default must say here which rules it changes, or the test fails.
+ */
+const READS: Record<string, (r: Rule) => boolean> = {
+  space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',
+  untyped_in_keystrokes: (r) =>
+    r.aggregate === 'percent_of_keystrokes' || r.aggregate === 'weighted_sum',
+};
+
+/** The rules a preset changes: by their definition, or by a global their count reads. */
+function changedBy(set: RuleSet): string[] {
+  const catalog = new Map(catalogRules().map((r) => [r.id, JSON.stringify(r)]));
+  const reads: ((r: Rule) => boolean)[] = [];
+  for (const [name, value] of Object.entries(set.globals)) {
+    const read = READS[name];
+    if (read) {
+      if (value) reads.push(read);
+    } else {
+      expect(value, `${set.id}: ${name}`).toEqual(
+        DEFAULT_GLOBALS[name as keyof typeof DEFAULT_GLOBALS],
+      );
+    }
+  }
+  return set.rules
+    .filter((r) => catalog.get(r.id) !== JSON.stringify(r) || reads.some((read) => read(r)))
+    .map((r) => r.id);
+}
+
+/** Who a reference is to, by its address. */
+function sourceOf(ref: RuleReference): string {
+  if (ref.url.startsWith(GLOSSARY_URL)) return 'glossary';
+  if (ref.url.includes('docs.google.com')) return 'Doc';
+  if (ref.url.includes('cyanophage')) return 'cyanophage';
+  if (ref.url.includes('genkey')) return 'Genkey';
+  if (ref.url.includes('zmk')) return 'ZMK';
+  return ref.url;
+}
+
+/** Each source of a rule as who it is to and a piece of what it says, in the order listed. */
+type Cited = readonly (readonly [source: string, says: string])[];
+
+const KEYSTROKES = [
+  'cyanophage',
+  'cyanophage-like percentages: pairs and skipgrams over keystrokes',
+] as const;
+
+/**
+ * Every rule a preset changes, with the sources it then shows: what the preset follows first, then
+ * the catalog's that still describe it. Under the Layouts Doc set only SFB's denominator is
+ * another tool's; under the cyanophage-like set every rule it changes cites the playground, and the
+ * Doc stays cited for the concepts the two share.
+ */
+const UNDER: Record<string, Record<string, Cited>> = {
+  layouts_doc: {
+    sfb: [
+      ['Genkey', 'SFBs as a percent of the letters'],
+      ['Doc', '§4.1'],
+      ['Doc', '§13.4'],
+    ],
+  },
+  cyanophage: {
+    sfb: [
+      KEYSTROKES,
+      ['cyanophage', 'red = 128 + 6000 × share'],
+      ['glossary', 'cyanophage-like SFB ruler'],
+      ['Doc', '§4.1'],
+    ],
+    sfb_2u: [KEYSTROKES, ['Doc', '§4.3']],
+    repeats: [KEYSTROKES, ['Doc', '§3.8'], ['glossary', 'Repeated keys']],
+    lsb: [
+      ['cyanophage', '"Lat Stretch Bigrams" — the cyanophage-like definition'],
+      KEYSTROKES,
+      ['Doc', '§7.2'],
+      ['Doc', '§7.4'],
+    ],
+    fsb: [
+      ['cyanophage', '"Scissors" — the cyanophage-like definition'],
+      KEYSTROKES,
+      ['Doc', '§6.2'],
+      ['Doc', '§13.4'],
+    ],
+    hsb: [KEYSTROKES, ['Doc', '§6.7']],
+    thumb_bigrams: [KEYSTROKES, ['Doc', '§12.2'], ['glossary', 'Thumb bigrams']],
+    thumb_double: [KEYSTROKES, ['Doc', '§12.3'], ['glossary', 'Thumb double taps']],
+    layer_tap_sfb: [KEYSTROKES, ['glossary', 'Layer tap → same finger'], ['ZMK', 'behaviour']],
+    sfs: [KEYSTROKES, ['Doc', '§4.5'], ['Doc', '§13.4']],
+    sfs_weighted: [KEYSTROKES, ['Doc', '§4.6']],
+    lss: [KEYSTROKES, ['Doc', '§7.3']],
+    fss: [KEYSTROKES, ['Doc', '§6.6']],
+    hss: [KEYSTROKES, ['Doc', '§6.8']],
+    redirect: [
+      ['cyanophage', 'the cyanophage-like definition: three different fingers'],
+      ['Doc', '§8.1'],
+      ['Doc', '§16.1'],
+      ['Doc', '§13.4'],
+    ],
+    weak_redirect: [
+      ['cyanophage', 'three different fingers, none an index'],
+      ['Doc', '§8.9'],
+    ],
+    effort: [
+      ['cyanophage', 'cyanophage-like divisor'],
+      ['cyanophage', 'per-key grid'],
+      ['glossary', 'a thumb press costs 1'],
+    ],
+  },
+};
+
+function cited(refs: readonly RuleReference[]): Cited {
+  return refs.map((r) => [sourceOf(r), r.locator ?? ''] as const);
+}
 
 /** GitHub's heading slugs: lower case, punctuation dropped, spaces to hyphens. */
 function slugs(markdown: string): Set<string> {
@@ -62,7 +183,70 @@ describe('rule references', () => {
     expect(ruleReferences('lsb', 'cyanophage')[0].url).toContain('cyanophage');
     expect(ruleReferences('fsb', 'cyanophage')[0].url).toContain('cyanophage');
     // A rule the preset leaves alone keeps the catalog's sources only.
-    expect(ruleReferences('sfb', 'cyanophage')).toEqual(ruleReferences('sfb'));
+    expect(ruleReferences('sfb_distance', 'cyanophage')).toEqual(ruleReferences('sfb_distance'));
+    expect(ruleReferences('alternation', 'cyanophage')).toEqual(ruleReferences('alternation'));
+  });
+
+  it('cites what each preset follows under every rule it changes', () => {
+    for (const id of PRESET_IDS) {
+      for (const ruleId of changedBy(getPreset(id))) {
+        expect(PRESET_REFERENCES[id].rules[ruleId]?.length, `${id}: ${ruleId}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('cites the cyanophage-like set under exactly the rules it changes', () => {
+    const changed = changedBy(getPreset('cyanophage'));
+    // The pair rules over keystrokes, its own LSB, scissors and redirects, and Effort's divisor.
+    expect(changed).toHaveLength(17);
+    expect(Object.keys(PRESET_REFERENCES.cyanophage.rules).sort()).toEqual([...changed].sort());
+  });
+
+  it('shows each rule a preset changes with the sources of the definition in force', () => {
+    for (const id of PRESET_IDS) {
+      const changed = new Set([...changedBy(getPreset(id)), ...Object.keys(UNDER[id] ?? {})]);
+      for (const ruleId of changed) {
+        const expected = UNDER[id]?.[ruleId];
+        expect(expected, `${id}: ${ruleId} has no expected sources here`).toBeDefined();
+        const got = cited(ruleReferences(ruleId, id));
+        expect(
+          got.map(([source]) => source),
+          `${id}: ${ruleId}`,
+        ).toEqual(expected?.map(([source]) => source));
+        for (const [i, [, says]] of got.entries()) {
+          expect(says, `${id}: ${ruleId} #${i + 1}`).toContain(expected?.[i][1]);
+        }
+      }
+    }
+  });
+
+  it('leaves out the catalog sources a preset no longer follows, and only those', () => {
+    // The cyanophage-like SFB is rated on the playground's ramp, its scissors unweighted.
+    const sfb = ruleReferences('sfb', 'cyanophage').map((r) => r.locator);
+    expect(sfb.some((l) => l?.includes('§13.4'))).toBe(false);
+    expect(ruleReferences('sfb').some((r) => r.locator?.includes('§13.4'))).toBe(true);
+    const fsb = ruleReferences('fsb', 'cyanophage').map((r) => r.locator);
+    expect(fsb.some((l) => l?.includes('§6.5'))).toBe(false);
+    // What is left out is a source the catalog cites for that rule, never one it does not.
+    for (const id of PRESET_IDS) {
+      for (const [ruleId, omitted] of Object.entries(PRESET_REFERENCES[id].omits ?? {})) {
+        for (const ref of omitted)
+          expect(RULE_REFERENCES[ruleId], `${id}: ${ruleId}`).toContain(ref);
+      }
+    }
+  });
+
+  it('keeps a preset’s own sources apart from the rules', () => {
+    expect(cited(presetReferences('cyanophage'))).toEqual([
+      [
+        'cyanophage',
+        expect.stringContaining('selected conventions, reproduced for comparable numbers'),
+      ],
+      ['glossary', expect.stringContaining('What the cyanophage-like rule set reproduces')],
+    ]);
+    expect(presetReferences('layouts_doc').map(sourceOf)).toEqual(['Doc', 'glossary']);
+    expect(presetReferences(undefined)).toEqual([]);
+    expect(presetReferences('custom:mine')).toEqual([]);
   });
 
   it('cites Genkey for the letters SFB is a share of, under the Layouts Doc preset only', () => {
@@ -75,8 +259,13 @@ describe('rule references', () => {
   it('links only to headings the glossary actually has', () => {
     const path = fileURLToPath(new URL('../../../../docs/METRICS.md', import.meta.url));
     const headings = slugs(readFileSync(path, 'utf8'));
-    const anchors = Object.values(RULE_REFERENCES)
-      .flat()
+    const anchors = [
+      ...Object.values(RULE_REFERENCES).flat(),
+      ...Object.values(PRESET_REFERENCES).flatMap((p) => [
+        ...p.preset,
+        ...Object.values(p.rules).flat(),
+      ]),
+    ]
       .filter((r) => r.url.startsWith(GLOSSARY_URL))
       .map((r) => r.url.slice(GLOSSARY_URL.length + 1));
     for (const anchor of new Set(anchors)) expect(headings, anchor).toContain(anchor);
