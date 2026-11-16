@@ -402,8 +402,19 @@ function canonical(value: unknown): string {
   );
 }
 
-/** What names, shows, turns on, scores or rates a rule: none of it changes what the rule counts. */
-const NOT_COUNTED = new Set(['label', 'description', 'enabled', 'score', 'bands']);
+/**
+ * What names, groups, shows, turns on, scores or rates a rule: none of it changes what the rule
+ * counts.
+ */
+const NOT_COUNTED = new Set([
+  'label',
+  'description',
+  'family',
+  'unit',
+  'enabled',
+  'score',
+  'bands',
+]);
 
 /** What a rule counts, and nothing else of it. */
 function counting(rule: Rule): string {
@@ -443,23 +454,26 @@ function sameGlobal(a: Partial<Globals>, b: Partial<Globals>, name: CountingGlob
 }
 
 /**
- * Whether a rule of a set counts what a preset's rule of that id counts: the same definition,
- * under the same values of the globals it reads, and, for a ratio, the same parts.
+ * The rule a ratio of a set divides by the id it names, as the engine finds it: the last one that
+ * is on and is not a ratio itself. None when the set has none, and the ratio has no number.
  */
-function countsAs(
-  rule: Rule,
-  set: RuleSet,
-  preset: PresetRules,
-  seen: ReadonlySet<string>,
-): boolean {
+function ratioPart(set: RuleSet, id: string | undefined): Rule | undefined {
+  return set.rules.findLast((r) => r.id === id && r.enabled !== false && r.aggregate !== 'ratio');
+}
+
+/**
+ * Whether a rule of a set counts what a preset's rule of that id counts: the same definition,
+ * under the same values of the globals it reads, and, for a ratio, rules it divides that count
+ * as the preset's do.
+ */
+function countsAs(rule: Rule, set: RuleSet, preset: PresetRules): boolean {
   if (preset.rules.get(rule.id)?.counts !== counting(rule)) return false;
   const reads = COUNTING_GLOBALS.filter((name) => GLOBAL_READS[name](rule));
   if (!reads.every((name) => sameGlobal(set.globals, preset.globals, name))) return false;
   if (rule.aggregate !== 'ratio') return true;
-  const inner = new Set([...seen, rule.id]);
   return [rule.aggregate_opts?.numerator, rule.aggregate_opts?.denominator].every((id) => {
-    const part = set.rules.find((r) => r.id === id);
-    return part !== undefined && !inner.has(part.id) && countsAs(part, set, preset, inner);
+    const part = ratioPart(set, id);
+    return part !== undefined && countsAs(part, set, preset);
   });
 }
 
@@ -482,19 +496,19 @@ export interface RuleCitation {
  * The sources of a rule as a set has it, chosen by what the rule counts rather than by the set's
  * name. A rule that counts as a preset's (`countsAs`) shows that preset's sources: a copy of the
  * cyanophage-like set shows its sources, and a rule of a preset edited into another preset's shows
- * the other's. Where both presets count a rule alike, the one whose counting globals are all the
- * set's is named. A built-in rule that counts as no preset's, by its definition or by a global it
+ * the other's. Where both presets count a rule alike, the one whose counting globals the set
+ * shares most is named. A built-in rule that counts as no preset's, by its definition or by a global it
  * reads, shows the catalog's, marked as edited; a rule composed in the Rules view has none.
  */
 export function citeRule(rule: Rule, ruleSet: RuleSet): RuleCitation {
   if (!RULE_REFERENCES[rule.id]) return { refs: [], edited: false };
   const presets = [...presetsByRule()];
   const alike = (p: PresetRules) =>
-    COUNTING_GLOBALS.every((name) => sameGlobal(ruleSet.globals, p.globals, name));
-  // The preset the set's globals are first, then the others in their order.
-  presets.sort(([, a], [, b]) => Number(alike(b)) - Number(alike(a)));
+    COUNTING_GLOBALS.filter((name) => sameGlobal(ruleSet.globals, p.globals, name)).length;
+  // The preset whose globals the set shares most first, then the others in their order.
+  presets.sort(([, a], [, b]) => alike(b) - alike(a));
   for (const [id, preset] of presets) {
-    if (!countsAs(rule, ruleSet, preset, new Set())) continue;
+    if (!countsAs(rule, ruleSet, preset)) continue;
     const own = preset.rules.get(rule.id)?.rule;
     return {
       refs: ruleReferences(rule.id, id),

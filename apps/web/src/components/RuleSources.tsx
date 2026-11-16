@@ -86,7 +86,8 @@ export function RuleSources({
   /** The rule itself, where the caller has it: a composed rule may share a built-in's id. */
   rule?: Rule;
 }) {
-  const rule = given ?? ruleSet?.rules.find((r) => r.id === ruleId);
+  // Where ids repeat, the engine counts the last that is on.
+  const rule = given ?? ruleSet?.rules.findLast((r) => r.id === ruleId && r.enabled !== false);
   const cited = rule && ruleSet ? citeRule(rule, ruleSet) : undefined;
   const refs = cited?.refs ?? ruleReferences(ruleId);
   if (refs.length === 0) {

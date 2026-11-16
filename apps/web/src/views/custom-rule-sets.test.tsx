@@ -109,6 +109,19 @@ describe('A custom rule set named by a link', () => {
     await rankingSays(/Could not score the layouts: rule set gone is not saved here/);
   });
 
+  it('is cited in Analyze as the preset it counts as', async () => {
+    renderRoute('/analyze?layout=qwerty&sample=10000&rules=custom:strict', {
+      storage: await withStrict(),
+    });
+    await screen.findByText('Lat stretch bigrams (column pairs)', undefined, { timeout: 25_000 });
+    // Its LSB card leads with the cyanophage-like definition, as the preset's does.
+    const lists = screen.getAllByRole('list', { name: 'Sources', hidden: true });
+    const leads = lists.map((l) => l.firstElementChild?.textContent ?? '');
+    expect(
+      leads.some((t) => t.includes('"Lat Stretch Bigrams" — the cyanophage-like definition')),
+    ).toBe(true);
+  });
+
   it('is offered by name in every picker, beside the presets', async () => {
     renderRoute('/analyze?layout=qwerty', {
       client: new RecordingClient(),

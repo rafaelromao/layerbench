@@ -463,6 +463,8 @@ describe('the sources of a rule as a set has it', () => {
       lsb.description = 'Mine.';
       lsb.enabled = false;
       lsb.score = { weight: 3 };
+      lsb.family = 'other';
+      lsb.unit = 'count';
     });
     expect(citeRule(rule(set, 'lsb'), set)).toEqual({
       refs: ruleReferences('lsb', 'cyanophage'),
@@ -532,19 +534,31 @@ describe('the sources of a rule as a set has it', () => {
     );
   });
 
-  it('follows a ratio through the rules it divides', () => {
-    const set = copyOf('layouts_doc', (s) => {
-      rule(s, 'roll_in').where = { all: [{ same_hand: true }] };
-    });
-    expect(citeRule(rule(set, 'in_out_ratio'), set).edited).toBe(true);
-    // A ratio dividing itself counts as no preset's, and ends.
-    const loop = copyOf('layouts_doc', (s) => {
-      rule(s, 'in_out_ratio').aggregate_opts = {
-        numerator: 'in_out_ratio',
-        denominator: 'roll_out',
-      };
-    });
-    expect(citeRule(rule(loop, 'in_out_ratio'), loop).edited).toBe(true);
+  it('follows a ratio through the rules it divides, as the engine finds them', () => {
+    const ratio = (change: (s: RuleSet) => void) => {
+      const set = copyOf('layouts_doc', change);
+      return citeRule(rule(set, 'in_out_ratio'), set);
+    };
+    expect(ratio(() => {}).edited).toBe(false);
+    expect(
+      ratio((s) => {
+        rule(s, 'roll_in').where = { all: [{ same_hand: true }] };
+      }).edited,
+    ).toBe(true);
+    // A part turned off leaves the ratio without a number, and so without the preset's.
+    expect(
+      ratio((s) => {
+        rule(s, 'roll_in').enabled = false;
+      }).edited,
+    ).toBe(true);
+    // Where ids repeat, the ratio divides the last part that is on, as the engine does.
+    const changed: Rule = { ...rule(getPreset('layouts_doc'), 'roll_in'), where: null };
+    expect(ratio((s) => void s.rules.push(changed)).edited).toBe(true);
+    expect(
+      ratio((s) => {
+        s.rules.push({ ...changed, enabled: false });
+      }).edited,
+    ).toBe(false);
   });
 
   it('reads a copy the same whatever order its keys come in', () => {
@@ -571,6 +585,19 @@ describe('the sources of a rule as a set has it', () => {
         });
       }
     }
+  });
+
+  it('names the preset whose globals the set shares most where both count a rule alike', () => {
+    // A cyanophage-like set with one global of its own still shares more with its preset.
+    const set = copyOf('cyanophage', (s) => {
+      s.globals.skip_weights = [1, 1, 1];
+      rule(s, 'alternation').bands = null;
+    });
+    expect(citeRule(rule(set, 'alternation'), set)).toEqual({
+      refs: ruleReferences('alternation', 'cyanophage'),
+      follows: 'cyanophage',
+      edited: true,
+    });
   });
 
   it('cites a rule edited into another preset’s as that preset’s', () => {
