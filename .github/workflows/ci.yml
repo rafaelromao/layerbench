@@ -130,7 +130,7 @@ jobs:
   # and reopen it to check `main` as it is now (CONTRIBUTING.md → Releases). The ruleset for `main`
   # does not require this job: a red run says not to merge the release yet.
   e2e:
-    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--')
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--') || github.head_ref == 'claude/e2e-focus-scroll-and-release-ci'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
