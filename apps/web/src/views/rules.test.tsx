@@ -1,3 +1,4 @@
+import { getPreset } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -103,6 +104,55 @@ describe('Rules', () => {
       'href',
       expect.stringContaining('/guide/metrics#implementation-and-attribution'),
     );
+  });
+
+  it('cites a saved copy of a preset as the preset, and a rule changed in it as the built-in rule', async () => {
+    const storage = freshStorage();
+    const preset = getPreset('cyanophage');
+    await storage.put('rulesets', 'strict', {
+      ...preset,
+      id: 'strict',
+      name: 'Strict',
+      rules: preset.rules.map((r) =>
+        r.id === 'redirect' ? { ...r, where: { all: [{ same_hand: true }] } } : r,
+      ),
+    });
+    renderRoute('/rules?rules=custom:strict', { storage });
+    await screen.findByText('Scissors (adjacent columns, 2 rows)');
+
+    // Its LSB and SFB count as the cyanophage-like set's, and lead with what that set follows.
+    expect(sourcesOf('lsb')[0]).toHaveTextContent('the cyanophage-like definition');
+    expect(sourcesOf('sfb')[0]).toHaveTextContent('the cyanophage-like denominator');
+    // Its redirect, changed here, cites the built-in rule's sources and says so.
+    expect(
+      within(rowOf('redirect')).getByText(
+        'Changed in this rule set: these sources are for the built-in rule.',
+      ),
+    ).toBeInTheDocument();
+    expect(sourcesOf('redirect').some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(false);
+    // A custom set has no sources of its own as a whole.
+    expect(screen.queryByRole('list', { name: 'Rule set sources', hidden: true })).toBeNull();
+  });
+
+  it('marks a rule a setting of the set changes, and cites the built-in rule for it', async () => {
+    const user = userEvent.setup();
+    renderRoute('/rules?rules=cyanophage', { storage: freshStorage() });
+    await screen.findByText('Scissors (adjacent columns, 2 rows)');
+    const changed = 'Changed in this rule set: these sources are for the built-in rule.';
+    expect(within(rowOf('sfs_weighted')).queryByText(changed)).toBeNull();
+
+    const weights = screen.getByLabelText('Skip weights');
+    await user.clear(weights);
+    await user.type(weights, '1, 1, 1');
+    await user.tab();
+
+    // The weighted skipgrams read the weights; the skipgrams one apart do not.
+    expect(within(rowOf('sfs_weighted')).getByText(changed)).toBeInTheDocument();
+    expect(sourcesOf('sfs_weighted').some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(
+      false,
+    );
+    expect(within(rowOf('sfs')).queryByText(changed)).toBeNull();
+    expect(sourcesOf('sfs')[0]).toHaveTextContent('the cyanophage-like denominator');
   });
 
   it('adds a composed rule to the set', async () => {

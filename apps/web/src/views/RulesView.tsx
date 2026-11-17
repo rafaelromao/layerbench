@@ -435,7 +435,7 @@ export function RulesView() {
                         )}
                         <div className="text-[10px] font-mono opacity-50">{rule.id}</div>
                         <div className="max-w-xs mt-1">
-                          <RuleSources ruleId={rule.id} presetId={presetOf(ref)} />
+                          <RuleSources ruleId={rule.id} ruleSet={ruleSet} rule={rule} />
                         </div>
                       </td>
                       <td

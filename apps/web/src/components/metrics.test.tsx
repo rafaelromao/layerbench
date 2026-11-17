@@ -1,4 +1,4 @@
-import type { RuleResult } from '@layerbench/core';
+import { getPreset, type Rule, type RuleResult } from '@layerbench/core';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -63,6 +63,44 @@ describe('a metric card’s name', () => {
     expect(
       screen.getByRole('button', { name: 'Enlarge SFBs (thumbs excluded)' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('a metric card’s sources', () => {
+  /** The sources listed on the card, in order. */
+  const sources = () =>
+    within(screen.getByRole('list', { name: 'Sources', hidden: true })).getAllByRole('listitem', {
+      hidden: true,
+    });
+
+  it('are those of the rule as the set it was counted on has it', () => {
+    // A custom copy of the cyanophage-like set counts LSB as the playground does.
+    const copy = { ...getPreset('cyanophage'), id: 'strict', name: 'Strict' };
+    const lsb = { ...result, id: 'lsb', label: 'Lat stretch bigrams (column pairs)' };
+    const { unmount } = render(<MetricCard result={lsb} ruleSet={copy} />);
+    expect(sources()[0]).toHaveTextContent('the cyanophage-like definition');
+    unmount();
+    // With no set, the built-in rule's.
+    render(<MetricCard result={lsb} />);
+    expect(sources().some((li) => /cyanophage/.test(li.textContent ?? ''))).toBe(false);
+  });
+
+  it('are those of the last rule of its id that is on, where ids repeat', () => {
+    const preset = getPreset('cyanophage');
+    const own = preset.rules.find((r) => r.id === 'lsb');
+    if (!own) throw new Error('lsb');
+    const changed = 'Changed in this rule set: these sources are for the built-in rule.';
+    const card = (added: Rule) => {
+      const set = { ...preset, rules: [...preset.rules, added] };
+      return render(<MetricCard result={{ ...result, id: 'lsb', label: 'LSB' }} ruleSet={set} />);
+    };
+    // A changed LSB after the preset's, both on: the last is the card's.
+    const { unmount } = card({ ...own, where: null });
+    expect(screen.getByText(changed)).toBeInTheDocument();
+    unmount();
+    // The same LSB turned off: the preset's, which is on, is the card's.
+    card({ ...own, where: null, enabled: false });
+    expect(screen.queryByText(changed)).toBeNull();
   });
 });
 

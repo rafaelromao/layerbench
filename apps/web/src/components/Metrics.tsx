@@ -1,4 +1,4 @@
-import { humanBand, type RuleItem, type RuleResult } from '@layerbench/core';
+import { humanBand, type RuleItem, type RuleResult, type RuleSet } from '@layerbench/core';
 import { type MouseEvent, useEffect, useRef, useState } from 'react';
 import { type HelpTopic, helpHref } from '../guide/help.js';
 import {
@@ -195,8 +195,8 @@ interface MetricProps {
   result: RuleResult;
   selectedItem?: number | null;
   onHighlightItem?: (ruleId: string, index: number) => void;
-  /** The preset in force, whose own definition of a rule is then cited first. */
-  presetId?: string;
+  /** The rule set the number was counted on, whose rule's sources are cited. */
+  ruleSet?: RuleSet;
   /** Where Effort's and SFB's badge leads: the ruler of the rule set the number was rated on. */
   ruler?: HelpTopic;
   /** Names the keys of an item, which its label does not: it says what they typed. */
@@ -273,7 +273,7 @@ function MetricBody({
   result,
   selectedItem,
   onHighlightItem,
-  presetId,
+  ruleSet,
   ruler,
   describeItem,
   large = false,
@@ -385,7 +385,7 @@ function MetricBody({
         </ol>
       )}
 
-      <RuleSources ruleId={result.id} presetId={presetId} />
+      <RuleSources ruleId={result.id} ruleSet={ruleSet} />
     </>
   );
 }

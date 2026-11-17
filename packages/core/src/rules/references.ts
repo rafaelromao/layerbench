@@ -3,8 +3,8 @@
  *
  * Kept apart from the rules themselves on purpose: a rule set is a document, written and read by
  * another engine too, and citations are facts about the catalog rather than settings of a set. A
- * custom or shared rule set therefore shows the same sources as the catalog rule it was made from,
- * without carrying them.
+ * custom or shared rule set therefore carries no sources: each of its rules shows those of the
+ * preset whose rule it still counts as (`citeRule`), or the catalog's, marked as changed.
  *
  * Every locator was checked against its source when it was written. A rule LayerBench added
  * cites the glossary and says so, rather than borrowing another tool's authority. A definition
@@ -13,6 +13,9 @@
  * preset adopts it. How LayerBench uses each source is in the glossary's "Implementation and
  * attribution".
  */
+import { getPreset, PRESET_IDS, type PresetId } from './presets.js';
+import { DEFAULT_GLOBALS, type Globals, type Rule, type RuleSet } from './types.js';
+
 export interface RuleReference {
   title: string;
   url: string;
@@ -358,4 +361,160 @@ export function ruleReferences(ruleId: string, presetId?: string): RuleReference
 /** What a preset as a whole follows; nothing for a rule set that is not a preset. */
 export function presetReferences(presetId?: string): readonly RuleReference[] {
   return presetId ? (PRESET_REFERENCES[presetId]?.preset ?? []) : [];
+}
+
+/** The globals that change what a rule counts: all but Space, which each view sets, and list length. */
+export type CountingGlobal = Exclude<keyof Globals, 'universe' | 'top_items'>;
+
+/** Whether a rule names a global in a condition, as `"$global.<name>"`. */
+const names = (rule: Rule, name: string): boolean =>
+  JSON.stringify(rule).includes(`"$global.${name}"`);
+
+/**
+ * The rules each global changes the count of. A ratio counts what the rules it divides count, and
+ * is followed through them (`citeRule`). A test flips each global on each preset and runs the
+ * engine, so a rule one moves that this table misses fails it.
+ */
+export const GLOBAL_READS: Readonly<Record<CountingGlobal, (rule: Rule) => boolean>> = {
+  // Pairs, skipgrams, trigrams and runs restart at a word's end, or carry on over it.
+  cross_word: (r) =>
+    r.source === 'run' || ((r.source ?? 'ngram') === 'ngram' && (r.ngram?.n ?? 2) >= 2),
+  skip_weights: (r) => Array.isArray(r.ngram?.skip),
+  distance_model: (r) =>
+    r.aggregate === 'sum_distance' ||
+    r.aggregate === 'mean_distance' ||
+    /"distance":/.test(JSON.stringify(r.where ?? null)),
+  lsb_adjacent_u: (r) => names(r, 'lsb_adjacent_u'),
+  lsb_semi_adjacent_u: (r) => names(r, 'lsb_semi_adjacent_u'),
+  space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',
+  untyped_in_keystrokes: (r) =>
+    r.aggregate === 'percent_of_keystrokes' || r.aggregate === 'weighted_sum',
+};
+
+const COUNTING_GLOBALS = Object.keys(GLOBAL_READS) as CountingGlobal[];
+
+/** JSON with object keys in a stable order, and no key whose value is undefined. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+
+/**
+ * What names, groups, shows, turns on, scores or rates a rule: none of it changes what the rule
+ * counts.
+ */
+const NOT_COUNTED = new Set([
+  'label',
+  'description',
+  'family',
+  'unit',
+  'enabled',
+  'score',
+  'bands',
+]);
+
+/** What a rule counts, and nothing else of it. */
+function counting(rule: Rule): string {
+  return canonical(Object.fromEntries(Object.entries(rule).filter(([k]) => !NOT_COUNTED.has(k))));
+}
+
+interface PresetRules {
+  name: string;
+  globals: Partial<Globals>;
+  rules: Map<string, { rule: Rule; counts: string }>;
+}
+
+let presetRules: Map<PresetId, PresetRules> | undefined;
+
+/** Each preset's rules by id, read once. */
+function presetsByRule(): Map<PresetId, PresetRules> {
+  presetRules ??= new Map(
+    PRESET_IDS.map((id) => {
+      const set = getPreset(id);
+      const rules = new Map(set.rules.map((r) => [r.id, { rule: r, counts: counting(r) }]));
+      return [id, { name: set.name ?? id, globals: set.globals, rules }];
+    }),
+  );
+  return presetRules;
+}
+
+/** A preset's name, as its rule set calls it. */
+export function presetName(id: PresetId): string {
+  return presetsByRule().get(id)?.name ?? id;
+}
+
+/** Whether two sets of globals give a global the same value, a default standing for what is unset. */
+function sameGlobal(a: Partial<Globals>, b: Partial<Globals>, name: CountingGlobal): boolean {
+  return (
+    canonical(a[name] ?? DEFAULT_GLOBALS[name]) === canonical(b[name] ?? DEFAULT_GLOBALS[name])
+  );
+}
+
+/**
+ * The rule a ratio of a set divides by the id it names, as the engine finds it: the last one that
+ * is on and is not a ratio itself. None when the set has none, and the ratio has no number.
+ */
+function ratioPart(set: RuleSet, id: string | undefined): Rule | undefined {
+  return set.rules.findLast((r) => r.id === id && r.enabled !== false && r.aggregate !== 'ratio');
+}
+
+/**
+ * Whether a rule of a set counts what a preset's rule of that id counts: the same definition,
+ * under the same values of the globals it reads, and, for a ratio, rules it divides that count
+ * as the preset's do.
+ */
+function countsAs(rule: Rule, set: RuleSet, preset: PresetRules): boolean {
+  if (preset.rules.get(rule.id)?.counts !== counting(rule)) return false;
+  const reads = COUNTING_GLOBALS.filter((name) => GLOBAL_READS[name](rule));
+  if (!reads.every((name) => sameGlobal(set.globals, preset.globals, name))) return false;
+  if (rule.aggregate !== 'ratio') return true;
+  return [rule.aggregate_opts?.numerator, rule.aggregate_opts?.denominator].every((id) => {
+    const part = ratioPart(set, id);
+    return part !== undefined && countsAs(part, set, preset);
+  });
+}
+
+/** The sources of a rule as a rule set has it. */
+export interface RuleCitation {
+  refs: RuleReference[];
+  /**
+   * The preset whose rule this one counts as, whose sources these are: none when it counts as no
+   * preset's, or is not a built-in rule.
+   */
+  follows?: PresetId;
+  /**
+   * Changed in the set from the rule whose sources these are: from the preset's in its bands, or,
+   * when it counts as no preset's, from the catalog's.
+   */
+  edited: boolean;
+}
+
+/**
+ * The sources of a rule as a set has it, chosen by what the rule counts rather than by the set's
+ * name. A rule that counts as a preset's (`countsAs`) shows that preset's sources: a copy of the
+ * cyanophage-like set shows its sources, and a rule of a preset edited into another preset's shows
+ * the other's. Where both presets count a rule alike, the one whose counting globals the set
+ * shares most is named. A built-in rule that counts as no preset's, by its definition or by a global it
+ * reads, shows the catalog's, marked as edited; a rule composed in the Rules view has none.
+ */
+export function citeRule(rule: Rule, ruleSet: RuleSet): RuleCitation {
+  if (!RULE_REFERENCES[rule.id]) return { refs: [], edited: false };
+  const presets = [...presetsByRule()];
+  const alike = (p: PresetRules) =>
+    COUNTING_GLOBALS.filter((name) => sameGlobal(ruleSet.globals, p.globals, name)).length;
+  // The preset whose globals the set shares most first, then the others in their order.
+  presets.sort(([, a], [, b]) => alike(b) - alike(a));
+  for (const [id, preset] of presets) {
+    if (!countsAs(rule, ruleSet, preset)) continue;
+    const own = preset.rules.get(rule.id)?.rule;
+    return {
+      refs: ruleReferences(rule.id, id),
+      follows: id,
+      edited: canonical(rule.bands ?? null) !== canonical(own?.bands ?? null),
+    };
+  }
+  return { refs: ruleReferences(rule.id), edited: true };
 }

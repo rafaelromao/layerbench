@@ -8,6 +8,9 @@ import { importTextLayout } from '../layout/text.js';
 import { catalogRules } from './catalog.js';
 import { getPreset, PRESET_IDS } from './presets.js';
 import {
+  type CountingGlobal,
+  citeRule,
+  GLOBAL_READS,
   GLOSSARY_URL,
   PRESET_REFERENCES,
   presetReferences,
@@ -15,21 +18,28 @@ import {
   type RuleReference,
   ruleReferences,
 } from './references.js';
+import { ruleSetFromJson } from './serialize.js';
 import { DEFAULT_GLOBALS, type Rule, type RuleSet } from './types.js';
 
 const catalogIds = catalogRules().map((r) => r.id);
 
 /**
- * The globals a preset may set and the rules whose count each reads. A preset that sets another
- * one away from its default must say here which rules it changes, or the test fails; and a test
- * below runs the engine with and without the preset's globals, so a rule they move that this
- * table misses fails too.
+ * The globals that change what a rule counts, and the rules whose count each reads
+ * (`GLOBAL_READS`). A preset that sets any other one away from its default fails the test; a test
+ * below flips each one and runs the engine, so a rule one moves that the table misses fails too.
  */
-const READS: Record<string, (r: Rule) => boolean> = {
-  space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',
-  untyped_in_keystrokes: (r) =>
-    r.aggregate === 'percent_of_keystrokes' || r.aggregate === 'weighted_sum',
-};
+const READS: Partial<Record<string, (r: Rule) => boolean>> = GLOBAL_READS;
+
+/** A value for each counting global other than its default, which the engine tests flip it to. */
+const FLIPPED = {
+  cross_word: 'bridge',
+  skip_weights: [1, 1, 1],
+  distance_model: 'manhattan',
+  lsb_adjacent_u: 1,
+  lsb_semi_adjacent_u: 2,
+  space_per_word_in_keystrokes: true,
+  untyped_in_keystrokes: true,
+} satisfies Record<CountingGlobal, unknown>;
 
 /** The rules a preset changes: by their definition, or by a global their count reads. */
 function changedBy(set: RuleSet): string[] {
@@ -37,8 +47,11 @@ function changedBy(set: RuleSet): string[] {
   const reads: ((r: Rule) => boolean)[] = [];
   for (const [name, value] of Object.entries(set.globals)) {
     const read = READS[name];
+    const isDefault =
+      JSON.stringify(value) ===
+      JSON.stringify(DEFAULT_GLOBALS[name as keyof typeof DEFAULT_GLOBALS]);
     if (read) {
-      if (value) reads.push(read);
+      if (!isDefault) reads.push(read);
     } else {
       expect(value, `${set.id}: ${name}`).toEqual(
         DEFAULT_GLOBALS[name as keyof typeof DEFAULT_GLOBALS],
@@ -240,6 +253,43 @@ describe('rule references', () => {
     }
   });
 
+  it('names every rule a counting global moves', () => {
+    const stream = normalizeText(`${FIXTURE_MIXED} çà ñö`, { caseMode: 'fold' });
+    const { layout } = importTextLayout("qwertyuiop-asdfghjkl;'zxcvbnm,./\\^", 'ansi', 'qwerty');
+    const values = (ruleSet: RuleSet) =>
+      new Map(
+        analyze(layout, stream, { ruleSet, maxSymbols: 20_000 }).results.map((r) => [
+          r.id,
+          JSON.stringify(r.value),
+        ]),
+      );
+    const exercised = new Set<string>();
+    for (const id of PRESET_IDS) {
+      const set = getPreset(id);
+      const before = values(set);
+      for (const [name, value] of Object.entries(FLIPPED)) {
+        const read = READS[name] as (r: Rule) => boolean;
+        // Away from what the preset has: to the flipped value, or back to the default.
+        const fallback = DEFAULT_GLOBALS[name as CountingGlobal];
+        const has = set.globals[name as CountingGlobal] ?? fallback;
+        const to = JSON.stringify(has) === JSON.stringify(value) ? fallback : value;
+        const flipped = values({ ...set, globals: { ...set.globals, [name]: to } });
+        for (const [ruleId, v] of flipped) {
+          if (before.get(ruleId) === v) continue;
+          exercised.add(name);
+          const r = set.rules.find((x) => x.id === ruleId) as Rule;
+          // A ratio moves with the rules it divides.
+          const parts = set.rules.filter((x) =>
+            [r.aggregate_opts?.numerator, r.aggregate_opts?.denominator].includes(x.id),
+          );
+          expect(read(r) || parts.some(read), `${id}: ${name} moves ${ruleId}`).toBe(true);
+        }
+      }
+    }
+    // The text does exercise each one.
+    expect([...exercised].sort()).toEqual(Object.keys(FLIPPED).sort());
+  });
+
   it('shows each rule a preset changes with the sources of the definition in force', () => {
     for (const id of PRESET_IDS) {
       const changed = new Set([...changedBy(getPreset(id)), ...Object.keys(UNDER[id] ?? {})]);
@@ -371,5 +421,212 @@ describe('rule references', () => {
       .filter((r) => r.url.startsWith(GLOSSARY_URL))
       .map((r) => r.url.slice(GLOSSARY_URL.length + 1));
     for (const anchor of new Set(anchors)) expect(headings, anchor).toContain(anchor);
+  });
+});
+
+describe('the sources of a rule as a set has it', () => {
+  /** A preset as a custom set keeps it: under its own id, written to JSON and read back. */
+  const copyOf = (id: string, change?: (set: RuleSet) => void): RuleSet => {
+    const set: RuleSet = JSON.parse(JSON.stringify({ ...getPreset(id), id: 'mine', name: 'Mine' }));
+    change?.(set);
+    return set;
+  };
+  const rule = (set: RuleSet, id: string): Rule => {
+    const found = set.rules.find((r) => r.id === id);
+    if (!found) throw new Error(id);
+    return found;
+  };
+
+  it('cites a copy of a preset as the preset, rule by rule', () => {
+    for (const id of PRESET_IDS) {
+      const set = copyOf(id);
+      for (const r of set.rules) {
+        // Where both presets count a rule alike, the one the copy was made from is named.
+        expect(citeRule(r, set), `${id}: ${r.id}`).toEqual({
+          refs: ruleReferences(r.id, id),
+          follows: id,
+          edited: false,
+        });
+      }
+    }
+    // The rules the cyanophage-like set changes are its, and lead with what it follows.
+    const set = copyOf('cyanophage');
+    for (const ruleId of Object.keys(PRESET_REFERENCES.cyanophage.rules)) {
+      expect(citeRule(rule(set, ruleId), set).follows, ruleId).toBe('cyanophage');
+    }
+  });
+
+  it('cites a rule renamed, turned off or scored differently as before', () => {
+    const set = copyOf('cyanophage', (s) => {
+      const lsb = rule(s, 'lsb');
+      lsb.label = 'My stretches';
+      lsb.description = 'Mine.';
+      lsb.enabled = false;
+      lsb.score = { weight: 3 };
+      lsb.family = 'other';
+      lsb.unit = 'count';
+    });
+    expect(citeRule(rule(set, 'lsb'), set)).toEqual({
+      refs: ruleReferences('lsb', 'cyanophage'),
+      follows: 'cyanophage',
+      edited: false,
+    });
+  });
+
+  it('cites the catalog, marked as edited, for a rule that counts as no preset’s', () => {
+    const set = copyOf('cyanophage', (s) => {
+      rule(s, 'lsb').where = { all: [{ same_hand: true }, { any_inner: true }] };
+    });
+    const cited = citeRule(rule(set, 'lsb'), set);
+    expect(cited).toEqual({ refs: ruleReferences('lsb'), edited: true });
+    expect(cited.refs.some((r) => r.url.includes('cyanophage'))).toBe(false);
+  });
+
+  it('keeps the preset’s sources for a rule rated on other bands, marked as edited', () => {
+    const set = copyOf('cyanophage', (s) => {
+      rule(s, 'sfb').bands = rule(getPreset('layouts_doc'), 'sfb').bands;
+    });
+    expect(citeRule(rule(set, 'sfb'), set)).toEqual({
+      refs: ruleReferences('sfb', 'cyanophage'),
+      follows: 'cyanophage',
+      edited: true,
+    });
+  });
+
+  it('follows the globals a rule reads', () => {
+    // Without the characters the layout cannot type, Effort counts as the catalog's, and a pair
+    // over keystrokes as no preset's.
+    const set = copyOf('cyanophage', (s) => {
+      s.globals.untyped_in_keystrokes = false;
+    });
+    expect(citeRule(rule(set, 'effort'), set)).toEqual({
+      refs: ruleReferences('effort', 'layouts_doc'),
+      follows: 'layouts_doc',
+      edited: false,
+    });
+    expect(citeRule(rule(set, 'sfb'), set).edited).toBe(true);
+    expect(citeRule(rule(set, 'lsb'), set).edited).toBe(true);
+    // A rule that reads neither, a trigram's share of trigrams, is cited as before.
+    expect(citeRule(rule(set, 'redirect'), set).follows).toBe('cyanophage');
+  });
+
+  it('cites the catalog, marked as edited, for a rule a global set in Rules changes', () => {
+    const cited = (change: (s: RuleSet) => void, ruleId: string, from = 'layouts_doc') => {
+      const set = copyOf(from, change);
+      return citeRule(rule(set, ruleId), set);
+    };
+    const edited = { refs: expect.any(Array), edited: true };
+    expect(cited((s) => (s.globals.skip_weights = [1, 1, 1]), 'sfs_weighted')).toEqual(edited);
+    expect(cited((s) => (s.globals.skip_weights = [1, 1, 1]), 'sfs').edited).toBe(false);
+    expect(cited((s) => (s.globals.distance_model = 'manhattan'), 'sfb_distance')).toEqual(edited);
+    expect(cited((s) => (s.globals.distance_model = 'manhattan'), 'sfb').edited).toBe(false);
+    expect(cited((s) => (s.globals.lsb_adjacent_u = 1), 'lsb')).toEqual(edited);
+    // The cyanophage-like LSB counts column pairs and reads no width; its skipgram reads them.
+    expect(cited((s) => (s.globals.lsb_adjacent_u = 1), 'lsb', 'cyanophage').edited).toBe(false);
+    expect(cited((s) => (s.globals.lsb_adjacent_u = 1), 'lss', 'cyanophage')).toEqual(edited);
+    expect(cited((s) => (s.globals.cross_word = 'bridge'), 'redirect', 'cyanophage')).toEqual(
+      edited,
+    );
+    expect(cited((s) => (s.globals.cross_word = 'bridge'), 'finger_usage').edited).toBe(false);
+    // The catalog's own sources, not the preset's.
+    expect(cited((s) => (s.globals.lsb_adjacent_u = 1), 'lss', 'cyanophage').refs).toEqual(
+      ruleReferences('lss'),
+    );
+  });
+
+  it('follows a ratio through the rules it divides, as the engine finds them', () => {
+    const ratio = (change: (s: RuleSet) => void) => {
+      const set = copyOf('layouts_doc', change);
+      return citeRule(rule(set, 'in_out_ratio'), set);
+    };
+    expect(ratio(() => {}).edited).toBe(false);
+    expect(
+      ratio((s) => {
+        rule(s, 'roll_in').where = { all: [{ same_hand: true }] };
+      }).edited,
+    ).toBe(true);
+    // A part turned off leaves the ratio without a number, and so without the preset's.
+    expect(
+      ratio((s) => {
+        rule(s, 'roll_in').enabled = false;
+      }).edited,
+    ).toBe(true);
+    // Where ids repeat, the ratio divides the last part that is on, as the engine does.
+    const changed: Rule = { ...rule(getPreset('layouts_doc'), 'roll_in'), where: null };
+    expect(ratio((s) => void s.rules.push(changed)).edited).toBe(true);
+    expect(
+      ratio((s) => {
+        s.rules.push({ ...changed, enabled: false });
+      }).edited,
+    ).toBe(false);
+    // A ratio is never a part: one named after a part leaves the ratio dividing the part.
+    expect(
+      ratio((s) => {
+        s.rules.push({ ...rule(s, 'in_out_ratio'), id: 'roll_in' });
+      }).edited,
+    ).toBe(false);
+  });
+
+  it('reads a copy the same whatever order its keys come in', () => {
+    // Rules read through the schema come back with their keys in the schema's order.
+    const reversed = (value: unknown): unknown =>
+      Array.isArray(value)
+        ? value.map(reversed)
+        : value && typeof value === 'object'
+          ? Object.fromEntries(
+              Object.entries(value)
+                .reverse()
+                .map(([k, v]) => [k, reversed(v)]),
+            )
+          : value;
+    for (const id of PRESET_IDS) {
+      const json = JSON.stringify(reversed({ ...getPreset(id), id: 'mine' }));
+      const read = ruleSetFromJson(json);
+      if (!read.ok) throw new Error(read.error);
+      for (const r of read.ruleSet.rules) {
+        expect(citeRule(r, read.ruleSet), `${id}: ${r.id}`).toEqual({
+          refs: ruleReferences(r.id, id),
+          follows: id,
+          edited: false,
+        });
+      }
+    }
+  });
+
+  it('names the preset whose globals the set shares most where both count a rule alike', () => {
+    // A cyanophage-like set with one global of its own still shares more with its preset.
+    const set = copyOf('cyanophage', (s) => {
+      s.globals.skip_weights = [1, 1, 1];
+      rule(s, 'alternation').bands = null;
+    });
+    expect(citeRule(rule(set, 'alternation'), set)).toEqual({
+      refs: ruleReferences('alternation', 'cyanophage'),
+      follows: 'cyanophage',
+      edited: true,
+    });
+  });
+
+  it('cites a rule edited into another preset’s as that preset’s', () => {
+    const set = copyOf('layouts_doc', (s) => {
+      const theirs = rule(getPreset('cyanophage'), 'redirect');
+      s.rules = s.rules.map((r) => (r.id === 'redirect' ? theirs : r));
+    });
+    expect(citeRule(rule(set, 'redirect'), set).refs).toEqual(
+      ruleReferences('redirect', 'cyanophage'),
+    );
+    // A pair over keystrokes is the cyanophage-like set's only with its globals.
+    const pairs = copyOf('layouts_doc', (s) => {
+      const theirs = rule(getPreset('cyanophage'), 'fsb');
+      s.rules = s.rules.map((r) => (r.id === 'fsb' ? theirs : r));
+    });
+    expect(citeRule(rule(pairs, 'fsb'), pairs).edited).toBe(true);
+  });
+
+  it('cites nothing for a rule composed in the Rules view', () => {
+    const set = copyOf('layouts_doc');
+    expect(citeRule({ id: 'my_rule', source: 'ngram', ngram: { n: 2 } }, set)).toEqual({
+      refs: [],
+      edited: false,
+    });
   });
 });
