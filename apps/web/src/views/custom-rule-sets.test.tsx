@@ -2,7 +2,7 @@ import { getPreset, type StorageAdapter } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { AnalyzeRequest, Progress, ReportDTO } from '../engine/protocol.js';
+import type { AnalyzeRequest, Progress, RelabelRequest, ReportDTO } from '../engine/protocol.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
@@ -57,9 +57,13 @@ class HoldingClient extends RecordingClient {
   override async peek(request: AnalyzeRequest): Promise<ReportDTO | null> {
     return this.hold ? null : super.peek(request);
   }
+
+  override async relabel(request: RelabelRequest): Promise<ReportDTO | null> {
+    return this.hold ? null : super.relabel(request);
+  }
 }
 
-/** Whether a Sources list on show leads with the cyanophage-like definition of LSB. */
+/** Whether a Sources list on the page leads with the cyanophage-like definition of LSB. */
 const cyanophageLsb = () =>
   screen
     .getAllByRole('list', { name: 'Sources', hidden: true })
@@ -176,7 +180,7 @@ describe('A custom rule set named by a link', () => {
     // Strict's numbers are still on show, and with them Strict's sources, not the Layouts Doc's.
     expect(screen.getByText('Lat stretch bigrams (column pairs)')).toBeInTheDocument();
     expect(cyanophageLsb()).toBe(true);
-  }, 30_000);
+  });
 
   it('is offered by name in every picker, beside the presets', async () => {
     renderRoute('/analyze?layout=qwerty', {
