@@ -217,7 +217,8 @@ pnpm dev          # http://localhost:4011
 ### Checks
 
 CI runs `pnpm check`, `pnpm typecheck` and `pnpm build` in one job, and each package's tests in a
-job of its own beside it: the tests on a pull request, `test:coverage` on a push to main.
+job of its own beside it: the tests on a pull request, `test:coverage` on a push to main. The
+release pull request alone also runs the end-to-end checks, `e2e` (see below).
 Locally, `pnpm test` runs the workspace test scripts in parallel: the core engine and web app suites
 run side by side (the corpora package has no tests). Each Vitest pool is capped at three workers, so
 the full command uses up to six test workers and leaves headroom on an 8-core laptop. Three full runs
@@ -253,8 +254,9 @@ other groups of languages against them (`docs/research/code-corpora.md`).
 `apps/web/e2e` checks, in a real browser at two phone sizes and a desktop one, the layout of
 Analyze, where layouts are edited (nothing wider than the screen, targets a finger can hit, the
 board in sight while a key is edited), the Library and the storage dialog on a phone, and that a
-link to an unsaved layout opens from after the `#`. No workflow runs it. Playwright's Chromium is
-downloaded once:
+link to an unsaved layout opens from after the `#`. CI runs it, with `e2e:chunks` below, on the
+release pull request alone (CONTRIBUTING.md → Releases); run it yourself on a change it checks.
+Playwright's Chromium is downloaded once:
 
 ```bash
 pnpm --filter @layerbench/web exec playwright install chromium

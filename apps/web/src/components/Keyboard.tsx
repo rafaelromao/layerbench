@@ -37,7 +37,10 @@ const ARROWS: Record<string, Direction> = {
 };
 
 export interface KeyboardHandle {
-  /** Put keyboard focus back on a key, after an editor or a dialog has had it. */
+  /**
+   * Put keyboard focus back on a key, after an editor or a dialog has had it, the key brought into
+   * view as focus brings it: a key that has focus already too.
+   */
   focusKey: (keyId: string) => void;
 }
 
@@ -586,7 +589,25 @@ export function Keyboard({
   useImperativeHandle(
     ref,
     () => ({
-      focusKey: (keyId: string) => nodes.current[keyId]?.focus(),
+      focusKey: (keyId: string) => {
+        const node = nodes.current[keyId];
+        if (!node) return;
+        if (document.activeElement !== node) {
+          node.focus();
+          return;
+        }
+        // Focus scrolls only when it moves, and a key can keep it through an edit made elsewhere
+        // (by a test driver, or assistive technology, that sets a list's value without focusing
+        // it). Such a key is brought into view as focus would bring it: each way, left alone where
+        // it is in sight, centred where it is gone, and in by as little as it takes where partly.
+        const box = node.getBoundingClientRect();
+        const along = (start: number, end: number, size: number): ScrollLogicalPosition | null =>
+          start >= 0 && end <= size ? null : end <= 0 || start >= size ? 'center' : 'nearest';
+        const block = along(box.top, box.bottom, window.innerHeight);
+        const inline = along(box.left, box.right, window.innerWidth);
+        if (block === null && inline === null) return;
+        node.scrollIntoView({ block: block ?? 'nearest', inline: inline ?? 'nearest' });
+      },
     }),
     [],
   );
