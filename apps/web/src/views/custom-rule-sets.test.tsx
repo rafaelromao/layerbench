@@ -2,9 +2,10 @@ import { getPreset, type StorageAdapter } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { AnalyzeRequest, Progress, ReportDTO } from '../engine/protocol.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
-import { openSettings, rankingSays, renderRoute } from '../test/render.js';
+import { openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 
 /** Storage holding one custom rule set, Strict, under the id `strict`. */
 async function withStrict(): Promise<MemoryStorage> {
@@ -28,6 +29,42 @@ function holdRuleSets(storage: StorageAdapter): { release: () => void } {
 }
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The engine, answering until told to `hold`: from then on every analysis waits until the view
+ * gives it up, and nothing kept stands in for one.
+ */
+class HoldingClient extends RecordingClient {
+  hold = false;
+
+  constructor() {
+    super(testClient(), true);
+  }
+
+  override analyze(
+    request: AnalyzeRequest,
+    opts: { signal?: AbortSignal; onProgress?: (p: Progress) => void } = {},
+  ): Promise<ReportDTO> {
+    if (!this.hold) return super.analyze(request, opts);
+    this.analyses.push(request);
+    return new Promise((_, reject) => {
+      opts.signal?.addEventListener('abort', () =>
+        reject(new DOMException('aborted', 'AbortError')),
+      );
+    });
+  }
+
+  override async peek(request: AnalyzeRequest): Promise<ReportDTO | null> {
+    return this.hold ? null : super.peek(request);
+  }
+}
+
+/** Whether a Sources list on show leads with the cyanophage-like definition of LSB. */
+const cyanophageLsb = () =>
+  screen
+    .getAllByRole('list', { name: 'Sources', hidden: true })
+    .map((l) => l.firstElementChild?.textContent ?? '')
+    .some((t) => t.includes('"Lat Stretch Bigrams" — the cyanophage-like definition'));
 
 describe('A custom rule set named by a link', () => {
   it('is waited for in Analyze: nothing is analyzed on other rules while it is read', async () => {
@@ -115,12 +152,31 @@ describe('A custom rule set named by a link', () => {
     });
     await screen.findByText('Lat stretch bigrams (column pairs)', undefined, { timeout: 25_000 });
     // Its LSB card leads with the cyanophage-like definition, as the preset's does.
-    const lists = screen.getAllByRole('list', { name: 'Sources', hidden: true });
-    const leads = lists.map((l) => l.firstElementChild?.textContent ?? '');
-    expect(
-      leads.some((t) => t.includes('"Lat Stretch Bigrams" — the cyanophage-like definition')),
-    ).toBe(true);
+    expect(cyanophageLsb()).toBe(true);
   });
+
+  it('is still cited in Analyze while the numbers on show are its, another set’s on the way', async () => {
+    const user = userEvent.setup();
+    const client = new HoldingClient();
+    renderRoute('/analyze?layout=qwerty&sample=10000&rules=custom:strict', {
+      client,
+      storage: await withStrict(),
+    });
+    await screen.findByText('Lat stretch bigrams (column pairs)', undefined, { timeout: 25_000 });
+    expect(cyanophageLsb()).toBe(true);
+
+    // The Layouts Doc set is asked for, and its numbers held back.
+    client.hold = true;
+    const picker = within(await openSettings()).getByRole('combobox', { name: 'Rule set' });
+    await user.selectOptions(picker, 'layouts_doc');
+    await waitFor(() =>
+      expect(client.analyses.some((r) => r.settings.rules.id === 'layouts_doc')).toBe(true),
+    );
+
+    // Strict's numbers are still on show, and with them Strict's sources, not the Layouts Doc's.
+    expect(screen.getByText('Lat stretch bigrams (column pairs)')).toBeInTheDocument();
+    expect(cyanophageLsb()).toBe(true);
+  }, 30_000);
 
   it('is offered by name in every picker, beside the presets', async () => {
     renderRoute('/analyze?layout=qwerty', {
