@@ -1,7 +1,7 @@
 {
   "name": "layerbench",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Keyboard layout analyzer with faithful ZMK layer semantics (multi-alpha-layer aware)",
   "license": "MIT",
   "type": "module",
