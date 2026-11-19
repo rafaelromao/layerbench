@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { layerNames, layerShareIn, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute, testClient } from '../test/render.js';
@@ -251,6 +251,29 @@ describe('Analyze', () => {
     expect(shown().map((k) => k.label)).toEqual(played);
     // The board shows the press, not a path of arrows.
     expect(document.querySelectorAll('#kb-analyze .lb-arc path')).toHaveLength(0);
+  });
+
+  it('brings the whole board into view when a word is played or a press is stepped to, not as it is typed', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=20000');
+    await screen.findByText('Same finger bigrams');
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+    const toBoard = () =>
+      scrolled.mock.contexts.filter((el) => (el as Element).matches('.lb-edit-board')).length;
+
+    // The word starts to play on its own as it is typed, and typing is no reason to scroll.
+    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+    const presses = await screen.findByRole('list', { name: 'Presses' });
+    expect(toBoard()).toBe(0);
+
+    // A press looked at on its own, and the play button, are asks to see the board; Pause is not.
+    await user.click(within(presses).getByRole('button', { name: /LBM/ }));
+    expect(toBoard()).toBe(1);
+    await user.click(screen.getByRole('button', { name: '▶ Play' }));
+    expect(toBoard()).toBe(2);
+    await user.click(screen.getByRole('button', { name: '⏸ Pause' }));
+    expect(toBoard()).toBe(2);
   });
 
   it('shows the combos that type, and lights one as it is played', async () => {

@@ -303,6 +303,29 @@ export function Workbench({
       ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   }, [state.selected]);
 
+  // Where a move, a combo's keys or a character is put down, and where a word or a combo is shown,
+  // is the board, which the page can be scrolled past: a phone's screen is filled by the editor
+  // under it, a desk's by whatever was being read. A control that hands its next step to the board
+  // asks for it, the whole card (the layers, the tray and the hint that says what is armed with
+  // the keys), brought into view as little as it takes, clear of the sticky header (the card's
+  // scroll margin). A count, not a flag, so asking again, after scrolling away, scrolls again; the
+  // scroll waits for the render, so a tab that was switched to in the same tap has drawn the board.
+  // After the editor's own scroll above, so that where both ask, the board wins.
+  const [boardAsked, setBoardAsked] = useState(0);
+  const revealBoard = useCallback(() => setBoardAsked((n) => n + 1), []);
+  const boardCard = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const card = boardCard.current;
+    if (boardAsked === 0 || !card) return;
+    const margin = Number.parseFloat(getComputedStyle(card).scrollMarginTop) || 0;
+    // A card taller than the screen cannot be shown whole: its top, with the keys, comes first.
+    const tooTall = card.getBoundingClientRect().height + margin > window.innerHeight;
+    card.scrollIntoView({
+      block: tooTall ? 'start' : 'nearest',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    });
+  }, [boardAsked]);
+
   // The layer edited is the one the link names, so a link opens on it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
   useEffect(() => {
@@ -939,6 +962,7 @@ export function Workbench({
   const showOnBoard = () => {
     setPlay(null);
     clearOutline();
+    revealBoard();
   };
 
   const onBoard = state.panel === 'board';
@@ -954,7 +978,9 @@ export function Workbench({
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
       {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
-      {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
+      {state.panel === 'combos' && (
+        <CombosPanel state={state} send={send} onShow={showOnBoard} onPick={revealBoard} />
+      )}
       {state.panel === 'behaviors' && (
         <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
       )}
@@ -1170,6 +1196,7 @@ export function Workbench({
             <div className="lb-edit-main">
               {showBoard && (
                 <section
+                  ref={boardCard}
                   className="lb-edit-board card bg-base-100 border border-base-300 min-w-0"
                   aria-label="Board"
                 >
@@ -1278,6 +1305,7 @@ export function Workbench({
                           onArm={(char) => {
                             stopPlaying();
                             send({ type: 'armChar', char });
+                            revealBoard();
                           }}
                           onDisarm={() => send({ type: 'armChar', char: null })}
                           onDrop={({ char, to }) => {
@@ -1391,7 +1419,9 @@ export function Workbench({
                                   <button
                                     type="button"
                                     className="btn btn-xs"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      // Playing is watched on the board: pausing is not.
+                                      if (!play?.playing) revealBoard();
                                       setPlay((p) =>
                                         p?.playing
                                           ? { ...p, playing: false }
@@ -1399,8 +1429,8 @@ export function Workbench({
                                               frame: p && p.frame < frames.length ? p.frame : 0,
                                               playing: true,
                                             },
-                                      )
-                                    }
+                                      );
+                                    }}
                                   >
                                     {play?.playing ? '⏸ Pause' : '▶ Play'}
                                   </button>
@@ -1431,7 +1461,10 @@ export function Workbench({
                                         title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
                                         aria-current={now ? 'step' : undefined}
                                         disabled={at < 0}
-                                        onClick={() => setPlay({ frame: at, playing: false })}
+                                        onClick={() => {
+                                          revealBoard();
+                                          setPlay({ frame: at, playing: false });
+                                        }}
                                       >
                                         <span className="opacity-60">{stepKey(s.key)}</span>
                                         <span>{charLabel(s.symbols) || s.label}</span>
@@ -1504,9 +1537,15 @@ export function Workbench({
                         state={state}
                         send={send}
                         combo={state.combo}
+                        revealBoard={revealBoard}
                       />
                     ) : (
-                      <KeyInspector state={state} send={send} focusKey={focusKey} />
+                      <KeyInspector
+                        state={state}
+                        send={send}
+                        focusKey={focusKey}
+                        revealBoard={revealBoard}
+                      />
                     )}
                   </div>
                 </>
