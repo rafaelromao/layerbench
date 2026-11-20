@@ -23,6 +23,12 @@ What a key does on one layer, or a combo does when its keys are pressed together
 reaches a layer, holds a modifier, or is a bigger key made of parts.
 _Avoid_: action, mapping, keycode
 
+**Bundled layout**:
+A layout that comes with the app, as its author designed it: neither one the user keeps nor one the
+community submitted. The Library lists it beside those, and **Bundled layouts**, in Rank and filter,
+leaves it out of the list.
+_Avoid_: built-in layout, stock layout
+
 **Category**:
 Where the Library files a layout, so that the list can be kept to the ones you want: Standard, Thumb Alpha or
 Special. It follows from the layout's own keys, whoever made it, and nothing on its default layers

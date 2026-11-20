@@ -265,6 +265,9 @@ interface Listed {
   homeRow: string | undefined;
 }
 
+/** A bundled layout is one that came with the app: neither the user's own nor a community one. */
+const isBundled = (item: Listed) => !item.custom && !item.community;
+
 /** The languages the filter has a box for, in the order of their profiles. */
 const LANGUAGE_TAGS = Object.keys(LANGUAGE_PROFILES);
 
@@ -729,14 +732,20 @@ export function LibraryView() {
     ],
   );
 
-  // Custom and community layouts can be left out of the list, and then they count on no board
-  // either.
+  // Bundled, custom and community layouts can each be left out of the list, and then they count on
+  // no board either.
+  const hideBundled = useSession((s) => s.hideBundled);
   const hideCustom = useSession((s) => s.hideCustom);
   const hideCommunity = useSession((s) => s.hideCommunity);
   const pool = useMemo(
     () =>
-      listed.filter((item) => !(hideCustom && item.custom) && !(hideCommunity && item.community)),
-    [listed, hideCustom, hideCommunity],
+      listed.filter(
+        (item) =>
+          !(hideBundled && isBundled(item)) &&
+          !(hideCustom && item.custom) &&
+          !(hideCommunity && item.community),
+      ),
+    [listed, hideBundled, hideCustom, hideCommunity],
   );
 
   // The boards the listed layouts are on, in the order the presets are offered, each with how
@@ -792,6 +801,7 @@ export function LibraryView() {
   );
   /** Why fewer layouts are listed than there are, for the line under the sort. */
   const leftOut = [
+    hideBundled && listed.some(isBundled) ? 'without the bundled ones' : '',
     hideCustom && listed.some((item) => item.custom) ? 'without the custom ones' : '',
     hideCommunity && listed.some((item) => item.community) ? 'without the community ones' : '',
     pool.some((item) => !categoryShown(item)) ? 'in the categories chosen' : '',
@@ -1100,6 +1110,7 @@ export function LibraryView() {
             boards={boards}
             categories={categories}
             languages={languages}
+            bundledCount={bundled.length}
             customCount={custom.entries.length}
             communityCount={community.length}
           />
@@ -1173,9 +1184,9 @@ export function LibraryView() {
           )}
         </div>
         {/* Rank and filter can leave nothing to list: the page says why rather than stand empty. */}
-        {sorted.length === 0 && pool.length > 0 && (
+        {sorted.length === 0 && listed.length > 0 && (
           <p className="text-sm opacity-70">
-            {noLanguage
+            {noLanguage && pool.length > 0
               ? 'No language is ticked in Rank and filter, so no layout is listed. Tick one to list the layouts for it.'
               : 'No layout is left by the choices in Rank and filter.'}
           </p>

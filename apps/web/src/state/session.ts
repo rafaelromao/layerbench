@@ -45,6 +45,9 @@ interface SessionState {
   /** Boards whose layouts the Library leaves out, by preset id (`custom` for any other board). */
   hiddenBoards: string[];
   showBoards: (boards: readonly string[], shown: boolean) => void;
+  /** Whether the Library leaves out the bundled layouts, the ones that come with the app. */
+  hideBundled: boolean;
+  setHideBundled: (hide: boolean) => void;
   /** Whether the Library leaves out the custom layouts. */
   hideCustom: boolean;
   setHideCustom: (hide: boolean) => void;
@@ -93,6 +96,8 @@ export const useSession = create<SessionState>()(
         const rest = get().hiddenBoards.filter((b) => !boards.includes(b));
         set({ hiddenBoards: shown ? rest : [...rest, ...boards] });
       },
+      hideBundled: false,
+      setHideBundled: (hideBundled) => set({ hideBundled }),
       hideCustom: false,
       setHideCustom: (hideCustom) => set({ hideCustom }),
       hideCommunity: false,
@@ -130,6 +135,7 @@ export const useSession = create<SessionState>()(
         hiddenFamilies: s.hiddenFamilies,
         librarySort: s.librarySort,
         hiddenBoards: s.hiddenBoards,
+        hideBundled: s.hideBundled,
         hideCustom: s.hideCustom,
         hideCommunity: s.hideCommunity,
         hiddenCategories: s.hiddenCategories,

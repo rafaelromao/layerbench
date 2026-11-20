@@ -83,6 +83,7 @@ beforeEach(() =>
   useSession.setState({
     librarySort: 'effort',
     hiddenBoards: [],
+    hideBundled: false,
     hideCustom: false,
     hideCommunity: false,
     hiddenCategories: [],
@@ -967,6 +968,74 @@ describe('Choosing which boards are listed', () => {
 
     await user.click(custom);
     expect(listed('Mine')).toBeInTheDocument();
+  });
+
+  it('leaves the bundled layouts out when asked, so only the custom ones are listed, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    const bundled = within(layouts).getByRole('checkbox', {
+      name: `Bundled layouts (${BUNDLED_LAYOUTS.length})`,
+    });
+    expect(bundled).toBeChecked();
+
+    await user.click(bundled);
+    expect(listed('Qwerty')).toBeNull();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(`1 of ${BUNDLED_LAYOUTS.length + 1} layouts, without the bundled ones.`),
+    ).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hideBundled: true,
+    });
+
+    await user.click(bundled);
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(listed('Mine')).toBeInTheDocument();
+  });
+
+  it('says so when the bundled and the custom layouts are both left out and nothing is left', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Bundled layouts/ }));
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Custom layouts/ }));
+
+    expect(document.querySelectorAll('article')).toHaveLength(0);
+    expect(
+      screen.getByText(
+        `0 of ${BUNDLED_LAYOUTS.length + 1} layouts, without the bundled ones, without the custom ones.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('No layout is left by the choices in Rank and filter.'),
+    ).toBeInTheDocument();
+  });
+
+  it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
+    localStorage.setItem(
+      'layerbench:session',
+      JSON.stringify({ state: { librarySort: 'effort', hideCustom: true }, version: 0 }),
+    );
+    // What was stored has no `hideBundled`: the store keeps its default, and the rest is read as it was.
+    await useSession.persist.rehydrate();
+    expect(useSession.getState().hideBundled).toBe(false);
+    expect(useSession.getState().hideCustom).toBe(true);
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).toBeInTheDocument();
+    expect(screen.queryByText(/without the bundled ones/)).toBeNull();
   });
 });
 
