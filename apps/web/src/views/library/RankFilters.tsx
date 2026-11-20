@@ -205,7 +205,8 @@ export function RankFilters({
       <SourceFilter bundled={bundledCount} custom={customCount} community={communityCount} />
       <CategoryFilter categories={categories} />
       <LanguageFilter languages={languages} />
-      <BoardFilter boards={boards} />
+      {/* With every source left out no board is listed, and a lone All box would do nothing. */}
+      {boards.length > 0 && <BoardFilter boards={boards} />}
     </>
   );
 }

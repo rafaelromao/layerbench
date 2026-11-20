@@ -1022,6 +1022,8 @@ describe('Choosing which boards are listed', () => {
     expect(
       screen.getByText('No layout is left by the choices in Rank and filter.'),
     ).toBeInTheDocument();
+    // No layout is on any board: a Boards group with only its All box would do nothing.
+    expect(screen.queryByRole('group', { name: 'Boards' })).toBeNull();
   });
 
   it('leaves the community layouts to their own switch, so only the custom ones are listed once both are off', async () => {
@@ -1034,9 +1036,9 @@ describe('Choosing which boards are listed', () => {
     expect(await screen.findByRole('heading', { name: 'Night owl', level: 3 })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
 
-    /** What the Boards boxes count, added up: the layouts still listed. */
-    const boardTotal = () =>
-      within(screen.getByRole('group', { name: 'Boards' }))
+    /** What the boxes of a group count, added up: the layouts still listed. */
+    const total = (group: string) =>
+      within(screen.getByRole('group', { name: group }))
         .getAllByRole('checkbox')
         .reduce((sum, box) => {
           const count = /\((\d+)\)\s*$/.exec(box.closest('label')?.textContent ?? '')?.[1];
@@ -1053,8 +1055,9 @@ describe('Choosing which boards are listed', () => {
     expect(
       screen.getByText(`2 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones.`),
     ).toBeInTheDocument();
-    // Those left out count on no board.
-    await waitFor(() => expect(boardTotal()).toBe(2));
+    // Those left out count on no board and in no category.
+    await waitFor(() => expect(total('Boards')).toBe(2));
+    await waitFor(() => expect(total('Categories')).toBe(2));
 
     await user.click(within(layouts).getByRole('checkbox', { name: /^Community layouts/ }));
     expect(listed('Night owl')).toBeNull();
@@ -1064,7 +1067,8 @@ describe('Choosing which boards are listed', () => {
         `1 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones, without the community ones.`,
       ),
     ).toBeInTheDocument();
-    await waitFor(() => expect(boardTotal()).toBe(1));
+    await waitFor(() => expect(total('Boards')).toBe(1));
+    await waitFor(() => expect(total('Categories')).toBe(1));
   });
 
   it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
@@ -1449,6 +1453,24 @@ describe('Languages', () => {
     // Unticking None ticks them all again.
     await user.click(languageBox(/^None$/));
     expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+    expect(screen.queryByText(/^No language is ticked/)).toBeNull();
+  });
+
+  it('says no layout is left, not that no language is ticked, when the layouts are out by their source', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Layouts' })).getByRole('checkbox', {
+        name: /^Bundled layouts/,
+      }),
+    );
+    expect(shownCards()).toBe(0);
+    // Ticking a language would list nothing: the bundled layouts are out and there are no others.
+    expect(
+      screen.getByText('No layout is left by the choices in Rank and filter.'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/^No language is ticked/)).toBeNull();
   });
 
