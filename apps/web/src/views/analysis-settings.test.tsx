@@ -116,12 +116,12 @@ describe('A mix, set and taken off where the settings are', () => {
 describe('A language chip, switching the whole page to the text of its language', () => {
   /** A mix of English and Spanish: no one language's text is on show. */
   const MIXED = 'corpus=en-general&corpus2=es-general&mix=70&sample=20000';
-  /** Where each view shows Magic Romak's chips: its card, its bar, its side. */
+  /** Where each view shows Magic Romak's chips: its card, its Summary, its side. */
   const card = async () =>
     (await screen.findByRole('heading', { name: 'Magic Romak', level: 3 })).closest(
       'article',
     ) as HTMLElement;
-  const bar = () => screen.findByRole('region', { name: 'Layout' });
+  const summary = () => screen.findByRole('region', { name: 'Summary' });
   const side = async () =>
     (await screen.findByRole('heading', { name: 'A: Magic Romak', level: 2 })).closest(
       'section',
@@ -129,7 +129,7 @@ describe('A language chip, switching the whole page to the text of its language'
 
   it.each([
     ['the Library', `/library?${MIXED}`, card],
-    ['Analyze', `/analyze?layout=magic-romak&${MIXED}`, bar],
+    ['Analyze', `/analyze?layout=magic-romak&${MIXED}`, summary],
     ['Compare', `/compare?layout=magic-romak&b=qwerty&${MIXED}`, side],
   ])(
     'in %s',
@@ -175,6 +175,33 @@ describe('A language chip, switching the whole page to the text of its language'
         'aria-pressed',
         'true',
       );
+    },
+    60_000,
+  );
+
+  it.each([
+    ['Analyze', '/analyze?layout=magic-romak&corpus=en-general&sample=1000', summary],
+    ['Compare', '/compare?layout=magic-romak&b=qwerty&corpus=en-general&sample=1000', side],
+  ])(
+    'in %s, sit in the Summary, above its metrics',
+    async (name, path, scope) => {
+      renderRoute(path, { storage: freshStorage() });
+      const where = within(await scope());
+      const chips = await where.findByRole('group', { name: 'Languages it is for' });
+      const metrics = await where.findByRole(
+        'list',
+        { name: 'Summary metrics' },
+        { timeout: 25_000 },
+      );
+      expect(
+        chips.compareDocumentPosition(metrics) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(within(chips).getByRole('button', { name: /English/ })).toBeInTheDocument();
+      if (name === 'Analyze') {
+        // The bar holds what the layout is called and how it is saved, no longer its languages.
+        const bar = await screen.findByRole('region', { name: 'Layout' });
+        expect(within(bar).queryByRole('button', { name: /Português/ })).toBeNull();
+      }
     },
     60_000,
   );
