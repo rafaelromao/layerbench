@@ -217,6 +217,34 @@ test.describe('on a phone', () => {
     await expect(partner).toBeInViewport();
   });
 
+  test('Undo and Redo leave the page where it is, though Undo brings a selection back', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const editing = page.getByRole('group', { name: /^Edit / });
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    await page
+      .getByRole('group', { name: 'Edit LHI' })
+      .getByRole('button', { name: 'Swap with…' })
+      .tap();
+    await page.getByRole('button', { name: /^Key LHM:/ }).tap();
+    await expect(editing).toHaveCount(0);
+
+    // Both buttons are above the board, so the page is at the top, where a thumb reaches them.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    for (const [name, selected] of [
+      ['Undo', 1],
+      ['Redo', 0],
+    ] as const) {
+      await page.getByRole('button', { name }).tap();
+      await expect(editing).toHaveCount(selected);
+      // Given the time a smooth scroll takes, the page is still where it was: on the shortest
+      // phone the editor opens below the fold, and it is not brought into view.
+      await page.waitForTimeout(700);
+      expect(await page.evaluate(() => window.scrollY), name).toBe(0);
+    }
+  });
+
   test("the editor's layers fit the screen, each card's fields clear of its buttons", async ({
     page,
   }) => {

@@ -295,13 +295,18 @@ export function Workbench({
   useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
 
   // On a phone the tabs and the board fill the screen, so the editor of a key just selected opens
-  // below it: bring it into view, as little as it takes.
+  // below it: bring it into view, as little as it takes. Undo and Redo bring the selection of a
+  // snapshot back with its layout, and leave the page where it is: their buttons are above the
+  // board, and a tap on one is no wish to be taken down to the editor.
+  const restoresSeen = useRef(state.restores);
   useEffect(() => {
-    if (state.selected === null || window.innerWidth >= 1024) return;
+    const restored = restoresSeen.current !== state.restores;
+    restoresSeen.current = state.restores;
+    if (state.selected === null || restored || window.innerWidth >= 1024) return;
     document
       .querySelector('.lb-edit-inspector')
       ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  }, [state.selected]);
+  }, [state.selected, state.restores]);
 
   // Where a move, a combo's keys or a character is put down, and where a word or a combo is shown,
   // is the board, which the page can be scrolled past: a phone's screen is filled by the editor

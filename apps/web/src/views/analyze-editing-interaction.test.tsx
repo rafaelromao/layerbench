@@ -556,6 +556,38 @@ describe('Edit', () => {
     expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
   }, 90_000);
 
+  it('leaves the page where it is when Undo or Redo bring a selection back', async () => {
+    // A phone: selecting a key brings its editor, under the board, into view. Undo and Redo are
+    // above the board, and a tap on one is no wish to be taken down to the editor.
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    await user.click(key('Key LHI: f'));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+
+    // Undo takes the swap back and the key swapped is selected again, the page left alone.
+    scrolled.mockClear();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(await inspector('LHM')).toBeInTheDocument();
+    expect(scrolled).not.toHaveBeenCalled();
+
+    // Redo puts it forward again: nothing selected, and the page left alone as well.
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
+    expect(scrolled).not.toHaveBeenCalled();
+
+    // A key picked after that is the user's own pick, and its editor is brought into view as ever.
+    await user.click(key('Key LHM: f'));
+    expect(await inspector('LHM')).toBeInTheDocument();
+    expect(scrollsTo(scrolled, '.lb-edit-inspector')).toBeGreaterThan(0);
+  }, 90_000);
+
   it('brings the key back into view on a phone once a move lands, though it had focus all along', async () => {
     setPointerKind('touch');
     setViewportWidth(390);

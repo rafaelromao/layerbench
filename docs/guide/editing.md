@@ -143,7 +143,8 @@ and **▶ Play** or a press picked in **A word, typed**.
 Once a move lands, by a drop, by tapping or from the list, nothing is left selected and the board
 has focus again, on the key where the move landed: select the next key from there, and on a phone
 the board comes back into view. One **Undo** takes the move back, and the keys selected before it are
-selected again. A swap or a copy cancelled before you tap the other key, with `Escape`, **Cancel**
+selected again, with the page left where it is: **Undo** and **Redo** never scroll it, on a phone,
+where selecting a key by hand brings its editor into view, either. A swap or a copy cancelled before you tap the other key, with `Escape`, **Cancel**
 in the note under the board, or by tapping the same key again on its own layer, leaves that key
 selected and the layout as it was. On another layer, the same key is the other key.
 
