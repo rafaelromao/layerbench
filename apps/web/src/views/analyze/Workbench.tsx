@@ -5,6 +5,7 @@ import {
   type CorpusManifest,
   coverLanguage,
   documentMissing,
+  type LanguageCoverage,
   type Layout,
   languagesToJudge,
   layoutLanguageCoverage,
@@ -44,6 +45,7 @@ import {
   typingCombos,
 } from '../../components/Keyboard.js';
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
+import { LanguageChips } from '../../components/LanguageChips.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
@@ -928,8 +930,8 @@ export function Workbench({
   // What the layout cannot type, as it is now: the text's characters the last report found, the
   // letters the language needs, and what edits from the tray left without a key.
   const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
-  // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
-  // is of the layout as written, as on its Library card.
+  // The languages the layout is for, as its list has them, each a chip in the Summary; what each
+  // lacks is of the layout as written, as on its Library card.
   const languageChips = useMemo(() => {
     // With every feature on, the layout typed is the layout as written: what it types is known.
     const written =
@@ -1011,7 +1013,6 @@ export function Workbench({
 
       <LayoutBar
         layout={state.layout}
-        languages={languageChips}
         dirty={state.dirty}
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
@@ -1568,6 +1569,8 @@ export function Workbench({
         progress={progress}
         params={params}
         corpusName={corpusName}
+        languages={languageChips}
+        onText={(corpus) => setParams({ corpus, corpus2: null })}
         languageGap={languageGap}
         onSelect={selectMetric}
         ruler={ruler}
@@ -1599,8 +1602,9 @@ export function Workbench({
 }
 
 /**
- * The numbers up front, what they are of, and how much of the text the layout cannot type: the
- * characters themselves wait in the missing-keys tray under the board.
+ * The numbers up front, what they are of, the languages the layout is for (a chip puts the page on
+ * a language's text, which the line above them names), and how much of the text the layout cannot
+ * type: the characters themselves wait in the missing-keys tray under the board.
  */
 function SummaryCard({
   shown,
@@ -1609,6 +1613,8 @@ function SummaryCard({
   progress,
   params,
   corpusName,
+  languages,
+  onText,
   languageGap,
   onSelect,
   ruler,
@@ -1620,6 +1626,10 @@ function SummaryCard({
   progress: { done: number; total: number } | null;
   params: Params;
   corpusName: string;
+  /** What the layout can write of each language it is for, as its list has them. */
+  languages: LanguageCoverage[];
+  /** Put the page on this corpus alone. */
+  onText: (corpus: string) => void;
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
   /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
@@ -1652,6 +1662,9 @@ function SummaryCard({
                 {params.sample.toLocaleString('en-US')} symbols of {corpusName}
               </p>
             </div>
+
+            {/* A chip puts the page on its language's text. */}
+            <LanguageChips coverage={languages} text={params} onText={onText} />
 
             {stale && progress && progress.total > 0 && (
               <progress

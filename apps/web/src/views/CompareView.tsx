@@ -333,18 +333,9 @@ export function CompareView() {
             return (
               <section key={side} className="card bg-base-100 border border-base-300 min-w-0">
                 <div className="card-body gap-3 p-4">
-                  <div>
-                    <h2 className="font-semibold text-sm">
-                      {side}: {name}
-                    </h2>
-                    {/* A chip puts both sides on its language's text: they are compared on one. */}
-                    <LanguageChips
-                      coverage={side === 'A' ? languagesA : languagesB}
-                      text={params}
-                      onText={(corpus) => setParams({ corpus, corpus2: null })}
-                      className="mt-0.5"
-                    />
-                  </div>
+                  <h2 className="font-semibold text-sm">
+                    {side}: {name}
+                  </h2>
                   {compiled && (
                     <div className="min-w-0">
                       <PreviewBoard
@@ -374,6 +365,12 @@ export function CompareView() {
                       />
                     </div>
                   )}
+                  {/* A chip puts both sides on its language's text: they are compared on one. */}
+                  <LanguageChips
+                    coverage={side === 'A' ? languagesA : languagesB}
+                    text={params}
+                    onText={(corpus) => setParams({ corpus, corpus2: null })}
+                  />
                   {report ? (
                     <SummaryStrip results={report.results} ruler={ruler} />
                   ) : settings.status === 'failed' ? null : (
