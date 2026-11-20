@@ -349,7 +349,10 @@ on that language's news text, the one that comes with the app, alone, any text m
 **Library** ranks every layout on it, **Analyze** analyzes on it and **Compare** compares both on
 it. The chip of the text on show is in bold and underlined. **Analyze** shows the languages as the
 layout's list has them; **Library** and **Compare** read a layout that names none as one for
-English.
+English. In **Library** the card whose chip you pressed stays where it is on the screen while the
+list is ranked again around it, as the scores for the new text come in, until you scroll or press
+something else. On a wide screen, where the cards are in columns, it may change column, and one
+ranked first or last is kept as near its place as the page can scroll.
 
 ### The same choices in every view
 

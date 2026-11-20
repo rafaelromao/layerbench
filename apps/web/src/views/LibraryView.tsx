@@ -78,6 +78,7 @@ import {
 } from '../url/params.js';
 import { ChangeDialog } from './library/ChangeDialog.js';
 import { HeatControls } from './library/HeatControls.js';
+import { useHoldPlace } from './library/hold-place.js';
 import { ImportDialog } from './library/ImportDialog.js';
 import { LayerPreview } from './library/LayerPreview.js';
 import {
@@ -298,6 +299,7 @@ function LayoutCard({
   merged,
   text,
   onText,
+  hold,
 }: {
   item: Listed;
   /** The layout as it is ranked, features left out, whose combos the board draws. */
@@ -318,9 +320,12 @@ function LayoutCard({
   /** The text the list is ranked on, which a language chip puts it on. */
   text: PageText;
   onText: (corpus: string) => void;
+  /** Keeps this card where it is on the screen while the list is ranked again around it. */
+  hold: (card: HTMLElement | null) => void;
 }) {
+  const card = useRef<HTMLElement>(null);
   return (
-    <article className="lb-library-card card bg-base-100 border border-base-300 min-w-0">
+    <article ref={card} className="lb-library-card card bg-base-100 border border-base-300 min-w-0">
       <div className="card-body gap-2 px-1 py-3 sm:p-4">
         <header className="flex flex-wrap items-start justify-between gap-x-2">
           <div className="min-w-0 flex-1">
@@ -348,7 +353,11 @@ function LayoutCard({
               <LanguageChips
                 coverage={layoutLanguages(item.compiled)}
                 text={text}
-                onText={onText}
+                // Held before the ranking changes, so the place it is kept at is the one it has now.
+                onText={(corpus) => {
+                  hold(card.current);
+                  onText(corpus);
+                }}
                 className="mt-0.5"
               />
             )}
@@ -554,6 +563,11 @@ export function LibraryView() {
   );
   /** A language chip ranks the whole list on its language's text, alone. */
   const rankOn = useCallback((corpus: string) => setParams({ corpus, corpus2: null }), [setParams]);
+  /**
+   * The card whose chip was pressed stays where it is on the screen while the list is sorted again
+   * around it, as its scores land, until the reader takes the page back.
+   */
+  const hold = useHoldPlace();
   /**
    * Analyze opens on what the cards were ranked on, the capped sample included, so a layout opened
    * from here shows the numbers its card showed.
@@ -1182,6 +1196,7 @@ export function LibraryView() {
               merged={item.custom && landing.has(item.id)}
               text={params}
               onText={rankOn}
+              hold={hold}
               actions={
                 <>
                   {maintainer && (item.custom || item.community) && (

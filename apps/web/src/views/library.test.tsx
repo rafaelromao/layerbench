@@ -643,6 +643,109 @@ describe('Ranking layouts', () => {
     expect(await rankingSays(/^Lower is better for both/)).not.toHaveTextContent(/come last/);
   }, 90_000);
 
+  describe('a language chip pressed on a card', () => {
+    /**
+     * An engine that ranks the bundled layouts by name on English and the other way round on any
+     * other text, so pressing a chip turns the list over and every card moves.
+     */
+    function turnedOver(): AnalysisClient {
+      const names = BUNDLED_LAYOUTS.map((l) => l.name).sort();
+      const real = testClient();
+      return new Proxy(real, {
+        get(target, prop) {
+          if (prop === 'peek') return async () => null;
+          if (prop === 'analyze') {
+            return async (request: AnalyzeRequest) => {
+              const rank = names.indexOf(String(request.layout.name));
+              return reportWith(
+                100 + (request.settings.corpus === ENGLISH_CORPUS ? rank : names.length - rank),
+              );
+            };
+          }
+          const member = Reflect.get(target, prop);
+          return typeof member === 'function' ? member.bind(target) : member;
+        },
+      });
+    }
+
+    const CARD_HEIGHT = 400;
+    const SCREEN_TOP = 300;
+
+    /**
+     * A page the cards are laid out on, one under the other: a card is on the screen at its place
+     * in the list less where the window is scrolled to, and `scrollTo` moves the window as a
+     * browser does. jsdom lays out nothing, so the position is what these give it.
+     */
+    function scrollablePage(at: number) {
+      const window_ = { scrollY: at };
+      own = Object.getOwnPropertyDescriptor(window, 'scrollY');
+      const card = (el: Element) => [...document.querySelectorAll('.lb-library-card')].indexOf(el);
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: Element,
+      ) {
+        const i = card(this);
+        return { top: i < 0 ? 0 : i * CARD_HEIGHT - window_.scrollY } as DOMRect;
+      });
+      Object.defineProperty(window, 'scrollY', { configurable: true, get: () => window_.scrollY });
+      vi.spyOn(window, 'scrollTo').mockImplementation(((options: ScrollToOptions) => {
+        window_.scrollY = Math.max(0, options.top ?? 0);
+      }) as typeof window.scrollTo);
+      return { window_, card };
+    }
+
+    /** jsdom's own `scrollY`, which the page above replaces on the window itself. */
+    let own: PropertyDescriptor | undefined;
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      if (own) Object.defineProperty(window, 'scrollY', own);
+      else Reflect.deleteProperty(window, 'scrollY');
+      own = undefined;
+    });
+
+    it('stays where it is on the screen while the list is ranked again around it', async () => {
+      const user = userEvent.setup();
+      renderRoute(`/library?corpus=${ENGLISH_CORPUS}&sample=10006`, {
+        client: turnedOver(),
+        storage: freshStorage(),
+      });
+      await rankingSays(/^Lower is better for both/, 60_000);
+
+      // A card in the middle with a chip for a text it is not on, the page scrolled to put it a
+      // little way down the screen.
+      const chipOf = (c: Element) =>
+        c.querySelector<HTMLElement>('.lb-language-chip[aria-pressed="false"]');
+      const withChip = cards().filter((c) => chipOf(c) !== null);
+      const held = withChip[Math.floor(withChip.length / 2)];
+      const before = cardNames();
+      const name = within(held).getByRole('heading', { level: 3 }).textContent ?? '';
+      const from = before.indexOf(name);
+      expect(from).toBeGreaterThan(0);
+      expect(from).toBeLessThan(before.length - 1);
+      const { window_, card } = scrollablePage(from * CARD_HEIGHT - SCREEN_TOP);
+      expect(held.getBoundingClientRect().top).toBe(SCREEN_TOP);
+
+      const chip = chipOf(held);
+      if (chip === null) throw new Error('no chip to press');
+      await user.click(chip);
+
+      // The list is turned over once every layout is scored on the other text...
+      await waitFor(() => expect(cardNames()).toEqual([...before].reverse()), { timeout: 60_000 });
+      await rankingSays(/^Lower is better for both/, 60_000);
+      // ...and the card is in another place in it, but where it was on the screen.
+      expect(card(held)).toBe(before.length - 1 - from);
+      expect(held.getBoundingClientRect().top).toBe(SCREEN_TOP);
+      expect(window_.scrollY).toBe(card(held) * CARD_HEIGHT - SCREEN_TOP);
+
+      // The reader takes the page back, and the next change to the list leaves it to them.
+      const scrolled = window_.scrollY;
+      const turned = cardNames();
+      await user.click(screen.getByRole('radio', { name: 'Name' }));
+      expect(cardNames()).not.toEqual(turned);
+      expect(window_.scrollY).toBe(scrolled);
+    }, 90_000);
+  });
+
   /** The same documents, of which none can be read: what a page sees while they are on the way. */
   function stillReading(storage: IndexedDbAdapter): IndexedDbAdapter {
     return new Proxy(storage, {
