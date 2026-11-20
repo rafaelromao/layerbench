@@ -651,14 +651,26 @@ describe('rules engine', () => {
     ];
     for (const preset of [layoutsDoc(), cyanophage()]) {
       for (const id of ['qwerty', 'magic-romak', 'ben-vallack-piano', 'uno']) {
-        const values = (universe: 'no_space' | 'with_space') => {
-          const r = run(id, { ...preset, globals: { ...preset.globals, universe } });
-          return ids.map((rule) => r.value(rule) as number);
-        };
-        const off = values('no_space');
-        const on = values('with_space');
-        for (const [i, v] of off.entries())
-          expect(on[i], `${preset.id} ${id}: ${ids[i]}`).toBeCloseTo(v, 9);
+        const read = (universe: 'no_space' | 'with_space') =>
+          run(id, { ...preset, globals: { ...preset.globals, universe } }).results;
+        const off = read('no_space');
+        const on = read('with_space');
+        for (const rule of ids) {
+          const at = `${preset.id} ${id}: ${rule}`;
+          const a = off.find((r) => r.id === rule)!;
+          const b = on.find((r) => r.id === rule)!;
+          expect(b.value, at).toBeCloseTo(a.value as number, 9);
+          // So are the n-grams listed under it, each a share of the same total.
+          const percents = new Map(b.items.map((i) => [`${i.label} ${i.keys}`, i.percent]));
+          expect(b.items.length > 0, at).toBe(a.items.length > 0);
+          if (a.items.length === 0) continue;
+          for (const item of a.items) {
+            const other = percents.get(`${item.label} ${item.keys}`);
+            if (other !== undefined)
+              expect(other, `${at} ${item.label}`).toBeCloseTo(item.percent as number, 9);
+          }
+          expect(percents.has(`${a.items[0].label} ${a.items[0].keys}`), at).toBe(true);
+        }
       }
     }
   });
@@ -727,6 +739,32 @@ describe('rules engine', () => {
     // And it keeps them through JSON.
     const back = ruleSetFromJson(ruleSetToJson(ruleSet));
     expect(back.ok && back.ruleSet.rules[0].aggregate_opts).toEqual({ of: fingers });
+  });
+
+  it('keeps a pair rule a share of the text’s pairs when it names the pairs it counts over', () => {
+    // Magic Romak's taps add pairs of its own: a pair rule divides by the text's pairs, and naming
+    // every pair as what it counts over must not switch it to the layout's.
+    const compiled = compileLayout(layoutOf('magic-romak'));
+    const tables = simulate(compiled, normalizeText(text, OPTS), OPTS).tables;
+    const pairs = tables.presses.ngrams('no_space', 'skip1');
+    expect(pairs.total).toBeGreaterThan(pairs.textTotal);
+    const sfs = catalogRules().find((r) => r.id === 'sfs')!;
+    const every: Rule['where'] = { any: [{ same_key: true }, { same_key: false }] };
+    const fingers: Rule['where'] = { any_thumb: false };
+    const ruleSet: RuleSet = {
+      ...layoutsDoc(),
+      rules: [
+        sfs,
+        { ...sfs, id: 'sfs_of_every', aggregate_opts: { of: every } },
+        { ...sfs, id: 'sfs_of_fingers', aggregate_opts: { of: fingers } },
+        { ...sfs, id: 'finger_pairs', where: fingers, aggregate: 'count' },
+      ],
+    };
+    const [plain, ofEvery, ofFingers, fingerPairs] = evaluate(tables, compiled, ruleSet).results;
+    expect(ofEvery.value).toBeCloseTo(plain.value as number, 9);
+    // Of some pairs, it takes the same share of the text's pairs as they are of the layout's.
+    const share = (fingerPairs.value as number) / pairs.total;
+    expect(ofFingers.value).toBeCloseTo((plain.value as number) / share, 9);
   });
 
   it('computes a composite score when the set enables it', () => {

@@ -534,10 +534,10 @@ past that, so 52.4-47.6 is still *even* and 55.6-44.4 is *heavy*. The shares are
 the bands end at 5 points of difference, a 52.5-47.5 split, and at 11, a 55.5-44.5 one. The card
 shows that difference (**Hand Δ** in the summary strip) and the two shares. The Doc names no
 category past *heavy*, so a 70-30 split is still *heavy*. **Space** does not move it, nor the
-trigram categories, pinky off, home row or inner column: the Doc gives its numbers disregarding
-space, since the thumb that types it would move each hand's share by about nine points, one way or
-the other (§16.4.5), and its rulers are drawn on numbers without it. [The research
-note](../research/hand-balance-bands.md) has the Doc's rows.
+trigram categories, pinky off, home row or inner column, while words are kept apart, as both presets
+keep them: the Doc gives its numbers disregarding space, since the thumb that types it would move
+each hand's share by about nine points, one way or the other (§16.4.5), and its rulers are drawn on
+numbers without it. [The research note](../research/hand-balance-bands.md) has the Doc's rows.
 
 ## Rules and their sources
 

@@ -433,6 +433,8 @@ export function usageRules(): Rule[] {
       ngram: { n: 1 },
       where: FINGER_PRESSES,
       aggregate: 'per_hand',
+      // The split divides by what it matched; the keys listed under it are shares of the same.
+      aggregate_opts: OF_FINGERS,
       bands: BANDS.hand,
     }),
     rule('row_usage', 'Row usage', 'usage', {
