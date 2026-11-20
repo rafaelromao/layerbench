@@ -678,6 +678,7 @@ describe('Ranking layouts', () => {
      */
     function scrollablePage(at: number) {
       const window_ = { scrollY: at };
+      own = Object.getOwnPropertyDescriptor(window, 'scrollY');
       const card = (el: Element) => [...document.querySelectorAll('.lb-library-card')].indexOf(el);
       vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
         this: Element,
@@ -692,9 +693,14 @@ describe('Ranking layouts', () => {
       return { window_, card };
     }
 
+    /** jsdom's own `scrollY`, which the page above replaces on the window itself. */
+    let own: PropertyDescriptor | undefined;
+
     afterEach(() => {
       vi.restoreAllMocks();
-      Reflect.deleteProperty(window, 'scrollY');
+      if (own) Object.defineProperty(window, 'scrollY', own);
+      else Reflect.deleteProperty(window, 'scrollY');
+      own = undefined;
     });
 
     it('stays where it is on the screen while the list is ranked again around it', async () => {

@@ -165,20 +165,22 @@ test('a card stays where it is on the screen while its language chip ranks the l
   await page.goto('/library?corpus=en-general&sample=10000');
   await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 120_000 });
 
-  // A card below the first with a chip for a text it is not on: most layouts are for English
-  // alone, so few have one.
   const names = () =>
     page.locator('.lb-library-card h3').evaluateAll((titles) => titles.map((t) => t.textContent));
   const before = await names();
-  const held = (
-    await page.evaluateHandle(() =>
+  // A card below the first with a chip for a text it is not on: most layouts are for English
+  // alone, so few have one.
+  const name = await page.evaluate(
+    () =>
       [...document.querySelectorAll('.lb-library-card')]
         .slice(1)
-        .find((card) => card.querySelector('.lb-language-chip[aria-pressed="false"]')),
-    )
-  ).asElement();
-  expect(held, 'a card with a chip for another text').not.toBeNull();
-  if (held === null) return;
+        .find((card) => card.querySelector('.lb-language-chip[aria-pressed="false"]'))
+        ?.querySelector('h3')?.textContent ?? null,
+  );
+  expect(name, 'a card with a chip for another text').not.toBeNull();
+  const held = page
+    .locator('.lb-library-card')
+    .filter({ has: page.getByRole('heading', { name: name ?? '', exact: true }) });
   // Scrolled to 60% of the way down the screen, but no lower than the top of the first card: the
   // window cannot scroll above the top of the page, so a card ranked first could not be held lower.
   await held.evaluate((card) => {
@@ -192,16 +194,18 @@ test('a card stays where it is on the screen while its language chip ranks the l
   // Where the card is on the screen is read on every frame from here, in the page itself: two reads
   // from outside, apart, would each catch the list at another point of its re-sorting. A frame with
   // the window at the end of its range is left out: a card ranked last or first cannot be held
-  // where it was past it, and nothing is wrong when it is not.
+  // where it was past it, and nothing is wrong when it is not. `travelled` is how far the card
+  // went in the page itself, wherever the window was: the distance the hold has to make up for.
   await held.evaluate((card) => {
-    const track = { top: card.getBoundingClientRect().top, worst: 0, running: true };
+    const top = card.getBoundingClientRect().top;
+    const track = { top, at: top + window.scrollY, worst: 0, travelled: 0, running: true };
     Object.assign(window, { held: track });
     const frame = () => {
+      const now = card.getBoundingClientRect().top;
+      track.travelled = Math.max(track.travelled, Math.abs(now + window.scrollY - track.at));
       const last = document.documentElement.scrollHeight - window.innerHeight;
       const atEnd = window.scrollY <= 0.5 || window.scrollY >= last - 0.5;
-      if (!atEnd) {
-        track.worst = Math.max(track.worst, Math.abs(card.getBoundingClientRect().top - track.top));
-      }
+      if (!atEnd) track.worst = Math.max(track.worst, Math.abs(now - track.top));
       if (track.running) requestAnimationFrame(frame);
     };
     frame();
@@ -214,12 +218,16 @@ test('a card stays where it is on the screen while its language chip ranks the l
   await expect(page.getByText(/^Lower is better for both/)).toBeVisible({ timeout: 120_000 });
   await page.waitForTimeout(500);
 
-  const { worst } = await held.evaluate(() => {
-    const track = (window as unknown as { held: { worst: number; running: boolean } }).held;
+  const { worst, travelled } = await held.evaluate(() => {
+    const track = (
+      window as unknown as { held: { worst: number; travelled: number; running: boolean } }
+    ).held;
     track.running = false;
-    return { worst: track.worst };
+    return { worst: track.worst, travelled: track.travelled };
   });
-  // The list really was ranked again, or the card staying put proves nothing.
+  // The list really was ranked again, and this card really went somewhere in it: a card that
+  // stayed in its row would stay put with no hold at all.
   expect(await names()).not.toEqual(before);
+  expect(travelled, 'how far the card went in the list').toBeGreaterThan(100);
   expect(worst).toBeLessThanOrEqual(1);
 });

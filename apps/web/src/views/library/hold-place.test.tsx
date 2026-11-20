@@ -37,6 +37,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  document.documentElement.style.removeProperty('overflow-anchor');
   vi.restoreAllMocks();
   // Back to jsdom's own: the properties above were defined on the window itself.
   for (const name of ['scrollY', 'scrollX'] as const) {
@@ -133,6 +134,84 @@ describe('a card held in place while the list is sorted again', () => {
     },
   );
 
+  it('lets go when the window is scrolled to anywhere but where the hold left it', () => {
+    const card = world.card(200);
+    const { result, rerender } = renderHook(() => useHoldPlace());
+    result.current(card);
+
+    // A dragged scrollbar, Find in page, a link to an anchor: no wheel, tap or key.
+    world.state.scrollY = 500;
+    window.dispatchEvent(new Event('scroll'));
+
+    card.place.at = 900;
+    rerender();
+    expect(world.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('keeps holding through the scroll it made itself', () => {
+    const card = world.card(200);
+    const { result, rerender } = renderHook(() => useHoldPlace());
+    result.current(card);
+
+    card.place.at = 520;
+    rerender();
+    // The browser reports the scroll the hold made, a frame later.
+    window.dispatchEvent(new Event('scroll'));
+
+    card.place.at = 700;
+    rerender();
+    expect(world.scrollTo).toHaveBeenCalledTimes(2);
+    expect(world.scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 500, behavior: 'instant' });
+  });
+
+  it('keeps holding when the window stopped short of where it was sent', () => {
+    const card = world.card(200);
+    const { result, rerender } = renderHook(() => useHoldPlace());
+    result.current(card);
+
+    // Ranked above the top of the page: the window is sent to -100 and stops at 0.
+    card.place.at = 100;
+    rerender();
+    window.dispatchEvent(new Event('scroll'));
+
+    card.place.at = 400;
+    rerender();
+    expect(world.state.scrollY).toBe(200);
+    expect(card.getBoundingClientRect().top).toBe(200);
+  });
+
+  it("turns the browser's scroll anchoring off while a card is held, and back on after", () => {
+    const root = document.documentElement.style;
+    const card = world.card(200);
+    const { result } = renderHook(() => useHoldPlace());
+    expect(root.getPropertyValue('overflow-anchor')).toBe('');
+
+    result.current(card);
+    expect(root.getPropertyValue('overflow-anchor')).toBe('none');
+
+    window.dispatchEvent(new Event('wheel'));
+    expect(root.getPropertyValue('overflow-anchor')).toBe('');
+  });
+
+  it('gives the page back the anchoring it had, when the hold ends any way', () => {
+    const root = document.documentElement.style;
+    root.setProperty('overflow-anchor', 'auto');
+    const first = world.card(200);
+    const second = world.card(700);
+    const { result, unmount } = renderHook(() => useHoldPlace());
+
+    // Holding another card while one is held does not keep the first one's 'none' as the original.
+    result.current(first);
+    result.current(second);
+    expect(root.getPropertyValue('overflow-anchor')).toBe('none');
+    result.current(null);
+    expect(root.getPropertyValue('overflow-anchor')).toBe('auto');
+
+    result.current(first);
+    unmount();
+    expect(root.getPropertyValue('overflow-anchor')).toBe('auto');
+  });
+
   it('holds the card of the chip pressed last, not the one before', () => {
     const first = world.card(200);
     const second = world.card(700);
@@ -182,7 +261,7 @@ describe('a card held in place while the list is sorted again', () => {
     result.current(card);
     unmount();
     const removed = remove.mock.calls.map(([type]) => type);
-    for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown', 'resize']) {
+    for (const type of ['wheel', 'touchstart', 'pointerdown', 'keydown', 'resize', 'scroll']) {
       expect(removed).toContain(type);
     }
   });

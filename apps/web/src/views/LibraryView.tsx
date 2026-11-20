@@ -1180,9 +1180,7 @@ export function LibraryView() {
               : 'No layout is left by the choices in Rank and filter.'}
           </p>
         )}
-        {/* No scroll anchoring here: the browser would keep some other card in place across a
-            re-sort and fight the one `hold` keeps. */}
-        <div className="-mx-2 sm:mx-0 grid gap-3 md:grid-cols-2 xl:grid-cols-3 [overflow-anchor:none]">
+        <div className="-mx-2 sm:mx-0 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {sorted.map((item) => (
             <LayoutCard
               key={item.key}
