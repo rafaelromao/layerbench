@@ -13,7 +13,7 @@ import {
   recording,
 } from '../test/analyze-editing.js';
 import { keyNamed } from '../test/keys.js';
-import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
+import { layerNameEl, openLegend, showLayer, shownLayer } from '../test/layers.js';
 import { openSettings, renderRoute } from '../test/render.js';
 import { setViewportWidth } from '../test/setup.js';
 
@@ -438,7 +438,7 @@ describe('Edit', () => {
     await user.clear(then);
     await user.type(then, 'w{Enter}');
 
-    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    const legendList = await openLegend(user);
     await waitFor(() => expect(legendList.textContent).toContain('→ types w'));
 
     // A kind change keeps what carries over: the adaptive key's default letter.
@@ -479,7 +479,7 @@ describe('Edit', () => {
     await user.type(within(await inspector('LHM')).getByLabelText('Branch 1 after'), 'a{Enter}');
     await user.type(within(await inspector('LHM')).getByLabelText('Branch 1 symbol'), 'h{Enter}');
 
-    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    const legendList = await openLegend(user);
     await waitFor(() => expect(legendList.textContent).toContain('after a → types h'));
   });
 
@@ -508,7 +508,7 @@ describe('Edit', () => {
     await user.click(
       within(await inspector('LHM')).getByRole('button', { name: 'Move branch 2 up' }),
     );
-    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    const legendList = await openLegend(user);
     await waitFor(() =>
       expect(legendList.textContent).toContain(
         'after a, from a key tagged alpha2 → types x; after a → types h',
@@ -533,7 +533,7 @@ describe('Edit', () => {
       'v{Enter}',
     );
 
-    const legendList = await screen.findByRole('list', { name: 'Key legend' });
+    const legendList = await openLegend(user);
     await waitFor(() => expect(legendList.textContent).toContain('after a → types v'));
     // Still a tap-hold: the tap adapts, the hold reaches the layer.
     expect(

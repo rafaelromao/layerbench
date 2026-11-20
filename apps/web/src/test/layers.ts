@@ -86,3 +86,14 @@ export function layerShareIn(scope: HTMLElement): number | null {
   if (!/^\d+(\.\d)?%$/.test(shown)) throw new Error(`share written as ${shown}`);
   return Number.parseFloat(shown);
 }
+
+/**
+ * The Legend of a board's card, opened, and its list of numbered keys. It starts folded, in Analyze
+ * and in Compare; `scope` is the card where a page has more than one, as Compare has.
+ */
+export async function openLegend(user: UserEvent, scope?: HTMLElement): Promise<HTMLElement> {
+  const q = within(scope ?? document.body);
+  const toggle = q.getByRole('button', { name: 'Legend' });
+  if (toggle.getAttribute('aria-expanded') === 'false') await user.click(toggle);
+  return q.findByRole('list', { name: 'Key legend' });
+}

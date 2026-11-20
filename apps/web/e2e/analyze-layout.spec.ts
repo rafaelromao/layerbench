@@ -15,15 +15,16 @@ function overflow(page: Page): Promise<number> {
 }
 
 /**
- * The board's card all on screen, under the page's sticky header and over the bottom edge of the
- * screen. The page scrolls smoothly, so this waits for it to get there, and a failure says by how
- * much the card is cut at each edge.
+ * The board's area all on screen, under the page's sticky header and over the bottom edge of the
+ * screen: the keys, the layer navigator, the tray and the hint that says what is armed, though not
+ * the legend or the summary under them, which are in the same card. The page scrolls smoothly, so
+ * this waits for it to get there, and a failure says by how much the area is cut at each edge.
  */
 async function expectBoardWhole(page: Page): Promise<void> {
   await expect
     .poll(
       async () => {
-        const box = await page.locator('.lb-edit-board').boundingBox();
+        const box = await page.locator('.lb-board-area').boundingBox();
         const header = await page.locator('header.sticky').first().boundingBox();
         const screen = page.viewportSize()?.height ?? 0;
         if (!box || !header) return 'not drawn';
@@ -34,7 +35,7 @@ async function expectBoardWhole(page: Page): Promise<void> {
           ? 'whole'
           : `${Math.round(top)}px clear of the header, ${Math.round(bottom)}px clear of the bottom`;
       },
-      { message: 'the board card, all in view', timeout: 5_000 },
+      { message: 'the board area, all in view', timeout: 5_000 },
     )
     .toBe('whole');
 }
@@ -100,6 +101,35 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
   }
 });
 
+test('the Board tab holds the Key hint and A word, typed over the board, whose card holds the Legend, folded, and the Summary', async ({
+  page,
+}) => {
+  await openEdit(page);
+  const hint = page.getByRole('region', { name: 'Key', exact: true });
+  const word = page.getByRole('region', { name: 'A word, typed', exact: true });
+  const card = page.getByRole('region', { name: 'Board', exact: true });
+  await expect(hint).toBeVisible();
+  await expect(word).toBeVisible();
+
+  // Both are in the editor's card, above the board's.
+  const [h, w, area] = await Promise.all(
+    [hint, word, page.locator('.lb-board-area')].map((it) => it.boundingBox()),
+  );
+  expect(h && w && area).toBeTruthy();
+  if (!h || !w || !area) return;
+  expect(h.y + h.height).toBeLessThanOrEqual(area.y);
+  expect(w.y + w.height).toBeLessThanOrEqual(area.y);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+
+  // The legend and the summary are in the board's card, the legend folded until it is opened.
+  await expect(card.getByRole('region', { name: 'Summary', exact: true })).toBeVisible();
+  const legend = card.getByRole('button', { name: 'Legend', exact: true });
+  await expect(legend).toHaveAttribute('aria-expanded', 'false');
+  await legend.click();
+  await expect(legend).toHaveAttribute('aria-expanded', 'true');
+  await expect(card.getByRole('list', { name: 'Key legend' })).toBeVisible();
+});
+
 test.describe('on a phone', () => {
   test.skip(({ isMobile }) => !isMobile, 'phone layout only');
 
@@ -142,7 +172,7 @@ test.describe('on a phone', () => {
     expect(pans).toBeLessThanOrEqual(1);
   });
 
-  test('the inspector opens right under the board, and the board scrolls away with the page', async ({
+  test('the inspector opens in view under the Board card, and the board scrolls away with the page', async ({
     page,
   }) => {
     await openEdit(page);
@@ -154,7 +184,7 @@ test.describe('on a phone', () => {
     // down, it is gone, and the inspector has the room.
     await page.evaluate(() => window.scrollBy(0, 2000));
     await page.waitForTimeout(200);
-    const board = await page.locator('.lb-edit-board').boundingBox();
+    const board = await page.locator('.lb-board-area').boundingBox();
     expect((board?.y ?? 0) + (board?.height ?? 0)).toBeLessThanOrEqual(0);
   });
 
@@ -186,7 +216,7 @@ test.describe('on a phone', () => {
     await expect(editor).toBeInViewport();
     const send = editor.getByRole('combobox', { name: 'Send LHI to another layer' });
     await page.evaluate(() => window.scrollBy(0, 2000));
-    await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
+    await expect(page.locator('.lb-board-area')).not.toBeInViewport();
     await send.selectOption({ index: 1 });
     await expect(editing).toHaveCount(0);
     const sent = page.getByRole('button', { name: /^Key LHI:/ });
@@ -206,7 +236,7 @@ test.describe('on a phone', () => {
     for (const name of ['Swap with…', 'Copy to…']) {
       // Scrolled away, as it is after reading the editor or the numbers under it.
       await page.evaluate(() => window.scrollBy(0, 2000));
-      await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
+      await expect(page.locator('.lb-board-area')).not.toBeInViewport();
       await editor.getByRole('button', { name }).tap();
       await expectBoardWhole(page);
     }
@@ -420,14 +450,14 @@ test.describe('at a desk', () => {
     // so that no scroll is needed to see it, though the header hides its top.
     const header = await page.locator('header.sticky').first().boundingBox();
     const headerBottom = (header?.y ?? 0) + (header?.height ?? 0);
-    const board = await page.locator('.lb-edit-board').boundingBox();
+    const board = await page.locator('.lb-board-area').boundingBox();
     await page.evaluate(
       (y) => window.scrollTo(0, y),
       Math.round((board?.y ?? 0) - headerBottom + 10),
     );
     // The premise, which a click's own scroll to its button must not be left to make: the board is
     // cut by the header while the button is clear of it.
-    expect((await page.locator('.lb-edit-board').boundingBox())?.y ?? 0).toBeLessThan(headerBottom);
+    expect((await page.locator('.lb-board-area').boundingBox())?.y ?? 0).toBeLessThan(headerBottom);
     expect((await swap.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerBottom);
     await swap.click();
     await expectBoardWhole(page);

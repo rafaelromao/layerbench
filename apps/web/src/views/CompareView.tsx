@@ -10,6 +10,7 @@ import { HeatLegend } from '../components/HeatLegend.js';
 import { HeatNote } from '../components/HeatNote.js';
 import { HeatSelect } from '../components/HeatSelect.js';
 import { HelpLink } from '../components/HelpLink.js';
+import { KeyLegend } from '../components/Keyboard.js';
 import { LanguageChips } from '../components/LanguageChips.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
@@ -340,6 +341,8 @@ export function CompareView() {
                     <div className="min-w-0">
                       <PreviewBoard
                         id={`kb-${side}`}
+                        // The list of numbered keys is the Legend below, which folds away.
+                        legend={false}
                         // The keys as written and the combos as typed, as Analyze draws them.
                         compiled={compiled}
                         typed={typed}
@@ -365,20 +368,30 @@ export function CompareView() {
                       />
                     </div>
                   )}
-                  {/* A chip puts both sides on its language's text: they are compared on one. */}
-                  <LanguageChips
-                    coverage={side === 'A' ? languagesA : languagesB}
-                    text={params}
-                    onText={(corpus) => setParams({ corpus, corpus2: null })}
-                  />
-                  {report ? (
-                    <SummaryStrip results={report.results} ruler={ruler} />
-                  ) : settings.status === 'failed' ? null : (
-                    <div className="flex items-center gap-2 py-4">
-                      <span className="loading loading-dots loading-xs" />
-                      <span className="text-sm opacity-70">analyzing…</span>
-                    </div>
+                  {/* Both sides fold and open together: one is read against the other. */}
+                  {compiled && (
+                    <Collapsible id="compare.legend" title="Legend" defaultCollapsed>
+                      <KeyLegend compiled={compiled} layer={layer} />
+                    </Collapsible>
                   )}
+                  <Collapsible id="compare.summary" title="Summary">
+                    <div className="flex flex-col gap-3">
+                      {/* A chip puts both sides on its language's text: they are compared on one. */}
+                      <LanguageChips
+                        coverage={side === 'A' ? languagesA : languagesB}
+                        text={params}
+                        onText={(corpus) => setParams({ corpus, corpus2: null })}
+                      />
+                      {report ? (
+                        <SummaryStrip results={report.results} ruler={ruler} />
+                      ) : settings.status === 'failed' ? null : (
+                        <div className="flex items-center gap-2 py-4">
+                          <span className="loading loading-dots loading-xs" />
+                          <span className="text-sm opacity-70">analyzing…</span>
+                        </div>
+                      )}
+                    </div>
+                  </Collapsible>
                 </div>
               </section>
             );

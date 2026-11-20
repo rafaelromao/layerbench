@@ -7,7 +7,7 @@ import { heatMap, heatPeak } from '../engine/heat.js';
 import type { AnalysisClient, AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { IndexedDbAdapter } from '../storage/indexeddb.js';
 import { branchWith, communityDoc } from '../test/community.js';
-import { layerCounter, layerNames, showLayer, shownLayer } from '../test/layers.js';
+import { layerCounter, layerNames, openLegend, showLayer, shownLayer } from '../test/layers.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { LIBRARY, openSettings, rankingSays, renderRoute, testClient } from '../test/render.js';
 import { decodeInline, encodeInline } from '../url/inline.js';
@@ -157,7 +157,8 @@ describe('Compare', () => {
     const boardB = await board('B');
     expect(boardB.querySelectorAll('.lb-key-number').length).toBeGreaterThan(0);
     const side = boardB.closest('section') as HTMLElement;
-    const list = within(side).getByRole('list', { name: 'Key legend' });
+    // The Legend starts folded: opened, it lists them.
+    const list = await openLegend(userEvent.setup(), side);
     expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
     // The navigator stays right under the board, the list after it, as on Analyze.
     const nav = within(side).getByRole('group', { name: 'Layers of B' });
@@ -525,7 +526,7 @@ describe('Compare, heat', () => {
     const side = sideOf('A');
     const note = await within(side).findByText('Heat appears once both layouts are scored.');
     const nav = within(side).getByRole('group', { name: 'Layers of A' });
-    const list = within(side).getByRole('list', { name: 'Key legend' });
+    const list = await openLegend(userEvent.setup(), side);
     const follows = (a: Node, b: Node) =>
       !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect([follows(nav, note), follows(note, list)]).toEqual([true, true]);

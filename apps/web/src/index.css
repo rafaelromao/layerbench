@@ -626,12 +626,11 @@ button.lb-combo-apart:focus-visible {
 }
 
 /*
- * Analyze, where the layout is edited: the board, the inspector for the selected key, the typed
- * word, the selected key's numbers, the summary, the legend, the panels and every number. On a
- * narrow screen they stack in that order, and while a key is being edited the board stays pinned
- * under the header, so picking the next key never means scrolling back up to it. From 1024px the
- * board and what reads it take one column, the key's numbers right above the summary, the inspector
- * and the panels the other, and the numbers run under both.
+ * Analyze, where the layout is edited: under the tabs, whose Board tab holds how a key is picked
+ * (the Key hint) and the typed word, the Board card, which holds the board, the legend, the
+ * selected key's numbers and the summary, and the inspector for the selected key. On a narrow
+ * screen the inspector stacks under the Board card; from 1024px the Board card takes one column
+ * and the inspector the other, and the numbers run under both.
  */
 .lb-edit-grid {
   display: flex;
@@ -648,20 +647,13 @@ button.lb-combo-apart:focus-visible {
      under it, as the guide's sections do. */
   scroll-margin-top: 4rem;
 }
+/* The board itself, apart from the legend and the summary in the same card: what a control that
+   waits for a tap on the board brings into view. */
+.lb-board-area {
+  scroll-margin-top: 4rem;
+}
 .lb-edit-inspector {
   order: 2;
-}
-.lb-edit-explain {
-  order: 3;
-}
-.lb-edit-keynumbers {
-  order: 4;
-}
-.lb-edit-summary {
-  order: 5;
-}
-.lb-edit-extras {
-  order: 6;
 }
 .lb-edit-panels {
   order: 7;

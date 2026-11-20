@@ -4,8 +4,11 @@
 of the keys, the numbers under it, and how any word you give it is typed.
 
 Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend**, **Editor** and
-**Numbers**, folds away under its heading, and so do **Layouts** and **Metric comparison** in
-**Compare**. This browser remembers which you folded.
+**Numbers**, folds away under its heading, and so do **Layouts**, **Metric comparison** and, under
+each layout's board, **Legend** and **Summary** in **Compare**. **Legend** starts folded, in both,
+and opens under its heading. This browser remembers which you folded and which you opened. In
+**Analyze** the **Legend** and the **Summary** are in the board's card, as in each layout's card in
+**Compare**.
 
 Two numbers lead: **Effort**, an estimate of how hard the keys are to reach, and **SFB**, how often
 one finger presses two keys in a row. Lower is better for both. Both, and some other numbers, also
