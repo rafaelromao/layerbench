@@ -13,7 +13,7 @@ export function layoutsDoc(): RuleSet {
     id: 'layouts_doc',
     name: 'Layouts Doc',
     description:
-      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.), SFB’s carried on past the Doc’s last threshold and Effort’s LayerBench’s own. Thumbs included, no composite score. Space is excluded unless Space is turned on; SFB and its ≥ 2 rows part are shares of the characters typed either way, the way the Doc’s analyzer counts SFB.',
+      'Definitions and bands from the Keyboard Layouts Doc (3rd ed.), SFB’s carried on past the Doc’s last threshold and Effort’s LayerBench’s own. Thumbs included, but for the trigram categories, hand balance, pinky off, home row and inner column, read on the fingers’ presses; no composite score. Space is excluded unless Space is turned on, and always from those; SFB and its ≥ 2 rows part are shares of the characters typed either way, the way the Doc’s analyzer counts SFB.',
     globals: {},
     rules: catalogRules(),
     score_enabled: false,
