@@ -52,17 +52,17 @@ left to right: Qwerty as `asdfghjkl`, a home row mod as the letter it taps, and 
 types no letter left out. **Rank and filter**, the gear (⚙︎) beside **Sort by**, holds
 what the ranking is made with, and **Boards**, which lists only the layouts on the boards you tick, so you can keep to the keyboards you own; the layouts on the others are not scored at
 all. Your custom layouts, the ones you keep, are
-ranked in the same list as the ones that come with the app, marked *custom*; untick **Custom
-layouts**, in **Rank and filter**, to leave them out, or **Bundled layouts** to leave out the
-bundled ones. Community layouts, ones other people made and
+ranked in the same list as the bundled layouts, the ones that come with the app, marked *custom*;
+untick **Custom layouts**, in **Rank and filter**, to leave them out, or **Bundled layouts** to
+leave out the bundled ones. Community layouts, ones other people made and
 the Library accepted, are ranked there too, marked *community*, each in the category its keys give
 it; untick **Community layouts** to leave them out. They are read from GitHub each time the Library
 opens, with no sign-in, and kept in this browser, so the ones read last are listed at once, and
 still there offline. A link names one as `community:` and its id, and opens it in **Analyze** or
-**Compare** for anyone. The three are separate switches: untick **Bundled layouts** and **Community
-layouts** to list only your own. When these switches, the categories, the languages or the boards leave
-some layouts out, a line under **Sort by** says how many are listed and why; when they leave none,
-the list says so instead of standing empty. Each layout takes its
+**Compare** for anyone. When these switches, the categories, the languages or the boards leave
+some layouts out, a line under **Sort by** says how many are listed and why; when they leave no
+layout listed, the list says so instead of standing empty. Each of the three switches works on its
+own, so to list only your own layouts, untick **Bundled layouts** and **Community layouts**. Each layout takes its
 place as its score arrives. This browser remembers the scores, the sort and what you chose to list, so the next
 visit opens already ranked; the scores are checked again quietly, and a layout moves only if its
 numbers changed. **Compare** puts every number for two layouts side by side, with the difference and which

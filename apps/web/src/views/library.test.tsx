@@ -1072,11 +1072,14 @@ describe('Choosing which boards are listed', () => {
   });
 
   it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
+    // A browser opens on the store's own defaults and then reads what it stored. `beforeEach` has set
+    // a `hideBundled` of its own, so start over (this writes the store out: store the choice after).
+    useSession.setState(useSession.getInitialState(), true);
     localStorage.setItem(
       'layerbench:session',
       JSON.stringify({ state: { librarySort: 'effort', hideCustom: true }, version: 0 }),
     );
-    // What was stored has no `hideBundled`: the store keeps its default, and the rest is read as it was.
+    // What was stored has no `hideBundled`, so the default stands.
     await useSession.persist.rehydrate();
     expect(useSession.getState().hideBundled).toBe(false);
     expect(useSession.getState().hideCustom).toBe(true);
