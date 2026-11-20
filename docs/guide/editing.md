@@ -6,7 +6,7 @@ the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos
 **Board** is the first, and holds **Key**, which says how a key is picked and moved, and **A word,
 typed**. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
 it, the selected key's numbers and the **Summary**; **Combos** and **Special Behaviors** draw that
-card too, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
+card too, with the **Legend** and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
 key to select it. The editor beside the board (under its card, on a phone) says what the key does
 and lets you change it; what the key adds to the numbers is in the board's card, above the
 **Summary**. Tap or click the

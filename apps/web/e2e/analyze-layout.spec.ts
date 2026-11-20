@@ -128,6 +128,9 @@ test('the Board tab holds the Key hint and A word, typed over the board, whose c
   await legend.click();
   await expect(legend).toHaveAttribute('aria-expanded', 'true');
   await expect(card.getByRole('list', { name: 'Key legend' })).toBeVisible();
+  // Folded by default, the legend is no longer open where every width is checked for a sideways
+  // scroll: opened, its list is as wide as it is, and the page still does not scroll.
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
 });
 
 test.describe('on a phone', () => {
@@ -179,6 +182,11 @@ test.describe('on a phone', () => {
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeInViewport();
+    // Under the Board card, whose Legend, key numbers and Summary are between it and the board.
+    const card = await page.getByRole('region', { name: 'Board', exact: true }).boundingBox();
+    const editor = await inspector.boundingBox();
+    expect(card && editor).toBeTruthy();
+    expect(editor?.y ?? 0).toBeGreaterThanOrEqual((card?.y ?? 0) + (card?.height ?? 0) - 1);
 
     // The board is not pinned, which on a phone would take most of the screen: scrolled far enough
     // down, it is gone, and the inspector has the room.

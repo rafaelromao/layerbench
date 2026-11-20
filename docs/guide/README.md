@@ -36,8 +36,8 @@ compare with its. What LayerBench takes from each source, and what is its own, i
 ## Editing keys and layers
 
 Tap or click a key on the board, in **Analyze**. The editor beside it (under it, on a phone) shows
-what the key does and what it adds to the numbers, with a row of tiles (*Symbol*, *Layer*,
-*Tap-hold*, *Adaptive* and more) to make it something else.
+what the key does, with a row of tiles (*Symbol*, *Layer*, *Tap-hold*, *Adaptive* and more) to make
+it something else; what it adds to the numbers is in the board's card, above the **Summary**.
 
 Drag a key onto another to swap them. Layers can be renamed, reordered, duplicated and removed.
 [Editing a layout](editing.md) has the details.
