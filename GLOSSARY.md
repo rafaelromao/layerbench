@@ -25,9 +25,9 @@ _Avoid_: action, mapping, keycode
 
 **Bundled layout**:
 A layout that comes with the app, as its author designed it: neither one the user keeps nor one the
-community submitted. The Library lists it beside those, and **Bundled layouts**, in Rank and filter,
-leaves it out of the list.
-_Avoid_: built-in layout, stock layout
+community submitted. The Library lists it beside those, and the **Bundled layouts** switch, in Rank
+and filter, leaves such layouts out of the list.
+_Avoid_: library layout (the Library lists all three kinds), built-in layout, stock layout
 
 **Category**:
 Where the Library files a layout, so that the list can be kept to the ones you want: Standard, Thumb Alpha or

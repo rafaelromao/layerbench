@@ -1024,6 +1024,49 @@ describe('Choosing which boards are listed', () => {
     ).toBeInTheDocument();
   });
 
+  it('leaves the community layouts to their own switch, so only the custom ones are listed once both are off', async () => {
+    const user = userEvent.setup();
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Night owl', level: 3 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    /** What the Boards boxes count, added up: the layouts still listed. */
+    const boardTotal = () =>
+      within(screen.getByRole('group', { name: 'Boards' }))
+        .getAllByRole('checkbox')
+        .reduce((sum, box) => {
+          const count = /\((\d+)\)\s*$/.exec(box.closest('label')?.textContent ?? '')?.[1];
+          return sum + Number(count ?? 0);
+        }, 0);
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Bundled layouts/ }));
+    // The bundled switch leaves the community layouts be: they have a switch of their own.
+    expect(listed('Qwerty')).toBeNull();
+    expect(listed('Night owl')).toBeInTheDocument();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(`2 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones.`),
+    ).toBeInTheDocument();
+    // Those left out count on no board.
+    await waitFor(() => expect(boardTotal()).toBe(2));
+
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Community layouts/ }));
+    expect(listed('Night owl')).toBeNull();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `1 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones, without the community ones.`,
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(boardTotal()).toBe(1));
+  });
+
   it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
     localStorage.setItem(
       'layerbench:session',
@@ -1035,7 +1078,6 @@ describe('Choosing which boards are listed', () => {
     expect(useSession.getState().hideCustom).toBe(true);
     renderRoute(LIBRARY, { storage: freshStorage() });
     expect(await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).toBeInTheDocument();
-    expect(screen.queryByText(/without the bundled ones/)).toBeNull();
   });
 });
 

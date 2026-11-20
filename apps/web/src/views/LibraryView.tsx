@@ -1184,7 +1184,7 @@ export function LibraryView() {
           )}
         </div>
         {/* Rank and filter can leave nothing to list: the page says why rather than stand empty. */}
-        {sorted.length === 0 && listed.length > 0 && (
+        {sorted.length === 0 && (
           <p className="text-sm opacity-70">
             {noLanguage && pool.length > 0
               ? 'No language is ticked in Rank and filter, so no layout is listed. Tick one to list the layouts for it.'
