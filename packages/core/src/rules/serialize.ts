@@ -134,6 +134,7 @@ const RuleSchema = z.object({
       numerator: z.string().optional(),
       denominator: z.string().optional(),
       per: z.enum(['symbols', 'keystrokes', 'words']).optional(),
+      of: PredicateSchema.optional(),
     })
     .optional(),
   breakdown_by: z.enum(['layer', 'row', 'col', 'key_kind', 'hand']).optional(),

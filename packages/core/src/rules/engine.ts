@@ -272,6 +272,25 @@ function ngramAt(ctx: Ctx, g: Ngrams, i: number, into: Attrs[]): void {
   for (let j = 0; j < g.n; j++) into[j] = ctx.attrs[g.ids[at + j]];
 }
 
+/**
+ * What a rule's n-grams are a share of: each source's total, or, for a rule that says which n-grams
+ * it counts over (`aggregate_opts.of`), those of each table that match, weighted as its counts are.
+ */
+function ruleTotal(rule: Rule, ctx: Ctx, sources: readonly NgramSource[]): number {
+  const of = rule.aggregate_opts?.of;
+  if (!of) return sources.reduce((sum, s) => sum + s.total * s.weight, 0);
+  const match = compilePredicate(of, ctx);
+  let total = 0;
+  for (const { ngrams: g, weight } of sources) {
+    const ngram: Attrs[] = new Array(g.n);
+    for (let i = 0; i < g.size; i++) {
+      ngramAt(ctx, g, i, ngram);
+      if (match(ngram)) total += g.counts[i] * weight;
+    }
+  }
+  return total;
+}
+
 /** An n-gram as a card lists it, with its share of what the rule counts over. */
 function toItem(
   ctx: Ctx,
@@ -310,7 +329,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const breakdownBy = rule.breakdown_by;
 
   let matched = 0;
-  let total = 0;
+  const total = ruleTotal(rule, ctx, sources);
   let weightedDistance = 0;
   const items: { ngram: Ngram; c: number; d: number | null }[] = [];
   const perKey = new Map<number, number>();
@@ -333,7 +352,6 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   let effortSum = 0;
 
   for (const source of sources) {
-    total += source.total * source.weight;
     const g = source.ngrams;
     for (let i = 0; i < g.size; i++) {
       ngramAt(ctx, g, i, ngram);
@@ -752,8 +770,7 @@ export function evaluateFocus(
     const n = rule.ngram?.n ?? 2;
     const ngram: Attrs[] = new Array(n);
     const sources = ngramSources(rule, scoped);
-    let total = 0;
-    for (const source of sources) total += source.total * source.weight;
+    const total = ruleTotal(rule, scoped, sources);
     let count = 0;
     const found: { ngram: Ngram; c: number; d: number | null }[] = [];
     for (const source of sources) {

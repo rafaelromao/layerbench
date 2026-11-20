@@ -80,11 +80,11 @@ const SCISSOR_WEIGHTS = glossary(
 );
 const NO_THUMB_TRIGRAM = glossary(
   COUNTS,
-  'Thumbs — no thumb press rolls or alternates, a LayerBench departure',
+  'Thumbs — a share of the trigrams the fingers type, no thumb or space, a LayerBench departure',
 );
-const NO_THUMB_REDIRECT = glossary(
+const FINGER_KEYS = glossary(
   COUNTS,
-  'Thumbs — no thumb key, space included, in a redirect or a one-hand roll, a LayerBench departure',
+  'Thumbs — read on the finger keys’ presses, no thumb or space, a LayerBench departure',
 );
 
 /** The catalog definitions. */
@@ -136,10 +136,10 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
   roll_out: [TRIGRAMS, kld('§15.1 In-rolls & out-rolls'), NO_THUMB_TRIGRAM],
   rolls: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_TRIGRAM],
   in_out_ratio: [kld('§15.5 In-roll ratio'), THRESHOLDS],
-  onehand_in: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
-  onehand_out: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_REDIRECT],
-  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_REDIRECT],
-  weak_redirect: [WEAK_REDIRECTS, NO_THUMB_REDIRECT],
+  onehand_in: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_TRIGRAM],
+  onehand_out: [TRIGRAMS, kld('§17.1 3rolls'), NO_THUMB_TRIGRAM],
+  redirect: [TRIGRAMS, ROLLS_AND_REDIRECTS, THRESHOLDS, NO_THUMB_TRIGRAM],
+  weak_redirect: [WEAK_REDIRECTS, NO_THUMB_TRIGRAM],
 
   finger_usage: [
     kld('§4.8 Distributing movement across the fingers'),
@@ -149,6 +149,7 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     THRESHOLDS,
     kld('§13.5 Hand balance nuances'),
     kld('§16.4.5 Hand balance and space'),
+    FINGER_KEYS,
   ],
   row_usage: [kld('§6.10.1 Reducing bottom row use — background'), glossary('usage', 'Row usage')],
   column_usage: [
@@ -159,9 +160,14 @@ export const RULE_REFERENCES: Readonly<Record<string, readonly RuleReference[]>>
     kld('§13.2 Layout stat table — "Pinky off"'),
     kld('§13.3 How the stats were obtained'),
     THRESHOLDS,
+    FINGER_KEYS,
   ],
-  home_row: [kld('§1.2 The home row — background'), glossary('usage', 'Home row usage')],
-  center_column: [kld('§7.1 The center column')],
+  home_row: [
+    kld('§1.2 The home row — background'),
+    glossary('usage', 'Home row usage'),
+    FINGER_KEYS,
+  ],
+  center_column: [kld('§7.1 The center column'), FINGER_KEYS],
   layer_distribution: [glossary(LAYERS, `Keystrokes per layer — ${ADDITION}`)],
   finger_travel: [kld('§4.6 Distance on a layout')],
 
@@ -383,7 +389,7 @@ export const GLOBAL_READS: Readonly<Record<CountingGlobal, (rule: Rule) => boole
   distance_model: (r) =>
     r.aggregate === 'sum_distance' ||
     r.aggregate === 'mean_distance' ||
-    /"distance":/.test(JSON.stringify(r.where ?? null)),
+    /"distance":/.test(JSON.stringify([r.where ?? null, r.aggregate_opts?.of ?? null])),
   lsb_adjacent_u: (r) => names(r, 'lsb_adjacent_u'),
   lsb_semi_adjacent_u: (r) => names(r, 'lsb_semi_adjacent_u'),
   space_per_word_in_keystrokes: (r) => r.aggregate === 'percent_of_keystrokes',

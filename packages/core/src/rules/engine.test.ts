@@ -78,11 +78,15 @@ describe('rules engine', () => {
   });
 
   it('keeps trigram categories disjoint and rolls consistent', () => {
-    const sum = ['alternation', 'roll_in', 'roll_out', 'onehand_in', 'onehand_out', 'redirect']
-      .map((id) => qwerty.value(id) as number)
-      .reduce((a, b) => a + b, 0);
-    expect(sum).toBeGreaterThan(60);
-    expect(sum).toBeLessThanOrEqual(100);
+    // Every category is a share of the same trigrams, the fingers', so on a layout with thumb
+    // presses too they add up to no more than all of them.
+    for (const layout of [qwerty, magic]) {
+      const sum = ['alternation', 'roll_in', 'roll_out', 'onehand_in', 'onehand_out', 'redirect']
+        .map((id) => layout.value(id) as number)
+        .reduce((a, b) => a + b, 0);
+      expect(sum).toBeGreaterThan(60);
+      expect(sum).toBeLessThanOrEqual(100);
+    }
     expect(
       Math.abs(
         (qwerty.value('rolls') as number) -
@@ -572,7 +576,7 @@ describe('rules engine', () => {
     expect(percent).toBeCloseTo((count / pairs.textTotal) * 100, 9);
   });
 
-  it('never counts a trigram with a thumb press as a roll or an alternation, but keeps it in the total', () => {
+  it('leaves a trigram with a thumb press out of rolls, alternation and what they are a share of', () => {
     const piano = compileLayout(bundledLayout('ben-vallack-piano')!);
     const ids = ['alternation', 'rolls', 'roll_in'];
     const asFingers: RuleSet = {
@@ -600,11 +604,129 @@ describe('rules engine', () => {
     // s, e, t: left, right, left.
     expect(typed('set').values).toEqual([100, 0, 0]);
     // e, the right outer thumb tapping Alpha 2, then v on the left hand. Were the thumb a finger,
-    // middle finger to thumb would roll inward; it is one trigram, and neither.
+    // middle finger to thumb would roll inward; it is one trigram, and neither, nor anything they
+    // are a share of: there is nothing to share.
     const ev = typed('ev');
     expect(ev.trigrams).toBe(1);
     expect(ev.asFingers).toBe(100);
     expect(ev.values).toEqual([0, 0, 0]);
+    // Together, `set` is the one trigram the fingers type, all of it alternation: the tap neither
+    // passes for a good trigram nor stands in for one.
+    const both = typed('set ev');
+    expect(both.trigrams).toBe(2);
+    expect(both.values).toEqual([100, 0, 0]);
+  });
+
+  it('counts the finger keys alone in hand balance, not a thumb’s presses', () => {
+    const piano = compileLayout(bundledLayout('ben-vallack-piano')!);
+    const rule = catalogRules().find((r) => r.id === 'hand_balance')!;
+    const asTyped: Rule = { ...rule, id: 'with_thumbs', where: null };
+    const ruleSet: RuleSet = { ...layoutsDoc(), rules: [rule, asTyped] };
+    const tables = simulate(piano, normalizeText('ev', OPTS), OPTS).tables;
+    const [fingers, all] = evaluate(tables, piano, ruleSet).results;
+    // e on the right hand, v on the left, and the right thumb's tap between them.
+    expect(fingers.per_hand).toEqual({ L: 50, R: 50 });
+    expect(fingers.value).toBe(0);
+    expect(all.value).toBeCloseTo(100 / 3, 9);
+  });
+
+  it('reads the rules on the fingers’ presses the same whether space is counted or not', () => {
+    // The Doc gives them disregarding space (§16.4.1); a space on a finger key, as Uno's under the
+    // right middle finger, is left out as a space bar is.
+    const ids = [
+      'alternation',
+      'alt_sfs',
+      'roll_in',
+      'roll_out',
+      'rolls',
+      'in_out_ratio',
+      'onehand_in',
+      'onehand_out',
+      'redirect',
+      'weak_redirect',
+      'hand_balance',
+      'pinky_off',
+      'home_row',
+      'center_column',
+    ];
+    for (const preset of [layoutsDoc(), cyanophage()]) {
+      for (const id of ['qwerty', 'magic-romak', 'ben-vallack-piano', 'uno']) {
+        const values = (universe: 'no_space' | 'with_space') => {
+          const r = run(id, { ...preset, globals: { ...preset.globals, universe } });
+          return ids.map((rule) => r.value(rule) as number);
+        };
+        const off = values('no_space');
+        const on = values('with_space');
+        for (const [i, v] of off.entries())
+          expect(on[i], `${preset.id} ${id}: ${ids[i]}`).toBeCloseTo(v, 9);
+      }
+    }
+  });
+
+  it('leaves a thumb’s presses out of pinky off, home row and inner column, and their total', () => {
+    const piano = compileLayout(bundledLayout('ben-vallack-piano')!);
+    const ruleSet: RuleSet = {
+      ...layoutsDoc(),
+      rules: catalogRules().filter((r) => r.id === 'home_row'),
+    };
+    // `ex` is e on the home row, the right thumb's tap onto Alpha 2, and x on the home row there:
+    // three presses, two of them a finger's, both on the home row. Counting the tap would read
+    // two thirds.
+    const tables = simulate(piano, normalizeText('ex', OPTS), OPTS).tables;
+    expect(tables.presses.ngrams('no_space', 'unigram').total).toBe(3);
+    expect(evaluate(tables, piano, ruleSet).results[0].value).toBe(100);
+  });
+
+  it('divides a rule that names the n-grams it counts over by those alone', () => {
+    const compiled = compileLayout(layoutOf('magic-romak'));
+    const tables = simulate(compiled, normalizeText(text, OPTS), OPTS).tables;
+    const fingers: Rule['where'] = { any_thumb: false };
+    const aba: Rule = {
+      id: 'aba',
+      ngram: { n: 3 },
+      where: { all: [{ hand_pattern: 'aba' }, fingers] },
+      aggregate: 'percent_of_ngrams',
+      aggregate_opts: { of: fingers },
+    };
+    const ruleSet: RuleSet = {
+      ...layoutsDoc(),
+      rules: [
+        aba,
+        { ...aba, id: 'aba_count', aggregate: 'count', aggregate_opts: undefined },
+        {
+          ...aba,
+          id: 'fingers_count',
+          where: fingers,
+          aggregate: 'count',
+          aggregate_opts: undefined,
+        },
+        { ...aba, id: 'aba_of_all', aggregate_opts: undefined },
+      ],
+    };
+    const [share, count, of, ofAll] = evaluate(tables, compiled, ruleSet).results;
+    const all = tables.presses.ngrams('no_space', 'trigram').total;
+    expect(of.value as number).toBeLessThan(all);
+    expect(share.value).toBeCloseTo(((count.value as number) / (of.value as number)) * 100, 9);
+    expect(ofAll.value).toBeCloseTo(((count.value as number) / all) * 100, 9);
+    // Its items are percents of the same n-grams, and its keys' parts add up to it.
+    for (const item of share.items) {
+      expect(item.percent).toBeCloseTo(((item.count as number) / (of.value as number)) * 100, 9);
+    }
+    const parts = Object.values(share.per_key).reduce((a, b) => a + b, 0);
+    expect(parts * (share.key_scale as number)).toBeCloseTo(share.value as number, 6);
+    // A closer look at a key lists them in the same percents.
+    const top = share.items[0];
+    const focus = evaluateFocus(tables, compiled, ruleSet, {
+      key: top.keys[0],
+      layer: top.layers?.[0] ?? 0,
+    });
+    const listed = focus.rules
+      .find((r) => r.id === 'aba')!
+      .items.find((i) => i.label === top.label);
+    expect(listed?.percent).toBeCloseTo(top.percent as number, 9);
+    // And it keeps them through JSON.
+    const back = ruleSetFromJson(ruleSetToJson(ruleSet));
+    expect(back.ok && back.ruleSet.rules[0].aggregate_opts).toEqual({ of: fingers });
   });
 
   it('computes a composite score when the set enables it', () => {

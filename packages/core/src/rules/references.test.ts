@@ -134,12 +134,12 @@ const UNDER: Record<string, Record<string, Cited>> = {
       ['Doc', '§8.1 Alts, rolls, 3rolls & redir — the shared concept'],
       ['Doc', '§16.1 Rolls & redirects — the shared concept'],
       ['Doc', '§13.4'],
-      ['glossary', 'no thumb key, space included'],
+      ['glossary', 'a share of the trigrams the fingers type'],
     ],
     weak_redirect: [
       ['keyboard_svg.js', 'three different fingers, none an index'],
       ['Doc', '§8.9 “Weak” redirects — the shared concept'],
-      ['glossary', 'no thumb key, space included'],
+      ['glossary', 'a share of the trigrams the fingers type'],
     ],
     effort: [
       ['playground', 'cyanophage-like divisor'],
@@ -308,29 +308,37 @@ describe('rule references', () => {
     }
   });
 
-  it('cites LayerBench’s thumb rule under every trigram rule that leaves thumbs out', () => {
-    // Rolls and alternation leave out thumb presses but space; redirects and one-hand rolls leave
-    // out every thumb key. Neither is the Doc's, which counts a space thumb in them (§16.4.2).
+  it('cites LayerBench’s thumb rule under every rule read on the fingers’ presses', () => {
+    // Every trigram category is a share of the trigrams the fingers type, no thumb or space, and
+    // hand balance, pinky off, home row and inner column are read on the finger keys' presses.
+    // Neither is the Doc's, which counts a space thumb with its hand when it counts space (§16.4.2).
     for (const set of [{ id: undefined, rules: catalogRules() }, ...PRESET_IDS.map(getPreset)]) {
       for (const r of set.rules) {
-        if (r.family !== 'trigram' || !r.where) continue;
-        const where = JSON.stringify(r.where);
-        const locators = ruleReferences(r.id, set.id).map((ref) => ref.locator ?? '');
+        const where = JSON.stringify(r.where ?? null);
+        const fingers =
+          where.includes('"any_thumb":false') && where.includes('"any_key_kind":"space"');
+        if (!fingers && !r.aggregate_opts?.of) continue;
         const at = `${set.id ?? 'catalog'}: ${r.id}`;
-        const keys = where.includes('"any_thumb":false');
-        const presses = where.includes('"key_kind":"space"');
-        expect(keys || presses, at).toBe(true);
-        if (keys)
-          expect(
-            locators.some((l) => l.includes('no thumb key, space included')),
-            at,
-          ).toBe(true);
-        if (presses)
-          expect(
-            locators.some((l) => l.includes('no thumb press rolls')),
-            at,
-          ).toBe(true);
+        const locators = ruleReferences(r.id, set.id).map((ref) => ref.locator ?? '');
+        const cited =
+          r.family === 'trigram'
+            ? 'a share of the trigrams the fingers type'
+            : 'read on the finger keys’ presses';
+        expect(
+          locators.some((l) => l.includes(cited)),
+          at,
+        ).toBe(true);
       }
+    }
+    // Every trigram rule that picks trigrams is one of them, and so are these four.
+    const catalog = catalogRules();
+    for (const r of catalog.filter((x) => x.family === 'trigram' && x.where)) {
+      expect(r.aggregate_opts?.of, r.id).toBeDefined();
+    }
+    for (const id of ['hand_balance', 'pinky_off', 'home_row', 'center_column']) {
+      expect(JSON.stringify(catalog.find((r) => r.id === id)?.where), id).toContain(
+        '"any_key_kind":"space"',
+      );
     }
   });
 

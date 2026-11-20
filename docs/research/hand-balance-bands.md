@@ -64,47 +64,55 @@ red.
 ## The bundled layouts
 
 Measured with `analyze` on the Library's settings: English news (`en-general`), 100,000 letters, fold,
-Space not counted, and the Layouts Doc rules (hand balance is the same on the cyanophage-like rules).
-Of the 35 bundled layouts, 14 are *even*, 12 *leans* and 9 *heavy*; Night is the most even
-(0.97) and Uno the most unbalanced (18.40).
+and the Layouts Doc rules. Hand balance counts the finger keys' presses alone, no thumb press and no
+space (`FINGER_PRESSES` in `catalog.ts`; `docs/METRICS.md`, *Thumbs*), so it is the same on the
+cyanophage-like rules and with Space on or off. Of the 35 bundled layouts, 22 are *even*, 9 *leans*
+and 4 *heavy*; Sunlight is the most even (0.25) and Uno the most unbalanced (17.76).
+
+Until 2026-11-19 the rule counted every press, a thumb's included, and with Space on the space bar
+too: 14 were *even*, 13 *leans* and 8 *heavy* with Space off, and 21 *heavy* with it on, the space
+bar putting about one press in six on one thumb. A letter or a one-shot key on a thumb then decided
+the band: Ben Vallack Piano read 18.33 and RSTHD 12.80, both *heavy*, where their fingers split 4.84
+and 1.25. The other way, Night read 0.97 with the `r` on its left thumb evening out fingers that
+lean right, 46-54, and now reads 7.67, *leans*.
 
 | Layout | Left–right | \|L − R\| | Band |
 |---|---|---|---|
-| Night | 49.52–50.48 | 0.97 | even |
+| Sunlight | 50.13–49.87 | 0.25 | even |
+| Aptmak | 50.52–49.48 | 1.05 | even |
 | Nerps | 49.38–50.62 | 1.24 | even |
+| RSTHD | 50.62–49.38 | 1.25 | even |
+| Enthium | 49.28–50.72 | 1.45 | even |
+| Hands Down Promethium | 50.84–49.16 | 1.67 | even |
 | Bird 30 | 49.03–50.97 | 1.93 | even |
 | Graphite | 48.99–51.01 | 2.01 | even |
-| Dusk | 48.80–51.20 | 2.40 | even |
+| T-34 | 51.03–48.96 | 2.08 | even |
+| Finch | 48.75–51.25 | 2.50 | even |
 | Gallium | 48.70–51.30 | 2.60 | even |
 | Focal | 51.37–48.63 | 2.74 | even |
-| SNTH | 51.56–48.44 | 3.12 | even |
-| Hands Down Vibranium | 51.61–48.39 | 3.22 | even |
-| Engram | 48.34–51.66 | 3.31 | even |
-| Bird | 47.97–52.03 | 4.06 | even |
-| Cem Aksoylar's Colemak-DH | 47.91–52.09 | 4.19 | even |
+| Bird | 48.48–51.52 | 3.03 | even |
+| Hands Down Vibranium | 48.41–51.59 | 3.18 | even |
+| SNTH | 48.34–51.66 | 3.31 | even |
+| Engram | 48.34–51.66 | 3.33 | even |
+| Hands Down Gold | 48.33–51.67 | 3.34 | even |
+| Nordrassil | 51.71–48.29 | 3.41 | even |
+| Cem Aksoylar's Colemak-DH | 48.04–51.96 | 3.92 | even |
 | Colemak | 47.88–52.12 | 4.24 | even |
 | Colemak-DH | 47.88–52.12 | 4.24 | even |
-| Hands Down Neu | 52.56–47.44 | 5.13 | leans |
-| Hands Down Gold | 52.85–47.15 | 5.70 | leans |
+| Ben Vallack Piano | 47.58–52.42 | 4.84 | even |
+| Hands Down Neu | 52.62–47.38 | 5.24 | leans |
 | Recurva | 47.11–52.89 | 5.78 | leans |
 | APTv3 | 47.04–52.96 | 5.91 | leans |
-| Sunlight | 53.13–46.87 | 6.27 | leans |
-| Nordrassil | 46.66–53.34 | 6.68 | leans |
-| Enthium | 46.20–53.80 | 7.59 | leans |
-| Hands Down Promethium | 53.89–46.11 | 7.77 | leans |
-| Romak | 45.86–54.14 | 8.27 | leans |
-| T-34 | 45.65–54.34 | 8.69 | leans |
+| Night | 46.17–53.83 | 7.67 | leans |
+| Dusk | 45.40–54.60 | 9.19 | leans |
 | Dvorak | 44.92–55.08 | 10.15 | leans |
+| Romak | 44.84–55.16 | 10.32 | leans |
 | Sturdy | 44.65–55.35 | 10.71 | leans |
+| Magic Romak | 44.60–55.40 | 10.80 | leans |
+| Magic Sturdy | 44.26–55.74 | 11.48 | heavy |
 | Canary | 43.84–56.16 | 12.33 | heavy |
-| Aptmak | 56.29–43.71 | 12.59 | heavy |
-| RSTHD | 56.40–43.60 | 12.80 | heavy |
-| Magic Sturdy | 43.28–56.72 | 13.43 | heavy |
-| Magic Romak | 43.06–56.94 | 13.88 | heavy |
-| Finch | 42.95–57.05 | 14.09 | heavy |
 | Qwerty | 57.44–42.56 | 14.88 | heavy |
-| Ben Vallack Piano | 40.84–59.16 | 18.33 | heavy |
-| Uno | 59.20–40.80 | 18.40 | heavy |
+| Uno | 58.88–41.12 | 17.76 | heavy |
 
 (T-34's two shares sum to 99.99: a press that spans both hands counts for neither.)
 

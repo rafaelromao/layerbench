@@ -20,6 +20,13 @@ export function describeWhere(where: Predicate | null | undefined): string {
     .join(' ');
 }
 
+/** How a rule turns what it matched into its number, and what it is a share of when not of all. */
+export function describeAggregate(rule: Rule): string {
+  const aggregate = rule.aggregate ?? 'percent_of_ngrams';
+  const of = rule.aggregate_opts?.of;
+  return of ? `${aggregate} of ${describeWhere(of)}` : aggregate;
+}
+
 /** What a rule reads, in one line: the n-gram shape, or the statistic it pulls. */
 export function describeSource(rule: Rule): string {
   const source = rule.source ?? 'ngram';

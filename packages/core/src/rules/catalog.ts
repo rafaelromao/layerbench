@@ -89,16 +89,18 @@ export const BANDS: Record<string, Bands> = {
 
 const NO_THUMBS: Predicate = { any_thumb: false };
 /**
- * No key of a trigram pressed by a thumb, unless it types a space. A one-shot tap, a held layer or
- * a thumb letter between two keys is a press the hand must make, not a roll or a change of hands;
- * the trigram still counts in the total, so a tap takes the place of a good one.
+ * Presses of finger keys only, none of them a space: what the trigram categories (alternation,
+ * rolls, one-hand rolls, redirects), hand balance and the shares of keys a finger reaches (pinky
+ * off, home row, inner column) are read on, and what they are a share of. The Doc's numbers are of
+ * thirty finger keys, space disregarded (§16.4), and its rulers are drawn on them. A thumb press, a
+ * letter, a one-shot tap, a held layer, Repeat or the space bar, is a press the hand makes but
+ * neither a roll, a change of hands nor a redirect, so a trigram with one is left out of both the
+ * count and the total: a tap does not pass for a good trigram, nor thin out the bad ones, and a
+ * letter on a thumb does not count as a bad one. Where the space bar or a thumb letter sits would
+ * otherwise decide hand balance, and taps and spaces would thin out pinky off.
  */
-const NO_THUMB_PRESS: Predicate = {
-  none: [0, 1, 2].map(
-    (i): Predicate => ({
-      all: [{ is_thumb: true, at: [i] }, { none: [{ key_kind: 'space', at: [i] }] }],
-    }),
-  ),
+export const FINGER_PRESSES: Predicate = {
+  all: [NO_THUMBS, { none: [{ any_key_kind: 'space' }] }],
 };
 const NO_CHORDS: Predicate = { is_chord: false };
 const HEIGHT_PREF = { middle: 3, ring: 2, pinky: 1, index: 0 } as const;
@@ -157,11 +159,11 @@ export function scissorWhere(rows: number): Predicate {
   };
 }
 
-/** A two-key roll on one hand plus a key on the other, in either order, no thumb pressed. */
+/** A two-key roll on one hand plus a key on the other, in either order, fingers alone. */
 export function rollWhere(direction: Direction): Predicate {
   return {
     all: [
-      NO_THUMB_PRESS,
+      FINGER_PRESSES,
       {
         any: [
           {
@@ -184,13 +186,22 @@ export function rollWhere(direction: Direction): Predicate {
   };
 }
 
-/** The hand changes on every key, no thumb pressed. */
+/** The hand changes on every key, fingers alone. */
 export function alternationWhere(): Predicate {
-  return { all: [{ hand_pattern: 'aba' }, NO_THUMB_PRESS] };
+  return { all: [{ hand_pattern: 'aba' }, FINGER_PRESSES] };
 }
 
+/** What a rule read on the fingers' presses is a share of, as `FINGER_PRESSES` says. */
+const OF_FINGERS: Rule['aggregate_opts'] = { of: FINGER_PRESSES };
+
+/** A condition, among the fingers' presses alone. */
+function byFingers(where: Predicate): Predicate {
+  return { all: [where, FINGER_PRESSES] };
+}
+
+/** One hand, changing direction, fingers alone. */
 export function redirectWhere(): Predicate {
-  return { all: [{ hand_pattern: 'aaa' }, { changes_direction: true }, NO_THUMBS] };
+  return { all: [{ hand_pattern: 'aaa' }, { changes_direction: true }, FINGER_PRESSES] };
 }
 
 export function bigramRules(): Rule[] {
@@ -319,43 +330,51 @@ export function skipgramRules(): Rule[] {
 export function trigramRules(): Rule[] {
   return [
     rule('alternation', 'Alternation', 'trigram', {
-      description: 'Hand changes on every key (L R L / R L R), no thumb pressed.',
+      description:
+        'Hand changes on every key (L R L / R L R): a share of the trigrams typed by fingers alone, no thumb or space.',
       ngram: { n: 3 },
       where: alternationWhere(),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
       bands: BANDS.alt,
       score: { weight: 0.5 },
     }),
     rule('alt_sfs', 'Alternation with SFS', 'trigram', {
-      description: 'Alternating trigram whose outer keys share a finger.',
+      description:
+        'Alternating trigram whose outer keys share a finger, of the trigrams typed by fingers alone.',
       ngram: { n: 3 },
       where: {
         all: [
           { hand_pattern: 'aba' },
-          NO_THUMB_PRESS,
+          FINGER_PRESSES,
           { same_finger: true, at: [0, 2] },
           { same_key: false, at: [0, 2] },
         ],
       },
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('roll_in', 'Inward rolls', 'trigram', {
       description:
-        'Two keys on one hand moving toward the index, then the other hand (or vice versa), no thumb pressed.',
+        'Two keys on one hand moving toward the index, then the other hand (or vice versa), of the trigrams typed by fingers alone.',
       ngram: { n: 3 },
       where: rollWhere('inward'),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('roll_out', 'Outward rolls', 'trigram', {
       ngram: { n: 3 },
       where: rollWhere('outward'),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('rolls', 'Rolls (in + out)', 'trigram', {
-      description: 'Two-key rolls on one hand plus a key on the other hand, no thumb pressed.',
+      description:
+        'Two-key rolls on one hand plus a key on the other hand: a share of the trigrams typed by fingers alone, no thumb or space.',
       ngram: { n: 3 },
       where: { any: [rollWhere('inward'), rollWhere('outward')] },
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
       bands: BANDS.roll,
       score: { weight: 0.5 },
     }),
@@ -368,29 +387,35 @@ export function trigramRules(): Rule[] {
     }),
     rule('onehand_in', 'One-hand inward (3rolls)', 'trigram', {
       ngram: { n: 3 },
-      where: { all: [{ hand_pattern: 'aaa' }, { direction: 'inward' }, NO_THUMBS] },
+      where: { all: [{ hand_pattern: 'aaa' }, { direction: 'inward' }, FINGER_PRESSES] },
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('onehand_out', 'One-hand outward (3rolls)', 'trigram', {
       ngram: { n: 3 },
-      where: { all: [{ hand_pattern: 'aaa' }, { direction: 'outward' }, NO_THUMBS] },
+      where: { all: [{ hand_pattern: 'aaa' }, { direction: 'outward' }, FINGER_PRESSES] },
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('redirect', 'Redirects', 'trigram', {
-      description: 'One-handed trigram that changes direction.',
+      description:
+        'One-handed trigram that changes direction: a share of the trigrams typed by fingers alone, no thumb or space.',
       ngram: { n: 3 },
       where: redirectWhere(),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
       bands: BANDS.redir,
       score: { weight: 1.0 },
     }),
     rule('weak_redirect', 'Weak redirects', 'trigram', {
-      description: 'Redirects that do not involve an index finger.',
+      description:
+        'Redirects that do not involve an index finger, of the trigrams typed by fingers alone.',
       ngram: { n: 3 },
       where: {
         all: [redirectWhere(), { none: [{ includes_finger_name: { in: ['index', 'thumb'] } }] }],
       },
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
   ];
 }
@@ -403,8 +428,10 @@ export function usageRules(): Rule[] {
       aggregate: 'per_finger',
     }),
     rule('hand_balance', 'Hand balance', 'usage', {
-      description: 'Share of keystrokes per hand (value = |left − right|).',
+      description:
+        'Share of the finger keys’ keystrokes per hand, no thumb or space (value = |left − right|).',
       ngram: { n: 1 },
+      where: FINGER_PRESSES,
       aggregate: 'per_hand',
       bands: BANDS.hand,
     }),
@@ -419,22 +446,30 @@ export function usageRules(): Rule[] {
       breakdown_by: 'col',
     }),
     rule('pinky_off', 'Pinky off home', 'usage', {
-      description: 'Keystrokes on top/bottom-row pinky keys.',
+      description:
+        'Keystrokes on top/bottom-row pinky keys, of the finger keys’ keystrokes (no thumb or space).',
       ngram: { n: 1 },
-      where: { all: [{ finger_name: { in: ['pinky'] } }, { row: { in: [0, 2] } }] },
+      where: byFingers({ all: [{ finger_name: { in: ['pinky'] } }, { row: { in: [0, 2] } }] }),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
       bands: BANDS.pinky_off,
       score: { weight: 0.5 },
     }),
     rule('home_row', 'Home row usage', 'usage', {
+      description:
+        'Keystrokes on the home row, of the finger keys’ keystrokes (no thumb or space).',
       ngram: { n: 1 },
-      where: { all: [{ row: { in: [1] } }, NO_THUMBS] },
+      where: byFingers({ row: { in: [1] } }),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('center_column', 'Inner column usage', 'usage', {
+      description:
+        'Keystrokes on the inner (index-stretch) columns, of the finger keys’ keystrokes (no thumb or space).',
       ngram: { n: 1 },
-      where: { is_inner: true },
+      where: byFingers({ is_inner: true }),
       aggregate: 'percent_of_ngrams',
+      aggregate_opts: OF_FINGERS,
     }),
     rule('layer_distribution', 'Keystrokes per layer', 'layer', {
       ngram: { n: 1 },

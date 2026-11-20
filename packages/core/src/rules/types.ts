@@ -139,6 +139,12 @@ export interface Rule {
     numerator?: string;
     denominator?: string;
     per?: 'symbols' | 'keystrokes' | 'words';
+    /**
+     * The n-grams the rule counts over, when not all of them: a percentage of n-grams, a distance
+     * summed over them and an item's percent are then of the n-grams this matches. `where` should
+     * select among them, or the share can pass 100.
+     */
+    of?: Predicate;
   };
   breakdown_by?: 'layer' | 'row' | 'col' | 'key_kind' | 'hand';
   params?: {
