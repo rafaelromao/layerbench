@@ -442,7 +442,7 @@ describe('Edit', () => {
       await openEdit();
       const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
       onTestFinished(() => scrolled.mockRestore());
-      const toBoard = () => scrollsTo(scrolled, '.lb-edit-board');
+      const toBoard = () => scrollsTo(scrolled, '.lb-board-area');
 
       await user.click(key('Key LHM: d'));
       scrolled.mockClear();
@@ -454,7 +454,7 @@ describe('Edit', () => {
       // Asked again, after the page was scrolled away, it scrolls again: the button is the ask.
       await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Copy to…' }));
       expect(toBoard()).toBe(2);
-      expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+      expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-board-area'));
 
       // The tap that lands the copy is no ask: the key it lands on is what comes back into view.
       scrolled.mockClear();
@@ -478,7 +478,7 @@ describe('Edit', () => {
     const drawn = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
       this: Element,
     ) {
-      return this.matches('.lb-edit-board')
+      return this.matches('.lb-board-area')
         ? DOMRect.fromRect({ x: 0, y: 0, width: 390, height: window.innerHeight + 200 })
         : box.call(this);
     });
@@ -491,7 +491,7 @@ describe('Edit', () => {
     await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
     // Not all of it fits, and its top, the keys, is what the tap that follows is made on.
     expect(scrolled.mock.calls.at(-1)?.[0]).toMatchObject({ block: 'start' });
-    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-board-area'));
   }, 90_000);
 
   it("brings the whole board into view when a combo's keys are to be picked on it", async () => {
@@ -506,18 +506,18 @@ describe('Edit', () => {
 
     scrolled.mockClear();
     await user.click(combos.getByRole('button', { name: 'New combo' }));
-    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    expect(scrollsTo(scrolled, '.lb-board-area')).toBe(1);
     await user.click(combos.getByRole('button', { name: 'Cancel' }));
 
     // A combo's card is a pick too: it is shown on the board, which is what the page is left on.
     scrolled.mockClear();
     await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
-    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    expect(scrollsTo(scrolled, '.lb-board-area')).toBe(1);
 
     scrolled.mockClear();
     const editor = within(screen.getByRole('group', { name: 'Edit combo LHR+LHM' }));
     await user.click(editor.getByRole('button', { name: 'Pick again on the board' }));
-    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    expect(scrollsTo(scrolled, '.lb-board-area')).toBe(1);
   }, 90_000);
 
   it('brings the whole board into view when a missing key is armed on it', async () => {
@@ -533,12 +533,12 @@ describe('Edit', () => {
 
     await user.click(chip);
     expect(chip).toHaveAttribute('aria-pressed', 'true');
-    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    expect(scrollsTo(scrolled, '.lb-board-area')).toBe(1);
 
     // A second tap puts the character down again, which waits for no tap on the board.
     await user.click(chip);
     expect(chip).toHaveAttribute('aria-pressed', 'false');
-    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    expect(scrollsTo(scrolled, '.lb-board-area')).toBe(1);
   }, 90_000);
 
   it("leaves the page on the board, not the key's editor, when a use is picked in Special Behaviors", async () => {
@@ -558,7 +558,7 @@ describe('Edit', () => {
     )[0];
     await user.click(card);
     expect(scrollsTo(scrolled, '.lb-edit-inspector')).toBeGreaterThan(0);
-    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-board-area'));
   }, 90_000);
 
   it('leaves the page where it is when Undo or Redo bring a selection back', async () => {

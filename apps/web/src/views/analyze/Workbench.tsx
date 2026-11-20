@@ -73,7 +73,7 @@ import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { type Params, toSearch } from '../../url/params.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
-import { KeyInspector } from '../edit/inspector/KeyInspector.js';
+import { KeyHint, KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
   BehaviorsPanel,
   CombosPanel,
@@ -313,21 +313,22 @@ export function Workbench({
   // Where a move, a combo's keys or a character is put down, and where a word or a combo is shown,
   // is the board, which the page can be scrolled past: a phone's screen is filled by the editor
   // under it, a desk's by whatever was being read. A control that hands its next step to the board
-  // asks for it, the whole card (the layers, the tray and the hint that says what is armed with
-  // the keys), brought into view as little as it takes, clear of the sticky header (the card's
-  // scroll margin). A count, not a flag, so asking again, after scrolling away, scrolls again; the
-  // scroll waits for the render, so the hint that says what is armed is in the card's height.
+  // asks for it, the whole board area (the keys, the layers, the tray and the hint that says what
+  // is armed, not the legend, key numbers and summary under them in the same card), brought into
+  // view as little as it takes, clear of the sticky header (the area's scroll margin). A count, not
+  // a flag, so asking again, after scrolling away, scrolls again; the scroll waits for the render,
+  // so the hint that says what is armed is in the area's height.
   // After the editor's own scroll above, so that where both ask, the board wins.
   const [boardAsked, setBoardAsked] = useState(0);
   const revealBoard = useCallback(() => setBoardAsked((n) => n + 1), []);
-  const boardCard = useRef<HTMLElement>(null);
+  const boardArea = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const card = boardCard.current;
-    if (boardAsked === 0 || !card) return;
-    const margin = Number.parseFloat(getComputedStyle(card).scrollMarginTop) || 0;
-    // A card taller than the screen cannot be shown whole: its top, with the keys, comes first.
-    const tooTall = card.getBoundingClientRect().height + margin > window.innerHeight;
-    card.scrollIntoView({
+    const area = boardArea.current;
+    if (boardAsked === 0 || !area) return;
+    const margin = Number.parseFloat(getComputedStyle(area).scrollMarginTop) || 0;
+    // An area taller than the screen cannot be shown whole: its top, with the keys, comes first.
+    const tooTall = area.getBoundingClientRect().height + margin > window.innerHeight;
+    area.scrollIntoView({
       block: tooTall ? 'start' : 'nearest',
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     });
@@ -983,6 +984,111 @@ export function Workbench({
       aria-labelledby={tabId('editor', state.panel)}
       className="min-w-0"
     >
+      {state.panel === 'board' && (
+        <div className="grid items-start gap-3 md:grid-cols-2">
+          <KeyHint className="lb-card" />
+          <section className="lb-card min-w-0" aria-label="A word, typed">
+            <Collapsible id="analyze.word" title="A word, typed">
+              <div className="flex flex-col gap-2 min-w-0">
+                <form
+                  id="explain-form"
+                  className="flex items-end gap-2"
+                  onSubmit={(e) => e.preventDefault()}
+                >
+                  <div className="form-control flex-1">
+                    <label className="label-text text-xs" htmlFor="explain-text">
+                      How is this typed?
+                    </label>
+                    <input
+                      id="explain-text"
+                      name="text"
+                      autoComplete="off"
+                      placeholder="ação · chave · hello"
+                      className="input input-sm input-bordered w-full font-mono"
+                      value={explainText}
+                      onChange={(e) => setExplainText(e.target.value)}
+                    />
+                  </div>
+                  {(outline.length > 0 || explain) && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => {
+                        clearOutline();
+                        setExplainText('');
+                      }}
+                    >
+                      clear
+                    </button>
+                  )}
+                </form>
+
+                {explain && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {frames.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-xs"
+                          onClick={() => {
+                            // Playing is watched on the board: pausing is not.
+                            if (!play?.playing) revealBoard();
+                            setPlay((p) =>
+                              p?.playing
+                                ? { ...p, playing: false }
+                                : {
+                                    frame: p && p.frame < frames.length ? p.frame : 0,
+                                    playing: true,
+                                  },
+                            );
+                          }}
+                        >
+                          {play?.playing ? '⏸ Pause' : '▶ Play'}
+                        </button>
+                      )}
+                      <span className="font-mono text-xs opacity-70">
+                        {explain.dto.presses} presses
+                      </span>
+                    </div>
+                    {/* Each press, in order: the one lit on the board is marked, and any one can be
+                      looked at on its own. */}
+                    <ol className="flex flex-wrap items-center gap-1" aria-label="Presses">
+                      {explain.dto.steps.map((s, i) => {
+                        const at = frames.findIndex((f) => f.step === i);
+                        const now = frame?.step === i;
+                        return (
+                          <li
+                            // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
+                            key={`${s.key}-${i}`}
+                          >
+                            <button
+                              type="button"
+                              className={`btn btn-xs gap-1 font-mono ${now ? 'btn-primary' : 'btn-outline'} ${
+                                s.wastedOneShot && !now ? 'btn-warning' : ''
+                              } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
+                              title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
+                              aria-current={now ? 'step' : undefined}
+                              disabled={at < 0}
+                              onClick={() => {
+                                revealBoard();
+                                setPlay({ frame: at, playing: false });
+                              }}
+                            >
+                              <span className="opacity-60">{stepKey(s.key)}</span>
+                              <span>{charLabel(s.symbols) || s.label}</span>
+                              <span className="opacity-50">{s.layer}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </div>
+                )}
+              </div>
+            </Collapsible>
+          </section>
+        </div>
+      )}
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
       {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
       {state.panel === 'combos' && (
@@ -994,6 +1100,25 @@ export function Workbench({
       {state.panel === 'paths' && <PathsPanel state={state} send={send} producers={producers} />}
       {state.panel === 'export' && <ExportPanel state={state} send={send} />}
     </div>
+  );
+
+  // The summary sits in the Board card, as the legend and the selected key's numbers do, on the
+  // tabs that draw the board; on the others, which draw none, it is a card of its own.
+  const summary = (
+    <SummaryCard
+      shown={shown}
+      provisional={provisional}
+      stale={stale || (loading && !provisional)}
+      progress={progress}
+      params={params}
+      corpusName={corpusName}
+      languages={languageChips}
+      onText={(corpus) => setParams({ corpus, corpus2: null })}
+      languageGap={languageGap}
+      onSelect={selectMetric}
+      ruler={ruler}
+      failed={settings.status === 'failed'}
+    />
   );
 
   return (
@@ -1181,28 +1306,20 @@ export function Workbench({
                 ? `${spoken(state.placing)} armed: tap a key to put it on`
                 : message}
           </p>
-          {!onBoard && editorPanel}
+          {editorPanel}
         </div>
       </section>
 
       {showBoard && (
-        <div
-          {...(onBoard
-            ? {
-                role: 'tabpanel',
-                id: tabPanelId('editor', 'board'),
-                'aria-labelledby': tabId('editor', 'board'),
-              }
-            : {})}
-          className="min-w-0"
-        >
-          {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
-          and the board scrolls with the page at every width. */}
+        <div className="min-w-0">
+          {/* The board's card first, with the board, the legend, the selected key's numbers and the
+          summary in it; then the selected key's editor, under the card on a phone (the page is
+          brought down to it) and beside it at a desk. The board scrolls with the page at every
+          width. */}
           <div className={`lb-edit-grid ${state.selected ? 'lb-editing' : ''}`}>
             <div className="lb-edit-main">
               {showBoard && (
                 <section
-                  ref={boardCard}
                   className="lb-edit-board card bg-base-100 border border-base-300 min-w-0"
                   aria-label="Board"
                 >
@@ -1210,7 +1327,7 @@ export function Workbench({
                     <Collapsible id="analyze.board" title="Board">
                       {/* The board first, with nothing above it; the layers centred under it, as on a
                     Library card; then Heat and Undo and Redo, in a row of their own. */}
-                      <div className="flex flex-col gap-2 min-w-0">
+                      <div ref={boardArea} className="lb-board-area flex flex-col gap-2 min-w-0">
                         <Board
                           ref={keyboard}
                           id="kb-analyze"
@@ -1373,146 +1490,35 @@ export function Workbench({
                         )}
                       </div>
                     </Collapsible>
+
+                    <section className="min-w-0" aria-label="Legend">
+                      <Collapsible id="analyze.legend" title="Legend" defaultCollapsed>
+                        <KeyLegend compiled={state.compiled} layer={boardLayer} />
+                      </Collapsible>
+                    </section>
+
+                    {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
+                    {onBoard && keyStatsView && (
+                      // Escape in the key's numbers does what it does in the editor itself.
+                      <section
+                        className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
+                        aria-label="Key numbers"
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
+                          if (state.selected === null) return;
+                          e.preventDefault();
+                          const keyId = state.selected;
+                          send({ type: 'deselect' });
+                          focusKey(keyId);
+                        }}
+                      >
+                        <div className="card-body gap-2 p-3 sm:p-4 min-w-0">{keyStatsView}</div>
+                      </section>
+                    )}
+
+                    {summary}
                   </div>
                 </section>
-              )}
-
-              {onBoard && (
-                <>
-                  <section
-                    className="lb-edit-explain card bg-base-100 border border-base-300 min-w-0"
-                    aria-label="A word, typed"
-                  >
-                    <div className="card-body gap-2 p-3 sm:p-4">
-                      <Collapsible id="analyze.word" title="A word, typed">
-                        <div className="flex flex-col gap-2 min-w-0">
-                          <form
-                            id="explain-form"
-                            className="flex items-end gap-2"
-                            onSubmit={(e) => e.preventDefault()}
-                          >
-                            <div className="form-control flex-1">
-                              <label className="label-text text-xs" htmlFor="explain-text">
-                                How is this typed?
-                              </label>
-                              <input
-                                id="explain-text"
-                                name="text"
-                                autoComplete="off"
-                                placeholder="ação · chave · hello"
-                                className="input input-sm input-bordered w-full font-mono"
-                                value={explainText}
-                                onChange={(e) => setExplainText(e.target.value)}
-                              />
-                            </div>
-                            {(outline.length > 0 || explain) && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-ghost"
-                                onClick={() => {
-                                  clearOutline();
-                                  setExplainText('');
-                                }}
-                              >
-                                clear
-                              </button>
-                            )}
-                          </form>
-
-                          {explain && (
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                {frames.length > 0 && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-xs"
-                                    onClick={() => {
-                                      // Playing is watched on the board: pausing is not.
-                                      if (!play?.playing) revealBoard();
-                                      setPlay((p) =>
-                                        p?.playing
-                                          ? { ...p, playing: false }
-                                          : {
-                                              frame: p && p.frame < frames.length ? p.frame : 0,
-                                              playing: true,
-                                            },
-                                      );
-                                    }}
-                                  >
-                                    {play?.playing ? '⏸ Pause' : '▶ Play'}
-                                  </button>
-                                )}
-                                <span className="font-mono text-xs opacity-70">
-                                  {explain.dto.presses} presses
-                                </span>
-                              </div>
-                              {/* Each press, in order: the one lit on the board is marked, and any one can be
-                      looked at on its own. */}
-                              <ol
-                                className="flex flex-wrap items-center gap-1"
-                                aria-label="Presses"
-                              >
-                                {explain.dto.steps.map((s, i) => {
-                                  const at = frames.findIndex((f) => f.step === i);
-                                  const now = frame?.step === i;
-                                  return (
-                                    <li
-                                      // biome-ignore lint/suspicious/noArrayIndexKey: a key can be pressed twice in one word
-                                      key={`${s.key}-${i}`}
-                                    >
-                                      <button
-                                        type="button"
-                                        className={`btn btn-xs gap-1 font-mono ${now ? 'btn-primary' : 'btn-outline'} ${
-                                          s.wastedOneShot && !now ? 'btn-warning' : ''
-                                        } ${s.kind === 'hold_release' ? 'opacity-50' : ''}`}
-                                        title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
-                                        aria-current={now ? 'step' : undefined}
-                                        disabled={at < 0}
-                                        onClick={() => {
-                                          revealBoard();
-                                          setPlay({ frame: at, playing: false });
-                                        }}
-                                      >
-                                        <span className="opacity-60">{stepKey(s.key)}</span>
-                                        <span>{charLabel(s.symbols) || s.label}</span>
-                                        <span className="opacity-50">{s.layer}</span>
-                                      </button>
-                                    </li>
-                                  );
-                                })}
-                              </ol>
-                            </div>
-                          )}
-                        </div>
-                      </Collapsible>
-                    </div>
-                  </section>
-
-                  {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
-                  {keyStatsView && (
-                    // Escape in the key's numbers does what it does in the editor itself.
-                    <section
-                      className="lb-edit-keynumbers card bg-base-100 border border-base-300 min-w-0"
-                      aria-label="Key numbers"
-                      onKeyDown={(e) => {
-                        if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
-                        if (state.selected === null) return;
-                        e.preventDefault();
-                        const keyId = state.selected;
-                        send({ type: 'deselect' });
-                        focusKey(keyId);
-                      }}
-                    >
-                      <div className="card-body gap-2 p-3 sm:p-4 min-w-0">{keyStatsView}</div>
-                    </section>
-                  )}
-
-                  <section className="lb-edit-extras min-w-0" aria-label="Legend">
-                    <Collapsible id="analyze.legend" title="Legend">
-                      <KeyLegend compiled={state.compiled} layer={boardLayer} />
-                    </Collapsible>
-                  </section>
-                </>
               )}
             </div>
 
@@ -1522,7 +1528,7 @@ export function Workbench({
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape anywhere in the inspector
               closes it, the way it would a dialog; the controls inside handle everything else. */}
                   <div
-                    className="lb-edit-inspector min-w-0"
+                    className="lb-edit-inspector min-w-0 empty:hidden"
                     onKeyDown={(e) => {
                       if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
                       if (state.combo !== null) {
@@ -1562,20 +1568,11 @@ export function Workbench({
         </div>
       )}
 
-      <SummaryCard
-        shown={shown}
-        provisional={provisional}
-        stale={stale || (loading && !provisional)}
-        progress={progress}
-        params={params}
-        corpusName={corpusName}
-        languages={languageChips}
-        onText={(corpus) => setParams({ corpus, corpus2: null })}
-        languageGap={languageGap}
-        onSelect={selectMetric}
-        ruler={ruler}
-        failed={settings.status === 'failed'}
-      />
+      {!showBoard && (
+        <div className="card bg-base-100 border border-base-300 min-w-0">
+          <div className="card-body gap-3 p-3 sm:p-4">{summary}</div>
+        </div>
+      )}
 
       {shown && (
         <MetricFamilies
@@ -1604,7 +1601,8 @@ export function Workbench({
 /**
  * The numbers up front, what they are of, the languages the layout is for (a chip puts the page on
  * a language's text, which the line above them names), and how much of the text the layout cannot
- * type: the characters themselves wait in the missing-keys tray under the board.
+ * type: the characters themselves wait in the missing-keys tray under the board. It has no card of
+ * its own: the Board card holds it, and a tab with no board puts it in one.
  */
 function SummaryCard({
   shown,
@@ -1638,117 +1636,111 @@ function SummaryCard({
   failed: boolean;
 }) {
   return (
-    <section
-      className="lb-edit-summary card bg-base-100 border border-base-300 min-w-0"
-      aria-label="Summary"
-    >
-      <div className="card-body gap-3 p-3 sm:p-4">
-        <Collapsible
-          id="analyze.summary"
-          title="Summary"
-          extra={
+    <section className="lb-edit-summary min-w-0" aria-label="Summary">
+      <Collapsible
+        id="analyze.summary"
+        title="Summary"
+        extra={
+          <>
+            <HelpLink help={HELP.headline} />
+            {provisional && <span className="text-xs opacity-70">estimate after swap</span>}
+            {stale && !provisional && <span className="text-xs opacity-70">updating…</span>}
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="font-mono text-xs opacity-60">
+              {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
+              {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
+              {params.sample.toLocaleString('en-US')} symbols of {corpusName}
+            </p>
+          </div>
+
+          {/* A chip puts the page on its language's text. */}
+          <LanguageChips coverage={languages} text={params} onText={onText} />
+
+          {stale && progress && progress.total > 0 && (
+            <progress
+              className="progress progress-primary w-full h-1"
+              value={progress.done}
+              max={progress.total}
+              aria-label="Analysis progress"
+            />
+          )}
+
+          {shown ? (
             <>
-              <HelpLink help={HELP.headline} />
-              {provisional && <span className="text-xs opacity-70">estimate after swap</span>}
-              {stale && !provisional && <span className="text-xs opacity-70">updating…</span>}
+              <SummaryStrip results={shown.results} onSelect={onSelect} ruler={ruler} />
+              {shown.score.enabled && shown.score.value !== null && (
+                <p className="text-sm">
+                  Composite score: <span className="font-mono">{shown.score.value.toFixed(1)}</span>{' '}
+                  / 100
+                </p>
+              )}
             </>
-          }
-        >
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="font-mono text-xs opacity-60">
-                {params.universe === 'with_space' ? 'with space' : 'no space'} ·{' '}
-                {params.caseMode === 'model' ? 'shift modeled' : 'case folded'} ·{' '}
-                {params.sample.toLocaleString('en-US')} symbols of {corpusName}
+          ) : failed ? null : (
+            <div className="flex items-center gap-3 py-6">
+              <span className="loading loading-dots loading-md" />
+              <p className="text-sm opacity-70 flex-1">
+                Simulating {params.sample.toLocaleString('en-US')} symbols of {corpusName}…
               </p>
             </div>
+          )}
 
-            {/* A chip puts the page on its language's text. */}
-            <LanguageChips coverage={languages} text={params} onText={onText} />
+          {languageGap && (
+            <div
+              className="alert alert-warning py-2 text-xs"
+              role="note"
+              aria-label="Language coverage"
+            >
+              <span>
+                This layout cannot type {languageGap.missingRequired.length} character
+                {languageGap.missingRequired.length === 1 ? '' : 's'} {languageGap.name} needs:{' '}
+                <span className="font-mono">{languageGap.missingRequired.join(' ')}</span>.
+              </span>
+            </div>
+          )}
 
-            {stale && progress && progress.total > 0 && (
-              <progress
-                className="progress progress-primary w-full h-1"
-                value={progress.done}
-                max={progress.total}
-                aria-label="Analysis progress"
-              />
-            )}
-
-            {shown ? (
-              <>
-                <SummaryStrip results={shown.results} onSelect={onSelect} ruler={ruler} />
-                {shown.score.enabled && shown.score.value !== null && (
-                  <p className="text-sm">
-                    Composite score:{' '}
-                    <span className="font-mono">{shown.score.value.toFixed(1)}</span> / 100
-                  </p>
-                )}
-              </>
-            ) : failed ? null : (
-              <div className="flex items-center gap-3 py-6">
-                <span className="loading loading-dots loading-md" />
-                <p className="text-sm opacity-70 flex-1">
-                  Simulating {params.sample.toLocaleString('en-US')} symbols of {corpusName}…
+          {shown && (
+            <div className="space-y-1 text-xs">
+              {shown.coverage.unproducible.length === 0 ? (
+                <p>
+                  <span className="badge badge-success badge-sm">
+                    every character in the text can be typed
+                  </span>
                 </p>
-              </div>
-            )}
-
-            {languageGap && (
-              <div
-                className="alert alert-warning py-2 text-xs"
-                role="note"
-                aria-label="Language coverage"
-              >
-                <span>
-                  This layout cannot type {languageGap.missingRequired.length} character
-                  {languageGap.missingRequired.length === 1 ? '' : 's'} {languageGap.name} needs:{' '}
-                  <span className="font-mono">{languageGap.missingRequired.join(' ')}</span>.
-                </span>
-              </div>
-            )}
-
-            {shown && (
-              <div className="space-y-1 text-xs">
-                {shown.coverage.unproducible.length === 0 ? (
-                  <p>
-                    <span className="badge badge-success badge-sm">
-                      every character in the text can be typed
-                    </span>
-                  </p>
-                ) : (
-                  <>
-                    <h3 className="font-semibold">
-                      Cannot type {shown.coverage.unproducible.length} character
-                      {shown.coverage.unproducible.length === 1 ? '' : 's'} of the text
-                    </h3>
-                    <p className="opacity-70">
-                      Each one ends the word it is in, so the numbers leave those words out. They
-                      wait in the missing-keys tray under the board, to be put on keys.
-                    </p>
-                  </>
-                )}
-                {shown.coverage.softDropped.length > 0 && (
+              ) : (
+                <>
+                  <h3 className="font-semibold">
+                    Cannot type {shown.coverage.unproducible.length} character
+                    {shown.coverage.unproducible.length === 1 ? '' : 's'} of the text
+                  </h3>
                   <p className="opacity-70">
-                    Punctuation skipped:{' '}
-                    {shown.coverage.softDropped.map(([sym, n], i) => (
-                      <span key={sym} className="font-mono">
-                        {i > 0 && ' '}
-                        {charLabel(sym)} ×{n.toLocaleString('en-US')}
-                      </span>
-                    ))}
+                    Each one ends the word it is in, so the numbers leave those words out. They wait
+                    in the missing-keys tray under the board, to be put on keys.
                   </p>
-                )}
-                <p className="font-mono opacity-60">
-                  {shown.stats.keystrokes.toLocaleString('en-US')} keystrokes ·{' '}
-                  {shown.stats.words.toLocaleString('en-US')} words · {Math.round(shown.elapsedMs)}{' '}
-                  ms
+                </>
+              )}
+              {shown.coverage.softDropped.length > 0 && (
+                <p className="opacity-70">
+                  Punctuation skipped:{' '}
+                  {shown.coverage.softDropped.map(([sym, n], i) => (
+                    <span key={sym} className="font-mono">
+                      {i > 0 && ' '}
+                      {charLabel(sym)} ×{n.toLocaleString('en-US')}
+                    </span>
+                  ))}
                 </p>
-              </div>
-            )}
-          </div>
-        </Collapsible>
-      </div>
+              )}
+              <p className="font-mono opacity-60">
+                {shown.stats.keystrokes.toLocaleString('en-US')} keystrokes ·{' '}
+                {shown.stats.words.toLocaleString('en-US')} words · {Math.round(shown.elapsedMs)} ms
+              </p>
+            </div>
+          )}
+        </div>
+      </Collapsible>
     </section>
   );
 }

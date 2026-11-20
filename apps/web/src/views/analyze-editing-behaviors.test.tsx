@@ -13,7 +13,7 @@ import {
   svgKey,
 } from '../test/analyze-editing.js';
 import { keyNamed, withoutShare } from '../test/keys.js';
-import { layerNameEl, showLayer, shownLayer } from '../test/layers.js';
+import { layerNameEl, openLegend, showLayer, shownLayer } from '../test/layers.js';
 import { qwertyAsWritten } from '../test/qwerty.js';
 import { customInLink, renderRoute } from '../test/render.js';
 
@@ -152,7 +152,7 @@ describe('Edit', () => {
         name: keyNamed('Key R0: transparent, held to reach Symbols'),
       }),
     ).toBeInTheDocument();
-    expect((await screen.findByRole('list', { name: 'Key legend' })).textContent).toContain(
+    expect((await openLegend(user)).textContent).toContain(
       'held from Alpha 1 or Numbers to reach Symbols',
     );
 

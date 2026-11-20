@@ -260,7 +260,7 @@ describe('Analyze', () => {
     const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
     onTestFinished(() => scrolled.mockRestore());
     const toBoard = () =>
-      scrolled.mock.contexts.filter((el) => (el as Element).matches('.lb-edit-board')).length;
+      scrolled.mock.contexts.filter((el) => (el as Element).matches('.lb-board-area')).length;
 
     // The word starts to play on its own as it is typed, and typing is no reason to scroll.
     await user.type(screen.getByLabelText('How is this typed?'), 'ação');

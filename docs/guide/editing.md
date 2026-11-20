@@ -3,9 +3,13 @@
 A layout is edited where it is analyzed, in **Analyze**: the board shows one layer at a time, with
 the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
 **Typing paths**, **Configuration** and **Export**, hold everything there is to edit:
-**Board** is the first, with the board, the word typed and the legend. The summary and the numbers
-sit under the tabs, whichever is open. Tap or click a key to select it. The editor beside the board
-(under it, on a phone) says what the key does, what it adds to the numbers, and lets you change it. Tap or click the
+**Board** is the first, and holds **Key**, which says how a key is picked and moved, and **A word,
+typed**. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
+it, the selected key's numbers and the **Summary**; **Combos** and **Special Behaviors** draw that
+card too, with the **Legend** and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
+key to select it. The editor beside the board (under its card, on a phone) says what the key does
+and lets you change it; what the key adds to the numbers is in the board's card, above the
+**Summary**. Tap or click the
 board between the keys to put the selection away, cancel a swap or a [missing key](#missing-keys)
 tapped, or clear an outline; the end of a drag or a swipe does not, though a key dropped on another
 puts the selection away itself.
@@ -54,8 +58,8 @@ typed, marked *estimate after swap* until the layout is typed again; any other c
 again straight away, and the numbers say *updating…* meanwhile. A larger **Sample** gives steadier
 numbers, a smaller one quicker updates.
 
-The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in a section
-of their own, right above the summary; on a phone, under the word typed.
+The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in the
+board's card on the **Board** tab, right above the summary.
 
 ## Choosing what a key does
 
@@ -134,7 +138,7 @@ with no binding of its own takes along what it does on its layer, its layer's de
 
 Tapping **Swap with…** or **Copy to…** scrolls the page so that the whole board is in view, the keys,
 the layers under them and the note that says what is armed, ready for the tap on the other key. On a
-phone, where the editor opens under the board, or at a desk, with the page scrolled down to the
+phone, where the editor opens under the board's card, or at a desk, with the page scrolled down to the
 numbers, that is a scroll by as little as it takes, and none when the board is already all there;
 a board taller than the screen is shown from its top. Every other button or card that waits for a
 tap on the board does the same: **Pick again on the board**, **New combo**, a missing key tapped, a
@@ -215,7 +219,7 @@ colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
 layer, the thumb or both keys of the combo tapped for Accents. They are found from the layout itself, so they change as you edit: give a key something else
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
-the list under the board, to see where it is pressed and when.
+the **Legend** under the board, to see where it is pressed and when.
 
 A thumb holding a layer on can press nothing else, so on that layer the other thumb keys of its hand
 are out of reach: where every way onto a layer holds a thumb of one hand down, that hand's thumb keys
@@ -537,9 +541,10 @@ keeps the page where it is, at either end too:
 
 ## On a phone
 
-Everything works by tapping. Selecting a key opens the editor right under the board, and the
-board scrolls away with the page as you work through the editor, leaving it the screen; scroll
-back up for the next key. A move brings the board back by itself, with nothing left selected. Tiles
+Everything works by tapping. Selecting a key opens the editor under the board's card, past its
+**Legend**, key numbers and **Summary**, and the page scrolls down to it; fold the **Summary** to
+bring it closer. The board scrolls away with the page as you work through the editor, leaving it the
+screen; scroll back up for the next key. A move brings the board back by itself, with nothing left selected. Tiles
 and chips are sized for a finger.
 
 To drag a key, rest your finger on it for a moment first. A [missing key](#missing-keys) is

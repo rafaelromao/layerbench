@@ -71,7 +71,14 @@ interface SessionState {
   setLibraryHeatMode: (mode: HeatMode) => void;
   /** The groups of Analyze and Compare folded away, by id; the same in every visit. */
   collapsedGroups: string[];
-  toggleGroup: (group: string) => void;
+  /**
+   * The groups that start folded and have been opened, by id. Kept apart from `collapsedGroups`, so
+   * a group that used to start open and was folded by choice is not opened by turning its start
+   * around.
+   */
+  openedGroups: string[];
+  /** Fold or open a group; `startsFolded` is for one that starts folded, which `openedGroups` keeps. */
+  toggleGroup: (group: string, startsFolded?: boolean) => void;
 }
 
 export const useSession = create<SessionState>()(
@@ -117,12 +124,12 @@ export const useSession = create<SessionState>()(
       libraryHeatMode: 'usage',
       setLibraryHeatMode: (libraryHeatMode) => set({ libraryHeatMode }),
       collapsedGroups: [],
-      toggleGroup: (group) => {
-        const current = get().collapsedGroups;
+      openedGroups: [],
+      toggleGroup: (group, startsFolded = false) => {
+        const key = startsFolded ? 'openedGroups' : 'collapsedGroups';
+        const current = get()[key];
         set({
-          collapsedGroups: current.includes(group)
-            ? current.filter((g) => g !== group)
-            : [...current, group],
+          [key]: current.includes(group) ? current.filter((g) => g !== group) : [...current, group],
         });
       },
     }),
@@ -143,6 +150,7 @@ export const useSession = create<SessionState>()(
         libraryHeat: s.libraryHeat,
         libraryHeatMode: s.libraryHeatMode,
         collapsedGroups: s.collapsedGroups,
+        openedGroups: s.openedGroups,
       }),
     },
   ),

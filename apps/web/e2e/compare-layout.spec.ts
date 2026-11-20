@@ -38,6 +38,14 @@ test('heats both boards, and no width draws Settings under the Analyze links', a
   expect(await heated('B')).toBeGreaterThan(0);
   await expect(page.locator('.lb-heat-legend')).toBeVisible();
 
+  // The Legend starts folded; opened, on both sides (one heading opens the other's), its list is
+  // checked at every width below, as it was when it was always open.
+  await page.getByRole('button', { name: 'Legend', exact: true }).first().click();
+  await expect(page.getByRole('button', { name: 'Legend', exact: true }).nth(1)).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+
   // A phone, and at a desk every width from where the bar stops being a grid, through those where
   // it wraps, to a wide screen: Settings is tapped where it is drawn, and nothing spills out.
   const widths = isMobile ? [320, 375] : [640, 660, 700, 744, 800, 840, 1024, 1280];

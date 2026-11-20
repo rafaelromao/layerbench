@@ -27,9 +27,37 @@ export interface KeyInspectorProps {
 }
 
 /**
+ * How a key is picked and edited, in words: what the Board tab says under the tabs, where it is
+ * read before a key is touched. The editor itself, once a key is selected, opens by the board.
+ */
+export function KeyHint({ className = '' }: { className?: string }) {
+  return (
+    <section className={`min-w-0 space-y-1 ${className}`} aria-label="Key">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold">Key</h2>
+        <HelpLink help={HELP.editKey} />
+      </div>
+      <p className="text-xs opacity-70">
+        Tap or click a key on the board to edit it. Drag a key onto another to swap the two — hold
+        Alt to copy instead. To send a key to another layer, select it and use Send to layer….
+        Shift-click keys, or rest a finger on them, to select several and send, copy or clear them
+        together.
+      </p>
+      <p className="text-xs opacity-70 lb-pointer-hint">
+        On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}
+        <span className="font-mono">&amp;lt nav a</span> — Delete makes it do nothing, and the arrow
+        keys move between keys.
+      </p>
+    </section>
+  );
+}
+
+/**
  * Everything about the selected key, in one place that is the same on a phone and at a desk: what
  * the key is, the moves that put it somewhere else, the controls for that kind of key, the keys the
- * layout already has to reuse, the binding as text for typing, and clearing it.
+ * layout already has to reuse, the binding as text for typing, and clearing it. With no key
+ * selected there is nothing to edit, so nothing is drawn: how to pick one is the Board tab's
+ * `KeyHint`.
  */
 export function KeyInspector(props: KeyInspectorProps) {
   const { state } = props;
@@ -37,29 +65,7 @@ export function KeyInspector(props: KeyInspectorProps) {
   if (state.selected !== null && state.also.length > 0) {
     return <SelectionInspector state={state} send={props.send} focusKey={props.focusKey} />;
   }
-  if (state.selected === null || !state.compiled.keyIndex.has(state.selected)) {
-    return (
-      <section className="lb-inspector lb-inspector-empty card bg-base-100 border border-base-300">
-        <div className="card-body p-3 gap-1">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold">Key</h2>
-            <HelpLink help={HELP.editKey} />
-          </div>
-          <p className="text-xs opacity-70">
-            Tap or click a key on the board to edit it. Drag a key onto another to swap the two —
-            hold Alt to copy instead. To send a key to another layer, select it and use Send to
-            layer…. Shift-click keys, or rest a finger on them, to select several and send, copy or
-            clear them together.
-          </p>
-          <p className="text-xs opacity-70 lb-pointer-hint">
-            On a focused key, typing sets it — <span className="font-mono">ç</span>,{' '}
-            <span className="font-mono">&amp;lt nav a</span> — Delete makes it do nothing, and the
-            arrow keys move between keys.
-          </p>
-        </div>
-      </section>
-    );
-  }
+  if (state.selected === null || !state.compiled.keyIndex.has(state.selected)) return null;
   // Remounts per key and layer, so a half-typed field never follows the selection to another key.
   const id = state.selected;
   return <Inspector key={`${state.layer}:${id}`} {...props} keyId={id} />;
