@@ -2,6 +2,7 @@ import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { freshStorage, inspector, key, openEdit } from '../test/analyze-editing.js';
+import { openLegend, showLayer } from '../test/layers.js';
 import { renderRoute } from '../test/render.js';
 
 const follows = (a: Node, b: Node) =>
@@ -21,6 +22,7 @@ describe('Analyze: the Board tab and the board’s card', () => {
 
     // The board's card follows them, and neither is in it.
     expect(follows(panel, card)).toBe(true);
+    expect(panel).not.toContainElement(card);
     expect(within(card).queryByRole('region', { name: 'Key' })).toBeNull();
     expect(within(card).queryByRole('region', { name: 'A word, typed' })).toBeNull();
 
@@ -105,6 +107,20 @@ describe('Analyze: the Board tab and the board’s card', () => {
 describe('Compare: Legend and Summary under each board', () => {
   const sideOf = (side: string) =>
     screen.getByRole('group', { name: `Layers of ${side}` }).closest('section') as HTMLElement;
+
+  it('lists the keys of the layer each side shows', async () => {
+    const user = userEvent.setup();
+    renderRoute('/compare?layout=magic-romak&b=qwerty&corpus=en-general&sample=20000', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('group', { name: 'Layers of A' });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    // Side A on its Symbols layer, side B on its base: each Legend follows its own board.
+    await showLayer(user, 'Symbols', 'Layers of A');
+    const list = await openLegend(user, sideOf('A'));
+    expect(list.textContent).toContain('to reach Symbols');
+    expect(within(sideOf('B')).queryByText(/to reach Symbols/)).toBeNull();
+  }, 60_000);
 
   it('starts the Legend folded and the Summary open, and folds and opens each on both sides together', async () => {
     const user = userEvent.setup();

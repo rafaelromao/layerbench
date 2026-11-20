@@ -138,7 +138,7 @@ with no binding of its own takes along what it does on its layer, its layer's de
 
 Tapping **Swap with…** or **Copy to…** scrolls the page so that the whole board is in view, the keys,
 the layers under them and the note that says what is armed, ready for the tap on the other key. On a
-phone, where the editor opens under the board, or at a desk, with the page scrolled down to the
+phone, where the editor opens under the board's card, or at a desk, with the page scrolled down to the
 numbers, that is a scroll by as little as it takes, and none when the board is already all there;
 a board taller than the screen is shown from its top. Every other button or card that waits for a
 tap on the board does the same: **Pick again on the board**, **New combo**, a missing key tapped, a
