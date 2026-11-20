@@ -796,6 +796,23 @@ describe('Ranking layouts', () => {
     expect(JSON.stringify(requests[0].layout)).toContain('"symbols":"qu"');
   }, 90_000);
 
+  it('scores only the layouts it lists, not those the Bundled switch leaves out', async () => {
+    useSession.setState({ hideBundled: true });
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    const { client, requests } = scoringOnly([500]);
+    // A sample of its own, so no score is known already.
+    renderRoute('/library?sample=10008', { client, storage });
+
+    // The custom layout is read from storage after the page opens, and is the one that gets scored.
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+    await waitFor(() => expect(cards()).toHaveLength(1), { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
+    // The bundled layouts are neither listed nor sent to the engine.
+    expect(requests.map((r) => r.layout.name)).toEqual(['Mine']);
+  }, 90_000);
+
   it('ranks every layout in one order by the numbers, those that skip letters among the rest', async () => {
     // Plain has no ñ, which Magic Romak has: its dead keys make it, and its keymap has no `¿` or `¡`,
     // which Spanish only lists as punctuation.
@@ -1045,6 +1062,14 @@ describe('Choosing which boards are listed', () => {
           return sum + Number(count ?? 0);
         }, 0);
 
+    /** The count on one box of a group, from its label. */
+    const countOf = (group: string, name: RegExp) => {
+      const box = within(screen.getByRole('group', { name: group })).getByRole('checkbox', {
+        name,
+      });
+      return Number(/\((\d+)\)\s*$/.exec(box.closest('label')?.textContent ?? '')?.[1]);
+    };
+
     await openRanking();
     const layouts = screen.getByRole('group', { name: 'Layouts' });
     await user.click(within(layouts).getByRole('checkbox', { name: /^Bundled layouts/ }));
@@ -1055,9 +1080,10 @@ describe('Choosing which boards are listed', () => {
     expect(
       screen.getByText(`2 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones.`),
     ).toBeInTheDocument();
-    // Those left out count on no board and in no category.
+    // Those left out count on no board, in no category and for no language (both are Qwerty).
     await waitFor(() => expect(total('Boards')).toBe(2));
     await waitFor(() => expect(total('Categories')).toBe(2));
+    await waitFor(() => expect(countOf('Languages', /^English /)).toBe(2));
 
     await user.click(within(layouts).getByRole('checkbox', { name: /^Community layouts/ }));
     expect(listed('Night owl')).toBeNull();
@@ -1069,6 +1095,7 @@ describe('Choosing which boards are listed', () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(total('Boards')).toBe(1));
     await waitFor(() => expect(total('Categories')).toBe(1));
+    await waitFor(() => expect(countOf('Languages', /^English /)).toBe(1));
   });
 
   it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
