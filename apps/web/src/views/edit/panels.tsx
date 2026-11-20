@@ -659,9 +659,12 @@ export function CombosPanel({
   state,
   send,
   onShow,
+  onPick,
 }: PanelProps & {
   /** Before a combo is shown on the board: a word playing there would hide it. */
   onShow?: () => void;
+  /** When the keys of a new combo are about to be picked on the board. */
+  onPick?: () => void;
 }) {
   const { compiled, layout } = state;
   const combos = layout.combos ?? [];
@@ -790,7 +793,10 @@ export function CombosPanel({
             <button
               type="button"
               className="lb-slide-new-button"
-              onClick={() => send({ type: 'comboPickStart' })}
+              onClick={() => {
+                send({ type: 'comboPickStart' });
+                onPick?.();
+              }}
             >
               <span aria-hidden="true" className="lb-slide-new-mark">
                 +

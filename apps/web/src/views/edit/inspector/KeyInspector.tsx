@@ -22,6 +22,8 @@ export interface KeyInspectorProps {
   send: Dispatch<EditAction>;
   /** Hand keyboard focus back to a key on the board. */
   focusKey: (keyId: string) => void;
+  /** Bring the whole board into view: what Swap with… and Copy to… wait for is a tap on it. */
+  revealBoard: () => void;
 }
 
 /**
@@ -63,7 +65,13 @@ export function KeyInspector(props: KeyInspectorProps) {
   return <Inspector key={`${state.layer}:${id}`} {...props} keyId={id} />;
 }
 
-function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId: string }) {
+function Inspector({
+  state,
+  send,
+  focusKey,
+  revealBoard,
+  keyId,
+}: KeyInspectorProps & { keyId: string }) {
   const { compiled, layout, layer } = state;
   const activeLayer = compiled.layers[layer];
   const pos = compiled.keyIndex.get(keyId) as number;
@@ -146,14 +154,20 @@ function Inspector({ state, send, focusKey, keyId }: KeyInspectorProps & { keyId
           <button
             type="button"
             className={`btn btn-xs ${armed && state.swapMode === 'swap' ? 'btn-primary' : ''}`}
-            onClick={() => send({ type: 'startSwap', mode: 'swap' })}
+            onClick={() => {
+              send({ type: 'startSwap', mode: 'swap' });
+              revealBoard();
+            }}
           >
             Swap with…
           </button>
           <button
             type="button"
             className={`btn btn-xs ${armed && state.swapMode === 'copy' ? 'btn-primary' : ''}`}
-            onClick={() => send({ type: 'startSwap', mode: 'copy' })}
+            onClick={() => {
+              send({ type: 'startSwap', mode: 'copy' });
+              revealBoard();
+            }}
           >
             Copy to…
           </button>

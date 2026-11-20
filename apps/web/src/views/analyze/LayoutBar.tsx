@@ -3,7 +3,6 @@ import {
   type IndexEntry,
   isLayoutLink,
   LANGUAGE_PROFILES,
-  type LanguageCoverage,
   type LanguageVerdict,
   type Layout,
   toCanonicalJson,
@@ -11,7 +10,6 @@ import {
 } from '@layerbench/core';
 import { useState } from 'react';
 import { Switch, SwitchGroup } from '../../components/FeatureSwitches.js';
-import { LanguageChips } from '../../components/LanguageChips.js';
 import { addedText, verdictText } from '../../engine/measure-languages.js';
 import { ProposedBadge } from '../../proposals/ProposedBadge.js';
 import { SyncNote } from '../../storage/SyncNote.js';
@@ -24,15 +22,14 @@ import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
  * The layout in hand and what it is measured on. In sight: its name, whether it is saved, whether a
- * change proposed from it is open, the languages it is for, the ways to save it, over itself or as
- * a copy, the way to submit a custom layout to the Library, which layout this is, what the numbers
- * are made with, and the way to compare it.
- * In the Settings dialog: its author, description and link, the text and rules the numbers come
- * from, the switches, and whether the board draws the combos that type.
+ * change proposed from it is open, the ways to save it, over itself or as a copy, the way to submit
+ * a custom layout to the Library, which layout this is, what the numbers are made with, and the way
+ * to compare it. The languages it is for are chips in the Summary, above the numbers.
+ * In the Settings dialog: its author, description and link, the languages it is for, the text and
+ * rules the numbers come from, the switches, and whether the board draws the combos that type.
  */
 export function LayoutBar({
   layout,
-  languages,
   dirty,
   saving,
   onMeta,
@@ -55,8 +52,6 @@ export function LayoutBar({
   showCombos,
 }: {
   layout: Layout;
-  /** What the layout can write of each language it is for, as its list has them. */
-  languages: LanguageCoverage[];
   dirty: boolean;
   saving: boolean;
   onMeta: (meta: {
@@ -106,8 +101,7 @@ export function LayoutBar({
       {/* One line at a desk. A phone has no room for the name beside four buttons: the name, its
           badges and Cancel take a line, and Save, Save as copy and Submit one of their own under it,
           at its end. The bar is as tall before the first edit as after, on the narrowest phone too,
-          and what comes with an edit takes room from the name, never moving a button. Only the
-          row of language chips under it changes, with the languages the layout is for. */}
+          and what comes with an edit takes room from the name, never moving a button. */}
       <div className="flex items-center justify-end gap-1 sm:gap-2 max-sm:flex-wrap">
         <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0 max-sm:basis-full">
           <TextField
@@ -166,12 +160,6 @@ export function LayoutBar({
           </button>
         )}
       </div>
-      {/* A chip puts the page on its language's text. */}
-      <LanguageChips
-        coverage={languages}
-        text={params}
-        onText={(corpus) => onParams({ corpus, corpus2: null })}
-      />
       {/* Where what was just saved is: kept in this browser only, or not sent for a reason. */}
       <SyncNote />
       {/* On a phone the picker shows the layout's name without a caption, and Settings is a gear.

@@ -5,6 +5,7 @@ import {
   type CorpusManifest,
   coverLanguage,
   documentMissing,
+  type LanguageCoverage,
   type Layout,
   languagesToJudge,
   layoutLanguageCoverage,
@@ -44,6 +45,7 @@ import {
   typingCombos,
 } from '../../components/Keyboard.js';
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
+import { LanguageChips } from '../../components/LanguageChips.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
@@ -295,13 +297,41 @@ export function Workbench({
   useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
 
   // On a phone the tabs and the board fill the screen, so the editor of a key just selected opens
-  // below it: bring it into view, as little as it takes.
+  // below it: bring it into view, as little as it takes. Undo and Redo bring the selection of a
+  // snapshot back with its layout, and leave the page where it is: their buttons are above the
+  // board, and a tap on one is no wish to be taken down to the editor.
+  const restoresSeen = useRef(state.restores);
   useEffect(() => {
-    if (state.selected === null || window.innerWidth >= 1024) return;
+    const restored = restoresSeen.current !== state.restores;
+    restoresSeen.current = state.restores;
+    if (state.selected === null || restored || window.innerWidth >= 1024) return;
     document
       .querySelector('.lb-edit-inspector')
       ?.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-  }, [state.selected]);
+  }, [state.selected, state.restores]);
+
+  // Where a move, a combo's keys or a character is put down, and where a word or a combo is shown,
+  // is the board, which the page can be scrolled past: a phone's screen is filled by the editor
+  // under it, a desk's by whatever was being read. A control that hands its next step to the board
+  // asks for it, the whole card (the layers, the tray and the hint that says what is armed with
+  // the keys), brought into view as little as it takes, clear of the sticky header (the card's
+  // scroll margin). A count, not a flag, so asking again, after scrolling away, scrolls again; the
+  // scroll waits for the render, so the hint that says what is armed is in the card's height.
+  // After the editor's own scroll above, so that where both ask, the board wins.
+  const [boardAsked, setBoardAsked] = useState(0);
+  const revealBoard = useCallback(() => setBoardAsked((n) => n + 1), []);
+  const boardCard = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const card = boardCard.current;
+    if (boardAsked === 0 || !card) return;
+    const margin = Number.parseFloat(getComputedStyle(card).scrollMarginTop) || 0;
+    // A card taller than the screen cannot be shown whole: its top, with the keys, comes first.
+    const tooTall = card.getBoundingClientRect().height + margin > window.innerHeight;
+    card.scrollIntoView({
+      block: tooTall ? 'start' : 'nearest',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+    });
+  }, [boardAsked]);
 
   // The layer edited is the one the link names, so a link opens on it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
@@ -900,8 +930,8 @@ export function Workbench({
   // What the layout cannot type, as it is now: the text's characters the last report found, the
   // letters the language needs, and what edits from the tray left without a key.
   const producible = useMemo(() => producibleSymbols(typedCompiled), [typedCompiled]);
-  // The languages the layout is for, as its list has them, each a chip in the bar; what each lacks
-  // is of the layout as written, as on its Library card.
+  // The languages the layout is for, as its list has them, each a chip in the Summary; what each
+  // lacks is of the layout as written, as on its Library card.
   const languageChips = useMemo(() => {
     // With every feature on, the layout typed is the layout as written: what it types is known.
     const written =
@@ -939,6 +969,7 @@ export function Workbench({
   const showOnBoard = () => {
     setPlay(null);
     clearOutline();
+    revealBoard();
   };
 
   const onBoard = state.panel === 'board';
@@ -954,7 +985,9 @@ export function Workbench({
     >
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
       {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
-      {state.panel === 'combos' && <CombosPanel state={state} send={send} onShow={showOnBoard} />}
+      {state.panel === 'combos' && (
+        <CombosPanel state={state} send={send} onShow={showOnBoard} onPick={revealBoard} />
+      )}
       {state.panel === 'behaviors' && (
         <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
       )}
@@ -980,7 +1013,6 @@ export function Workbench({
 
       <LayoutBar
         layout={state.layout}
-        languages={languageChips}
         dirty={state.dirty}
         saving={session.saving}
         onMeta={(meta) => send({ type: 'edit', edit: { kind: 'setMeta', ...meta } })}
@@ -1170,6 +1202,7 @@ export function Workbench({
             <div className="lb-edit-main">
               {showBoard && (
                 <section
+                  ref={boardCard}
                   className="lb-edit-board card bg-base-100 border border-base-300 min-w-0"
                   aria-label="Board"
                 >
@@ -1278,6 +1311,8 @@ export function Workbench({
                           onArm={(char) => {
                             stopPlaying();
                             send({ type: 'armChar', char });
+                            // The chip already armed is put down again by a second tap.
+                            if (state.placing !== char) revealBoard();
                           }}
                           onDisarm={() => send({ type: 'armChar', char: null })}
                           onDrop={({ char, to }) => {
@@ -1391,7 +1426,9 @@ export function Workbench({
                                   <button
                                     type="button"
                                     className="btn btn-xs"
-                                    onClick={() =>
+                                    onClick={() => {
+                                      // Playing is watched on the board: pausing is not.
+                                      if (!play?.playing) revealBoard();
                                       setPlay((p) =>
                                         p?.playing
                                           ? { ...p, playing: false }
@@ -1399,8 +1436,8 @@ export function Workbench({
                                               frame: p && p.frame < frames.length ? p.frame : 0,
                                               playing: true,
                                             },
-                                      )
-                                    }
+                                      );
+                                    }}
                                   >
                                     {play?.playing ? '⏸ Pause' : '▶ Play'}
                                   </button>
@@ -1431,7 +1468,10 @@ export function Workbench({
                                         title={`${stepKey(s.key)} · ${s.layer} · ${s.finger}`}
                                         aria-current={now ? 'step' : undefined}
                                         disabled={at < 0}
-                                        onClick={() => setPlay({ frame: at, playing: false })}
+                                        onClick={() => {
+                                          revealBoard();
+                                          setPlay({ frame: at, playing: false });
+                                        }}
                                       >
                                         <span className="opacity-60">{stepKey(s.key)}</span>
                                         <span>{charLabel(s.symbols) || s.label}</span>
@@ -1504,9 +1544,15 @@ export function Workbench({
                         state={state}
                         send={send}
                         combo={state.combo}
+                        revealBoard={revealBoard}
                       />
                     ) : (
-                      <KeyInspector state={state} send={send} focusKey={focusKey} />
+                      <KeyInspector
+                        state={state}
+                        send={send}
+                        focusKey={focusKey}
+                        revealBoard={revealBoard}
+                      />
                     )}
                   </div>
                 </>
@@ -1523,6 +1569,8 @@ export function Workbench({
         progress={progress}
         params={params}
         corpusName={corpusName}
+        languages={languageChips}
+        onText={(corpus) => setParams({ corpus, corpus2: null })}
         languageGap={languageGap}
         onSelect={selectMetric}
         ruler={ruler}
@@ -1554,8 +1602,9 @@ export function Workbench({
 }
 
 /**
- * The numbers up front, what they are of, and how much of the text the layout cannot type: the
- * characters themselves wait in the missing-keys tray under the board.
+ * The numbers up front, what they are of, the languages the layout is for (a chip puts the page on
+ * a language's text, which the line above them names), and how much of the text the layout cannot
+ * type: the characters themselves wait in the missing-keys tray under the board.
  */
 function SummaryCard({
   shown,
@@ -1564,6 +1613,8 @@ function SummaryCard({
   progress,
   params,
   corpusName,
+  languages,
+  onText,
   languageGap,
   onSelect,
   ruler,
@@ -1575,6 +1626,10 @@ function SummaryCard({
   progress: { done: number; total: number } | null;
   params: Params;
   corpusName: string;
+  /** What the layout can write of each language it is for, as its list has them. */
+  languages: LanguageCoverage[];
+  /** Put the page on this corpus alone. */
+  onText: (corpus: string) => void;
   languageGap: { name: string; missingRequired: string[] } | null;
   onSelect: (id: string) => void;
   /** Where the badges of Effort and SFB lead: the ruler of the rule set the numbers were rated on. */
@@ -1607,6 +1662,9 @@ function SummaryCard({
                 {params.sample.toLocaleString('en-US')} symbols of {corpusName}
               </p>
             </div>
+
+            {/* A chip puts the page on its language's text. */}
+            <LanguageChips coverage={languages} text={params} onText={onText} />
 
             {stale && progress && progress.total > 0 && (
               <progress

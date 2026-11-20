@@ -132,12 +132,22 @@ with no binding of its own takes along what it does on its layer, its layer's de
 *Transparent* key taken to the base does *Nothing* there, with no layer below it to show through.
 **Send to layer…** puts a key at the same place on another layer, picked from a list.
 
+Tapping **Swap with…** or **Copy to…** scrolls the page so that the whole board is in view, the keys,
+the layers under them and the note that says what is armed, ready for the tap on the other key. On a
+phone, where the editor opens under the board, or at a desk, with the page scrolled down to the
+numbers, that is a scroll by as little as it takes, and none when the board is already all there;
+a board taller than the screen is shown from its top. Every other button or card that waits for a
+tap on the board does the same: **Pick again on the board**, **New combo**, a missing key tapped, a
+combo or a use picked in the Combos or Special Behaviors strip, and **▶ Play** or a press picked in
+**A word, typed**.
+
 Once a move lands, by a drop, by tapping or from the list, nothing is left selected and the board
 has focus again, on the key where the move landed: select the next key from there, and on a phone
 the board comes back into view. One **Undo** takes the move back, and the keys selected before it are
-selected again. A swap or a copy cancelled before you tap the other key, with `Escape`, **Cancel**
-in the note under the board, or by tapping the same key again on its own layer, leaves that key
-selected and the layout as it was. On another layer, the same key is the other key.
+selected again. **Undo** and **Redo** never scroll the page, though on a phone selecting a key by
+hand does bring its editor into view. A swap or a copy cancelled before you tap the other key, with
+`Escape`, **Cancel** in the note under the board, or by tapping the same key again on its own layer,
+leaves that key selected and the layout as it was. On another layer, the same key is the other key.
 
 `Delete` on a selected key makes it do nothing (*Nothing* `∅`), on any layer, rather than let the
 layer below show through; **Clear**, at the foot of the editor, does the same for a key with a

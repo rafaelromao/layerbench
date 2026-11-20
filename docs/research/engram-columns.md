@@ -71,7 +71,10 @@ given as a share of letters, as the Doc counts them.
 | Hand use, left – right | 49 – 51 | 48 – 52 |
 | Effort (the Doc has none) | | 453.5 |
 
-- **Alternation and redirects read as the Doc does**, within 0.1, and rolls within 0.9.
+- **Alternation and redirects read as the Doc does**, within 0.1, and rolls within 0.9. (Since 2026-11-19
+  the trigram categories are shares of the trigrams the fingers type, which leaves out the trigrams
+  with `z` or `q` on a thumb: alternation reads 41.28, rolls 42.66 and redirects 4.37, about 0.2 off
+  the Doc's; the table above is as measured before that.)
 - **The others are not reconciled.** The Doc measures on its own corpus with its own analyzer, and
   only SFB and the pair metrics' denominator were looked at. The SFS here is not the Doc's number:
   the Doc's analyzer counts skips of one to nine keys apart, each weighted half as much as the one

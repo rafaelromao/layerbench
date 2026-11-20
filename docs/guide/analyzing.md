@@ -98,8 +98,11 @@ Layouts are compared on the text, not on their presses. The pair rules are a sha
 pairs the text has, SFB of the letters it has, and Effort is per character typed, so a layout's layer taps, holds
 and one-shots, which can never be a same-finger letter pair, do not make it look better than it
 types: each adds its cost to Effort but no keystroke. A layout typing each character with one press
-gets the same numbers either way. A thumb press is never part of a roll or an alternation either,
-so a tap between two letters does not pass for a good trigram.
+gets the same numbers either way. Alternation, rolls, one-hand rolls and redirects are shares of
+the trigrams the fingers type: a trigram with a thumb press in it, a letter, a tap or the space bar,
+is none of them, and is not in what they are a share of either, so a tap between two letters does
+not pass for a good trigram nor thin out the bad ones, and a letter on a thumb does not count as a
+bad one. Hand balance, pinky off, home row and inner column count the finger keys alone.
 
 A layout that has no key for letters the text's language needs skips them, and skipping is free, so
 its numbers flatter it. Each card says what share of the text it skips, and which letters, but the
@@ -340,15 +343,15 @@ text once for every layout, and says so above the list; a layout opened from it 
 into the first, in the share you choose: **Analyze** analyzes on the mix, **Compare** compares on it
 and **Library** ranks on it.
 
-A layout's languages are chips: on its card in **Library**, under its name in **Analyze**, and
-under each name in **Compare**. Tap or click one and the whole page is on that language's news text,
-the one that comes with the app, alone, any text mixed in taken off: **Library** ranks every layout
-on it, **Analyze** analyzes on it and **Compare** compares both on it. The chip of the text on show
-is in bold and underlined. **Analyze** shows the languages as the layout's list has them; **Library** and
-**Compare** read a layout that names none as one for English. In **Library** the card whose chip you
-pressed stays where it is on the screen while the list is ranked again around it, as the scores for
-the new text come in, until you scroll or press something else; on a wide screen, where the cards
-are in columns, it may change column.
+A layout's languages are chips: on its card in **Library**, in the **Summary** above its numbers in
+**Analyze**, and above each layout's numbers in **Compare**. Tap or click one and the whole page is
+on that language's news text, the one that comes with the app, alone, any text mixed in taken off:
+**Library** ranks every layout on it, **Analyze** analyzes on it and **Compare** compares both on
+it. The chip of the text on show is in bold and underlined. **Analyze** shows the languages as the
+layout's list has them; **Library** and **Compare** read a layout that names none as one for
+English. In **Library** the card whose chip you pressed stays where it is on the screen while the
+list is ranked again around it, as the scores for the new text come in, until you scroll or press
+something else; on a wide screen, where the cards are in columns, it may change column.
 
 ### The same choices in every view
 
@@ -527,15 +530,17 @@ A custom rule set carries the rulers it was saved with, and its badge for Effort
 them, and its badges name bands by them, until they are changed in **Rules**, under **Bands (upper
 bounds)**. A set made from one of the presets above starts with that preset's rulers.
 
-Hand balance is read as the Doc reads it, from the share of the keystrokes each hand types. The Doc
-prints whole percents and files a split under the one it prints: *even* up to a 52-48 split, *leans*
-up to 55-45 and *heavy* past that, so 52.4-47.6 is still *even* and 55.6-44.4 is *heavy*. The shares
-are not rounded here, the bands end at 5 points of difference, a 52.5-47.5 split, and at 11, a
-55.5-44.5 one. The card shows that difference (**Hand Δ** in the summary strip) and the two shares.
-The Doc names no category past *heavy*, so a 70-30 split is still *heavy*. Like the other numbers,
-it counts what the **Space** setting counts: with Space on, the thumb that types it adds its presses
-to its hand, and a layout can change band. [The research note](../research/hand-balance-bands.md)
-has the Doc's rows.
+Hand balance is read as the Doc reads it, from the share of the keystrokes each hand's fingers type:
+a thumb's presses, a letter, a tap or the space bar, are left out. The Doc prints whole percents and
+files a split under the one it prints: *even* up to a 52-48 split, *leans* up to 55-45 and *heavy*
+past that, so 52.4-47.6 is still *even* and 55.6-44.4 is *heavy*. The shares are not rounded here,
+the bands end at 5 points of difference, a 52.5-47.5 split, and at 11, a 55.5-44.5 one. The card
+shows that difference (**Hand Δ** in the summary strip) and the two shares. The Doc names no
+category past *heavy*, so a 70-30 split is still *heavy*. **Space** does not move it, nor the
+trigram categories, pinky off, home row or inner column, while words are kept apart, as both presets
+keep them: the Doc gives its numbers disregarding space, since the thumb that types it would move
+each hand's share by about nine points, one way or the other (§16.4.5), and its rulers are drawn on
+numbers without it. [The research note](../research/hand-balance-bands.md) has the Doc's rows.
 
 ## Rules and their sources
 

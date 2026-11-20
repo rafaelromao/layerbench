@@ -644,6 +644,9 @@ button.lb-combo-apart:focus-visible {
 }
 .lb-edit-board {
   order: 1;
+  /* The page's header sticks to the top, 57px tall on a phone: a board scrolled into view stops
+     under it, as the guide's sections do. */
+  scroll-margin-top: 4rem;
 }
 .lb-edit-inspector {
   order: 2;

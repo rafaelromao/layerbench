@@ -20,7 +20,7 @@ const state = initialState(layout, compileLayout(layout));
 describe('a combo', () => {
   it('has a box to tick for the analysis to type with it, ticked when it names no role', async () => {
     const send = vi.fn();
-    render(<ComboInspector state={state} send={send} combo={0} />);
+    render(<ComboInspector state={state} send={send} combo={0} revealBoard={vi.fn()} />);
     expect(screen.queryByRole('combobox', { name: /^Role of combo/ })).toBeNull();
     expect(screen.getByLabelText('Timeout of combo LHI+LHM, in milliseconds')).toBeInTheDocument();
     const typing = screen.getByRole('checkbox', { name: 'Combo LHI+LHM is used for typing' });
@@ -45,6 +45,7 @@ describe('a combo', () => {
         state={initialState(asCommand, compileLayout(asCommand))}
         send={send}
         combo={0}
+        revealBoard={vi.fn()}
       />,
     );
     const typing = screen.getByRole('checkbox', { name: 'Combo LHI+LHM is used for typing' });
