@@ -676,6 +676,32 @@ describe('rules engine', () => {
   });
 
   it('leaves a thumb’s presses out of pinky off, home row and inner column, and their total', () => {
+    // Qwerty on 3x5+2 with ç on a thumb: each word is the thumb's letter and one finger key the
+    // rule counts (q on the pinky's top row, a on the home row, t in the index's inner column), so
+    // that key is the whole of the fingers' presses. Counting the thumb's would read half.
+    const { layout } = importTextLayout(
+      'q w e r t y u i o p\na s d f g h j k l ;\nz x c v b n m , . /\nç space',
+      '3x5+2',
+    );
+    const qwerty = compileLayout(layout);
+    const usage: RuleSet = {
+      ...layoutsDoc(),
+      rules: catalogRules().filter((r) =>
+        ['pinky_off', 'home_row', 'center_column'].includes(r.id),
+      ),
+    };
+    for (const [id, word] of [
+      ['pinky_off', 'çq'],
+      ['home_row', 'ça'],
+      ['center_column', 'çt'],
+    ] as const) {
+      const tables = simulate(qwerty, normalizeText(word, OPTS), OPTS).tables;
+      expect(tables.presses.ngrams('no_space', 'unigram').total, word).toBe(2);
+      const result = evaluate(tables, qwerty, usage).results.find((r) => r.id === id);
+      expect(result?.value, `${id} on ${word}`).toBe(100);
+    }
+
+    // A one-shot tap is a thumb's press too.
     const piano = compileLayout(bundledLayout('ben-vallack-piano')!);
     const ruleSet: RuleSet = {
       ...layoutsDoc(),
