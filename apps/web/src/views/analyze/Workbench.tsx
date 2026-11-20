@@ -314,7 +314,7 @@ export function Workbench({
   // asks for it, the whole card (the layers, the tray and the hint that says what is armed with
   // the keys), brought into view as little as it takes, clear of the sticky header (the card's
   // scroll margin). A count, not a flag, so asking again, after scrolling away, scrolls again; the
-  // scroll waits for the render, so a tab that was switched to in the same tap has drawn the board.
+  // scroll waits for the render, so the hint that says what is armed is in the card's height.
   // After the editor's own scroll above, so that where both ask, the board wins.
   const [boardAsked, setBoardAsked] = useState(0);
   const revealBoard = useCallback(() => setBoardAsked((n) => n + 1), []);
@@ -1310,7 +1310,8 @@ export function Workbench({
                           onArm={(char) => {
                             stopPlaying();
                             send({ type: 'armChar', char });
-                            revealBoard();
+                            // The chip already armed is put down again by a second tap.
+                            if (state.placing !== char) revealBoard();
                           }}
                           onDisarm={() => send({ type: 'armChar', char: null })}
                           onDrop={({ char, to }) => {

@@ -416,10 +416,19 @@ test.describe('at a desk', () => {
     await page.getByRole('button', { name: /^Key LHI:/ }).click();
     const editor = page.getByRole('group', { name: 'Edit LHI' });
     const swap = editor.getByRole('button', { name: 'Swap with…' });
-    // Far enough that the top of the board is under the header, the editor beside it still in sight.
+    // The page scrolled until the top of the board is 10px under the sticky header: on the screen,
+    // so that no scroll is needed to see it, though the header hides its top.
+    const header = await page.locator('header.sticky').first().boundingBox();
+    const headerBottom = (header?.y ?? 0) + (header?.height ?? 0);
     const board = await page.locator('.lb-edit-board').boundingBox();
-    await page.evaluate((y) => window.scrollTo(0, y), Math.round((board?.y ?? 0) + 40));
-    await expect(swap).toBeInViewport();
+    await page.evaluate(
+      (y) => window.scrollTo(0, y),
+      Math.round((board?.y ?? 0) - headerBottom + 10),
+    );
+    // The premise, which a click's own scroll to its button must not be left to make: the board is
+    // cut by the header while the button is clear of it.
+    expect((await page.locator('.lb-edit-board').boundingBox())?.y ?? 0).toBeLessThan(headerBottom);
+    expect((await swap.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerBottom);
     await swap.click();
     await expectBoardWhole(page);
   });

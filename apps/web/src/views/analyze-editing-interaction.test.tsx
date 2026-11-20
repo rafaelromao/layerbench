@@ -534,6 +534,11 @@ describe('Edit', () => {
     await user.click(chip);
     expect(chip).toHaveAttribute('aria-pressed', 'true');
     expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+
+    // A second tap puts the character down again, which waits for no tap on the board.
+    await user.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
   }, 90_000);
 
   it("leaves the page on the board, not the key's editor, when a use is picked in Special Behaviors", async () => {
