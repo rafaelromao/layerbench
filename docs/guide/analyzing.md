@@ -341,11 +341,12 @@ into the first, in the share you choose: **Analyze** analyzes on the mix, **Comp
 and **Library** ranks on it.
 
 A layout's languages are chips: on its card in **Library**, in the **Summary** above its numbers in
-**Analyze**, and above each layout's numbers in **Compare**. Tap or click one and the whole page is on that language's news text,
-the one that comes with the app, alone, any text mixed in taken off: **Library** ranks every layout
-on it, **Analyze** analyzes on it and **Compare** compares both on it. The chip of the text on show
-is in bold and underlined. **Analyze** shows the languages as the layout's list has them; **Library** and
-**Compare** read a layout that names none as one for English.
+**Analyze**, and above each layout's numbers in **Compare**. Tap or click one and the whole page is
+on that language's news text, the one that comes with the app, alone, any text mixed in taken off:
+**Library** ranks every layout on it, **Analyze** analyzes on it and **Compare** compares both on
+it. The chip of the text on show is in bold and underlined. **Analyze** shows the languages as the
+layout's list has them; **Library** and **Compare** read a layout that names none as one for
+English.
 
 ### The same choices in every view
 
