@@ -345,7 +345,10 @@ under each name in **Compare**. Tap or click one and the whole page is on that l
 the one that comes with the app, alone, any text mixed in taken off: **Library** ranks every layout
 on it, **Analyze** analyzes on it and **Compare** compares both on it. The chip of the text on show
 is in bold and underlined. **Analyze** shows the languages as the layout's list has them; **Library** and
-**Compare** read a layout that names none as one for English.
+**Compare** read a layout that names none as one for English. In **Library** the card whose chip you
+pressed stays where it is on the screen while the list is ranked again around it, as the scores for
+the new text come in, until you scroll or press something else; on a wide screen, where the cards
+are in columns, it may change column.
 
 ### The same choices in every view
 
