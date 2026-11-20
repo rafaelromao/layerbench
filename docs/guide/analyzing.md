@@ -5,8 +5,9 @@ of the keys, the numbers under it, and how any word you give it is typed.
 
 Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend**, **Editor** and
 **Numbers**, folds away under its heading, and so do **Layouts**, **Metric comparison** and, under
-each layout's board, **Legend** and **Summary** in **Compare**. **Legend** starts folded, in both,
-and opens under its heading. This browser remembers which you folded and which you opened. In
+each layout's board, **Legend** and **Summary** in **Compare**, where folding one layout's folds the
+other's, as the two are read against each other. **Legend** starts folded, in both, and opens under
+its heading. This browser remembers which you folded and which you opened. In
 **Analyze** the **Legend** and the **Summary** are in the board's card, as in each layout's card in
 **Compare**.
 

@@ -144,7 +144,7 @@ test.describe('on a phone', () => {
     await expect(inspector).toBeVisible();
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     expect(await smallTargets(page, '.lb-inspector')).toEqual([]);
-    // The key's numbers, in their own section under the editor, are tapped as much.
+    // The key's numbers, in their own section in the board's card, are tapped as much.
     await expect(page.getByRole('region', { name: 'Key numbers' })).toBeVisible();
     expect(await smallTargets(page, '.lb-edit-keynumbers')).toEqual([]);
 

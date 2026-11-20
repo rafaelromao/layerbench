@@ -57,6 +57,10 @@ describe('Analyze: the Board tab and the board’s card', () => {
     const panel = screen.getByRole('tabpanel', { name: 'Board' });
     const card = screen.getByRole('region', { name: 'Board' });
     expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
+    // Its slot is empty, and hidden, so it leaves no gap under the card where the page is one column.
+    const slot = document.querySelector('.lb-edit-inspector');
+    expect(slot).toBeEmptyDOMElement();
+    expect(slot).toHaveClass('empty:hidden');
 
     await user.click(key('Key LHM: d'));
     const editor = await inspector('LHM');

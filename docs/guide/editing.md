@@ -58,8 +58,8 @@ typed, marked *estimate after swap* until the layout is typed again; any other c
 again straight away, and the numbers say *updating…* meanwhile. A larger **Sample** gives steadier
 numbers, a smaller one quicker updates.
 
-The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in a section
-of their own, right above the summary; on a phone, under the word typed.
+The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in the
+board's card, right above the summary.
 
 ## Choosing what a key does
 

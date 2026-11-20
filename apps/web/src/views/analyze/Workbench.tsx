@@ -1526,7 +1526,7 @@ export function Workbench({
                   {/* biome-ignore lint/a11y/noStaticElementInteractions: Escape anywhere in the inspector
               closes it, the way it would a dialog; the controls inside handle everything else. */}
                   <div
-                    className="lb-edit-inspector min-w-0"
+                    className="lb-edit-inspector min-w-0 empty:hidden"
                     onKeyDown={(e) => {
                       if (e.key !== 'Escape' || e.defaultPrevented || cancelWaiting(e)) return;
                       if (state.combo !== null) {
