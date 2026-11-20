@@ -38,16 +38,33 @@ export interface LanguageChoice {
 }
 
 /**
- * Whether the custom layouts and the community ones are listed among the bundled ones, with how many
- * there are of each.
+ * Whether the bundled layouts, the custom ones and the community ones are listed, with how many
+ * there are of each. Any of them can be left out; with all three out nothing is listed, and the
+ * Library says so.
  */
-function SourceFilter({ custom, community }: { custom: number; community: number }) {
+function SourceFilter({
+  bundled,
+  custom,
+  community,
+}: {
+  bundled: number;
+  custom: number;
+  community: number;
+}) {
+  const hideBundled = useSession((s) => s.hideBundled);
+  const setHideBundled = useSession((s) => s.setHideBundled);
   const hideCustom = useSession((s) => s.hideCustom);
   const setHideCustom = useSession((s) => s.setHideCustom);
   const hideCommunity = useSession((s) => s.hideCommunity);
   const setHideCommunity = useSession((s) => s.setHideCommunity);
   return (
     <SwitchGroup legend="Layouts">
+      <Switch
+        label="Bundled layouts"
+        count={bundled}
+        checked={!hideBundled}
+        onChange={(on) => setHideBundled(!on)}
+      />
       <Switch
         label="Custom layouts"
         count={custom}
@@ -153,8 +170,8 @@ function BoardFilter({ boards }: { boards: BoardChoice[] }) {
 
 /**
  * What the Library ranks and lists by, drawn in its Rank and filter dialog: the text, rules and
- * switches the layouts are scored with, whether custom and community layouts are listed, and which categories,
- * languages and boards are. The order stays on the page, beside it.
+ * switches the layouts are scored with, whether bundled, custom and community layouts are listed, and
+ * which categories, languages and boards are. The order stays on the page, beside it.
  */
 export function RankFilters({
   params,
@@ -163,6 +180,7 @@ export function RankFilters({
   boards,
   categories,
   languages,
+  bundledCount,
   customCount,
   communityCount,
 }: {
@@ -172,6 +190,8 @@ export function RankFilters({
   boards: BoardChoice[];
   categories: CategoryChoice[];
   languages: LanguageChoice[];
+  /** How many bundled layouts there are, listed or not. */
+  bundledCount: number;
   /** How many custom layouts there are, listed or not. */
   customCount: number;
   /** How many community layouts there are, listed or not. */
@@ -182,10 +202,11 @@ export function RankFilters({
       <div className="lb-toolbar flex flex-row flex-wrap items-end gap-3">
         <SettingsFields params={params} onChange={onChange} corpora={corpora} verb="Rank" />
       </div>
-      <SourceFilter custom={customCount} community={communityCount} />
+      <SourceFilter bundled={bundledCount} custom={customCount} community={communityCount} />
       <CategoryFilter categories={categories} />
       <LanguageFilter languages={languages} />
-      <BoardFilter boards={boards} />
+      {/* With every source left out no board is listed, and a lone All box would do nothing. */}
+      {boards.length > 0 && <BoardFilter boards={boards} />}
     </>
   );
 }

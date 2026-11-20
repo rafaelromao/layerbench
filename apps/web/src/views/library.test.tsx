@@ -83,6 +83,7 @@ beforeEach(() =>
   useSession.setState({
     librarySort: 'effort',
     hiddenBoards: [],
+    hideBundled: false,
     hideCustom: false,
     hideCommunity: false,
     hiddenCategories: [],
@@ -795,6 +796,23 @@ describe('Ranking layouts', () => {
     expect(JSON.stringify(requests[0].layout)).toContain('"symbols":"qu"');
   }, 90_000);
 
+  it('scores only the layouts it lists, not those the Bundled switch leaves out', async () => {
+    useSession.setState({ hideBundled: true });
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    const { client, requests } = scoringOnly([500]);
+    // A sample of its own, so no score is known already.
+    renderRoute('/library?sample=10008', { client, storage });
+
+    // The custom layout is read from storage after the page opens, and is the one that gets scored.
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+    await waitFor(() => expect(cards()).toHaveLength(1), { timeout: 60_000 });
+    await rankingSays(/^Lower is better for both/, 60_000);
+    // The bundled layouts are neither listed nor sent to the engine.
+    expect(requests.map((r) => r.layout.name)).toEqual(['Mine']);
+  }, 90_000);
+
   it('ranks every layout in one order by the numbers, those that skip letters among the rest', async () => {
     // Plain has no ñ, which Magic Romak has: its dead keys make it, and its keymap has no `¿` or `¡`,
     // which Spanish only lists as punctuation.
@@ -967,6 +985,133 @@ describe('Choosing which boards are listed', () => {
 
     await user.click(custom);
     expect(listed('Mine')).toBeInTheDocument();
+  });
+
+  it('leaves the bundled layouts out when asked, so only the custom ones are listed, and remembers the choice', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    const bundled = within(layouts).getByRole('checkbox', {
+      name: `Bundled layouts (${BUNDLED_LAYOUTS.length})`,
+    });
+    expect(bundled).toBeChecked();
+
+    await user.click(bundled);
+    expect(listed('Qwerty')).toBeNull();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(`1 of ${BUNDLED_LAYOUTS.length + 1} layouts, without the bundled ones.`),
+    ).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('layerbench:session') ?? '{}').state).toMatchObject({
+      hideBundled: true,
+    });
+
+    await user.click(bundled);
+    expect(listed('Qwerty')).toBeInTheDocument();
+    expect(listed('Mine')).toBeInTheDocument();
+  });
+
+  it('says so when the bundled and the custom layouts are both left out and nothing is left', async () => {
+    const user = userEvent.setup();
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Bundled layouts/ }));
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Custom layouts/ }));
+
+    expect(document.querySelectorAll('article')).toHaveLength(0);
+    expect(
+      screen.getByText(
+        `0 of ${BUNDLED_LAYOUTS.length + 1} layouts, without the bundled ones, without the custom ones.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('No layout is left by the choices in Rank and filter.'),
+    ).toBeInTheDocument();
+    // No layout is on any board: a Boards group with only its All box would do nothing.
+    expect(screen.queryByRole('group', { name: 'Boards' })).toBeNull();
+  });
+
+  it('leaves the community layouts to their own switch, so only the custom ones are listed once both are off', async () => {
+    const user = userEvent.setup();
+    setCommunitySource(branchWith(communityDoc('night-owl', 'Night owl')));
+    const storage = freshStorage();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    await storage.put('layouts', 'mine', toCanonicalJson({ ...qwerty, id: 'mine', name: 'Mine' }));
+    renderRoute(LIBRARY, { storage });
+    expect(await screen.findByRole('heading', { name: 'Night owl', level: 3 })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mine', level: 3 })).toBeInTheDocument();
+
+    /** What the boxes of a group count, added up: the layouts still listed. */
+    const total = (group: string) =>
+      within(screen.getByRole('group', { name: group }))
+        .getAllByRole('checkbox')
+        .reduce((sum, box) => {
+          const count = /\((\d+)\)\s*$/.exec(box.closest('label')?.textContent ?? '')?.[1];
+          return sum + Number(count ?? 0);
+        }, 0);
+
+    /** The count on one box of a group, from its label. */
+    const countOf = (group: string, name: RegExp) => {
+      const box = within(screen.getByRole('group', { name: group })).getByRole('checkbox', {
+        name,
+      });
+      return Number(/\((\d+)\)\s*$/.exec(box.closest('label')?.textContent ?? '')?.[1]);
+    };
+
+    await openRanking();
+    const layouts = screen.getByRole('group', { name: 'Layouts' });
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Bundled layouts/ }));
+    // The bundled switch leaves the community layouts be: they have a switch of their own.
+    expect(listed('Qwerty')).toBeNull();
+    expect(listed('Night owl')).toBeInTheDocument();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(`2 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones.`),
+    ).toBeInTheDocument();
+    // Those left out count on no board, in no category and for no language (both are Qwerty).
+    await waitFor(() => expect(total('Boards')).toBe(2));
+    await waitFor(() => expect(total('Categories')).toBe(2));
+    await waitFor(() => expect(countOf('Languages', /^English /)).toBe(2));
+
+    await user.click(within(layouts).getByRole('checkbox', { name: /^Community layouts/ }));
+    expect(listed('Night owl')).toBeNull();
+    expect(listed('Mine')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `1 of ${BUNDLED_LAYOUTS.length + 2} layouts, without the bundled ones, without the community ones.`,
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(total('Boards')).toBe(1));
+    await waitFor(() => expect(total('Categories')).toBe(1));
+    await waitFor(() => expect(countOf('Languages', /^English /)).toBe(1));
+  });
+
+  it('reads a stored choice from before the bundled switch as the bundled layouts listed', async () => {
+    // A browser opens on the store's own defaults and then reads what it stored. `beforeEach` has set
+    // a `hideBundled` of its own, so start over (this writes the store out: store the choice after).
+    useSession.setState(useSession.getInitialState(), true);
+    localStorage.setItem(
+      'layerbench:session',
+      JSON.stringify({ state: { librarySort: 'effort', hideCustom: true }, version: 0 }),
+    );
+    // What was stored has no `hideBundled`, so the default stands.
+    await useSession.persist.rehydrate();
+    expect(useSession.getState().hideBundled).toBe(false);
+    expect(useSession.getState().hideCustom).toBe(true);
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    expect(await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).toBeInTheDocument();
   });
 });
 
@@ -1338,6 +1483,24 @@ describe('Languages', () => {
     // Unticking None ticks them all again.
     await user.click(languageBox(/^None$/));
     expect(shownCards()).toBe(BUNDLED_LAYOUTS.length);
+    expect(screen.queryByText(/^No language is ticked/)).toBeNull();
+  });
+
+  it('says no layout is left, not that no language is ticked, when the layouts are out by their source', async () => {
+    const user = userEvent.setup();
+    renderRoute(LIBRARY, { storage: freshStorage() });
+    await openRanking();
+    await user.click(languageBox(/^None$/));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Layouts' })).getByRole('checkbox', {
+        name: /^Bundled layouts/,
+      }),
+    );
+    expect(shownCards()).toBe(0);
+    // Ticking a language would list nothing: the bundled layouts are out and there are no others.
+    expect(
+      screen.getByText('No layout is left by the choices in Rank and filter.'),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/^No language is ticked/)).toBeNull();
   });
 
