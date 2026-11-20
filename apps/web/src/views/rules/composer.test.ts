@@ -17,7 +17,7 @@ import {
   parseBounds,
   predicateLeaf,
 } from './composer.js';
-import { describeSource, describeWhere } from './describe.js';
+import { describeAggregate, describeSource, describeWhere } from './describe.js';
 import { initialRulesState, removedBuiltIns, rulesReducer } from './reducer.js';
 
 describe('predicate rows', () => {
@@ -211,6 +211,16 @@ describe('describing a rule', () => {
     expect(describeWhere(sfb.where)).toContain('same_finger=true');
     expect(describeWhere(sfb.where)).toMatch(/^all\(/);
     expect(describeWhere(null)).toBe('');
+  });
+
+  it('says what a share is of when a rule counts over some n-grams alone', () => {
+    const rules = catalogRules();
+    const rolls = rules.find((r) => r.id === 'rolls')!;
+    expect(describeAggregate(rolls)).toBe(
+      'percent_of_ngrams of all(any_thumb=false none(any_key_kind="space"))',
+    );
+    expect(describeAggregate(rules.find((r) => r.id === 'sfb')!)).toBe('percent_of_symbols');
+    expect(describeAggregate({ id: 'bare' })).toBe('percent_of_ngrams');
   });
 
   it('says what a rule reads', () => {

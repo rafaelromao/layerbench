@@ -77,7 +77,12 @@ otherwise rewrite it for nothing.
   space per word where the `space_per_word_in_keystrokes` global is on and it does not;
   `percent_of_symbols` (the Layouts Doc's SFB, over the letters typed) by its characters without
   the space, in either universe; Effort by its characters, space included. Single-key and trigram
-  rules are shares of what was pressed. `src/rules/engine.test.ts` pins every denominator.
+  rules are shares of what was pressed, but for a rule that names the n-grams it counts over
+  (`aggregate_opts.of`): every trigram category (alternation, rolls, one-hand rolls, redirects) is
+  a share of the trigrams typed by fingers alone, no thumb press or space in them, and hand balance,
+  pinky off, home row and inner column count and divide by the finger keys' presses alone, so the
+  `no_space` and `with_space` cells give the same numbers for them. `src/rules/engine.test.ts` pins every
+  denominator.
 - **Item lists are deterministic.** Where counts tie at the top-50 cutoff the order is fixed, and the
   suite compares item lists exactly.
 - **Each key's part of a value adds up to it.** Every rule result carries `key_scale`: a key's part

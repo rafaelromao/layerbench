@@ -139,6 +139,16 @@ export interface Rule {
     numerator?: string;
     denominator?: string;
     per?: 'symbols' | 'keystrokes' | 'words';
+    /**
+     * The n-grams the rule counts over, when not all of them. What `percent_of_ngrams` and
+     * `sum_distance` divide by, a key's part of the value (`key_scale`) and an item's percent are
+     * then of the n-grams this matches: of single keys and trigrams, those pressed; of pairs, the
+     * same share of the text's pairs. The other aggregates divide by what they name (keystrokes,
+     * symbols, the matched n-grams themselves), so their value does not read it, though their
+     * items' percents do, but for `percent_of_symbols`, whose items stay shares of the text's
+     * symbols. `where` should select among these n-grams, or a share can pass 100.
+     */
+    of?: Predicate;
   };
   breakdown_by?: 'layer' | 'row' | 'col' | 'key_kind' | 'hand';
   params?: {

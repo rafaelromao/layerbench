@@ -12,6 +12,7 @@ import {
   type Aggregate,
   DEFAULT_GLOBALS,
   type Globals,
+  type Predicate,
   type Rule,
   type RuleItem,
   type RuleItemNext,
@@ -29,6 +30,11 @@ interface Ctx extends PredicateContext {
   log: PressLog;
   /** The rule set's universe. */
   universe: Universe;
+  /**
+   * How many n-grams of a table a rule's `aggregate_opts.of` matches, by the condition and the
+   * rule's params: rules that share one are counted over the table once per evaluation.
+   */
+  ofCounts: Map<Ngrams, Map<string, number>>;
 }
 
 /** A key pressed to bring a layer on rather than to type, however it does. */
@@ -272,6 +278,53 @@ function ngramAt(ctx: Ctx, g: Ngrams, i: number, into: Attrs[]): void {
   for (let j = 0; j < g.n; j++) into[j] = ctx.attrs[g.ids[at + j]];
 }
 
+/** How many of a table's n-grams a condition matches, counted once per evaluation. */
+function matchedCount(ctx: Ctx, g: Ngrams, of: Predicate): number {
+  let byCondition = ctx.ofCounts.get(g);
+  if (!byCondition) {
+    byCondition = new Map();
+    ctx.ofCounts.set(g, byCondition);
+  }
+  const key = JSON.stringify([of, ctx.params]);
+  const known = byCondition.get(key);
+  if (known !== undefined) return known;
+  const match = compilePredicate(of, ctx);
+  const ngram: Attrs[] = new Array(g.n);
+  let count = 0;
+  for (let i = 0; i < g.size; i++) {
+    ngramAt(ctx, g, i, ngram);
+    if (match(ngram)) count += g.counts[i];
+  }
+  byCondition.set(key, count);
+  return count;
+}
+
+/**
+ * What a rule's n-grams are a share of: each source's total, weighted. A rule that says which
+ * n-grams it counts over (`aggregate_opts.of`) takes the part of that total the matching n-grams
+ * are of the table: for single keys and trigrams, whose total is what was pressed, the matching
+ * n-grams themselves; for pairs, whose total is the text's, the same share of the text's pairs.
+ */
+function ruleTotal(rule: Rule, ctx: Ctx, sources: readonly NgramSource[]): number {
+  const of = rule.aggregate_opts?.of;
+  let total = 0;
+  for (const s of sources) {
+    let counted = s.total;
+    if (of) {
+      const matched = matchedCount(ctx, s.ngrams, of);
+      // What was pressed is the table itself; the text's pairs take the matching share of them.
+      counted =
+        s.total === s.ngrams.total
+          ? matched
+          : s.ngrams.total > 0
+            ? s.total * (matched / s.ngrams.total)
+            : 0;
+    }
+    total += counted * s.weight;
+  }
+  return total;
+}
+
 /** An n-gram as a card lists it, with its share of what the rule counts over. */
 function toItem(
   ctx: Ctx,
@@ -310,7 +363,7 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   const breakdownBy = rule.breakdown_by;
 
   let matched = 0;
-  let total = 0;
+  const total = ruleTotal(rule, ctx, sources);
   let weightedDistance = 0;
   const items: { ngram: Ngram; c: number; d: number | null }[] = [];
   const perKey = new Map<number, number>();
@@ -333,7 +386,6 @@ function evalNgram(rule: Rule, ctx: Ctx): RuleResult {
   let effortSum = 0;
 
   for (const source of sources) {
-    total += source.total * source.weight;
     const g = source.ngrams;
     for (let i = 0; i < g.size; i++) {
       ngramAt(ctx, g, i, ngram);
@@ -706,7 +758,7 @@ function contextOf(sim: SimulationTables, compiled: CompiledLayout, ruleSet: Rul
   const log = sim.presses;
   const attrs = buildAttrs(compiled, log.presses);
   const universe = globals.universe === 'with_space' ? 'with_space' : 'no_space';
-  return { sim, compiled, attrs, log, universe, globals, params: {} };
+  return { sim, compiled, attrs, log, universe, globals, params: {}, ofCounts: new Map() };
 }
 
 /** One rule's n-grams through a key: how many it matched there, and the busiest of them. */
@@ -752,8 +804,7 @@ export function evaluateFocus(
     const n = rule.ngram?.n ?? 2;
     const ngram: Attrs[] = new Array(n);
     const sources = ngramSources(rule, scoped);
-    let total = 0;
-    for (const source of sources) total += source.total * source.weight;
+    const total = ruleTotal(rule, scoped, sources);
     let count = 0;
     const found: { ngram: Ngram; c: number; d: number | null }[] = [];
     for (const source of sources) {

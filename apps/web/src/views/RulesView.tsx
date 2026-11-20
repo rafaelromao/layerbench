@@ -29,7 +29,7 @@ import {
   PREDICATE_TYPES,
   ROWS,
 } from './rules/composer.js';
-import { describeSource, describeWhere } from './rules/describe.js';
+import { describeAggregate, describeSource, describeWhere } from './rules/describe.js';
 import { initialRulesState, removedBuiltIns, rulesReducer } from './rules/reducer.js';
 
 const FAMILY_TITLES: [string, string][] = [
@@ -445,7 +445,7 @@ export function RulesView() {
                         {describeSource(rule)} · {describeWhere(rule.where)}
                       </td>
                       <td data-label="Aggregate" className="text-[11px] font-mono">
-                        {rule.aggregate ?? 'percent_of_ngrams'}
+                        {describeAggregate(rule)}
                       </td>
                       <td data-label="Bands">
                         <input
