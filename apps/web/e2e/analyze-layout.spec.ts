@@ -15,6 +15,31 @@ function overflow(page: Page): Promise<number> {
 }
 
 /**
+ * The board's card all on screen, under the page's sticky header and over the bottom edge of the
+ * screen. The page scrolls smoothly, so this waits for it to get there, and a failure says by how
+ * much the card is cut at each edge.
+ */
+async function expectBoardWhole(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const box = await page.locator('.lb-edit-board').boundingBox();
+        const header = await page.locator('header.sticky').first().boundingBox();
+        const screen = page.viewportSize()?.height ?? 0;
+        if (!box || !header) return 'not drawn';
+        const top = box.y - (header.y + header.height);
+        const bottom = screen - (box.y + box.height);
+        // A pixel of rounding is not a cut.
+        return top >= -1 && bottom >= -1
+          ? 'whole'
+          : `${Math.round(top)}px clear of the header, ${Math.round(bottom)}px clear of the bottom`;
+      },
+      { message: 'the board card, all in view', timeout: 5_000 },
+    )
+    .toBe('whole');
+}
+
+/**
  * Visible controls inside `selector` that are smaller than the 24px WCAG 2.5.8 asks for, named so
  * a failure says which.
  */
@@ -167,6 +192,57 @@ test.describe('on a phone', () => {
     const sent = page.getByRole('button', { name: /^Key LHI:/ });
     await expect(sent).toBeFocused();
     await expect(sent).toBeInViewport();
+  });
+
+  test('Swap with… and Copy to… bring the whole board into view, for the tap on the other key', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    const editor = page.getByRole('group', { name: 'Edit LHI' });
+    // The editor opens under the board and is what the page is brought to: the board's top is cut.
+    await expect(editor).toBeInViewport();
+
+    for (const name of ['Swap with…', 'Copy to…']) {
+      // Scrolled away, as it is after reading the editor or the numbers under it.
+      await page.evaluate(() => window.scrollBy(0, 2000));
+      await expect(page.locator('.lb-edit-board')).not.toBeInViewport();
+      await editor.getByRole('button', { name }).tap();
+      await expectBoardWhole(page);
+    }
+
+    // The tap that follows lands the copy on the key tapped, which stays in view.
+    const partner = page.getByRole('button', { name: /^Key LHM:/ });
+    await partner.tap();
+    await expect(partner).toBeInViewport();
+  });
+
+  test('Undo and Redo leave the page where it is, though Undo brings a selection back', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    const editing = page.getByRole('group', { name: /^Edit / });
+    await page.getByRole('button', { name: /^Key LHI:/ }).tap();
+    await page
+      .getByRole('group', { name: 'Edit LHI' })
+      .getByRole('button', { name: 'Swap with…' })
+      .tap();
+    await page.getByRole('button', { name: /^Key LHM:/ }).tap();
+    await expect(editing).toHaveCount(0);
+
+    // Both buttons are above the board, so the page is at the top, where a thumb reaches them.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    for (const [name, selected] of [
+      ['Undo', 1],
+      ['Redo', 0],
+    ] as const) {
+      await page.getByRole('button', { name }).tap();
+      await expect(editing).toHaveCount(selected);
+      // Given the time a smooth scroll takes, the page is still where it was: on the shortest
+      // phone the editor opens below the fold, and it is not brought into view.
+      await page.waitForTimeout(700);
+      expect(await page.evaluate(() => window.scrollY), name).toBe(0);
+    }
   });
 
   test("the editor's layers fit the screen, each card's fields clear of its buttons", async ({
@@ -331,6 +407,30 @@ test.describe('at a desk', () => {
     expect(inspector.x).toBeGreaterThanOrEqual(board.x + board.width);
     expect(inspector.y).toBeLessThan(board.y + board.height);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('Swap with… brings the whole board into view, though the page was scrolled past its top', async ({
+    page,
+  }) => {
+    await openEdit(page);
+    await page.getByRole('button', { name: /^Key LHI:/ }).click();
+    const editor = page.getByRole('group', { name: 'Edit LHI' });
+    const swap = editor.getByRole('button', { name: 'Swap with…' });
+    // The page scrolled until the top of the board is 10px under the sticky header: on the screen,
+    // so that no scroll is needed to see it, though the header hides its top.
+    const header = await page.locator('header.sticky').first().boundingBox();
+    const headerBottom = (header?.y ?? 0) + (header?.height ?? 0);
+    const board = await page.locator('.lb-edit-board').boundingBox();
+    await page.evaluate(
+      (y) => window.scrollTo(0, y),
+      Math.round((board?.y ?? 0) - headerBottom + 10),
+    );
+    // The premise, which a click's own scroll to its button must not be left to make: the board is
+    // cut by the header while the button is clear of it.
+    expect((await page.locator('.lb-edit-board').boundingBox())?.y ?? 0).toBeLessThan(headerBottom);
+    expect((await swap.boundingBox())?.y ?? 0).toBeGreaterThanOrEqual(headerBottom);
+    await swap.click();
+    await expectBoardWhole(page);
   });
 
   test('a click on a key selects it, where a drag would move it', async ({ page }) => {

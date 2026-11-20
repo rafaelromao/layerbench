@@ -17,12 +17,17 @@ type Snapshot = Pick<EditState, 'layout' | 'layer' | 'selected' | 'also' | 'comb
 export interface UndoState extends EditState {
   past: Snapshot[];
   future: Snapshot[];
+  /**
+   * How many times Undo or Redo has put a layout back. A selection that changes along with a new
+   * count is the history's doing, a snapshot coming back, and not a key the user has just picked.
+   */
+  restores: number;
 }
 
 const LIMIT = 50;
 
 export function initialUndoState(layout: Layout, compiled: CompiledLayout, layer = 0): UndoState {
-  return { ...initialState(layout, compiled, layer), past: [], future: [] };
+  return { ...initialState(layout, compiled, layer), past: [], future: [], restores: 0 };
 }
 
 function snapshot(state: EditState): Snapshot {
@@ -71,6 +76,7 @@ function restore(
     dirty: snap.layout !== state.saved,
     past,
     future,
+    restores: state.restores + 1,
   };
 }
 

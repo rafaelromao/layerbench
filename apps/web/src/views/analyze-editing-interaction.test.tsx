@@ -424,6 +424,175 @@ describe('Edit', () => {
     expect(await inspector('LHI')).toBeInTheDocument();
   }, 90_000);
 
+  /** The page scrolled to, in a run that spies on `scrollIntoView`: how many times each element. */
+  const scrollsTo = (spy: { mock: { contexts: unknown[] } }, selector: string) =>
+    spy.mock.contexts.filter((el) => (el as Element).matches(selector)).length;
+
+  it.each([
+    ['on a phone', 390],
+    ['at a desk', 1280],
+  ])(
+    'brings the whole board into view when Swap with… or Copy to… is tapped, %s',
+    async (_where, width) => {
+      // The next step is a tap on the board, which the page can have been scrolled away from: to the
+      // editor under it on a phone, or to whatever was being read at a desk.
+      setPointerKind(width < 1024 ? 'touch' : 'mouse');
+      setViewportWidth(width);
+      const user = userEvent.setup();
+      await openEdit();
+      const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+      onTestFinished(() => scrolled.mockRestore());
+      const toBoard = () => scrollsTo(scrolled, '.lb-edit-board');
+
+      await user.click(key('Key LHM: d'));
+      scrolled.mockClear();
+      await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+      expect(toBoard()).toBe(1);
+      // As little as it takes: the card as it is, clear of the header by its own margin.
+      expect(scrolled.mock.calls.at(-1)?.[0]).toMatchObject({ block: 'nearest' });
+
+      // Asked again, after the page was scrolled away, it scrolls again: the button is the ask.
+      await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Copy to…' }));
+      expect(toBoard()).toBe(2);
+      expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+
+      // The tap that lands the copy is no ask: the key it lands on is what comes back into view.
+      scrolled.mockClear();
+      await user.click(key('Key LHI: f'));
+      await waitFor(() => {
+        expect(
+          screen.getAllByRole('button', { name: keyNamed('Key LHM: d', 'Key LHI: d') }),
+        ).toHaveLength(2);
+      });
+      expect(toBoard()).toBe(0);
+    },
+    90_000,
+  );
+
+  it('shows the board from its top when it is taller than the screen', async () => {
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(key('Key LHM: d'));
+    const box = Element.prototype.getBoundingClientRect;
+    const drawn = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      return this.matches('.lb-edit-board')
+        ? DOMRect.fromRect({ x: 0, y: 0, width: 390, height: window.innerHeight + 200 })
+        : box.call(this);
+    });
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => {
+      drawn.mockRestore();
+      scrolled.mockRestore();
+    });
+
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    // Not all of it fits, and its top, the keys, is what the tap that follows is made on.
+    expect(scrolled.mock.calls.at(-1)?.[0]).toMatchObject({ block: 'start' });
+    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+  }, 90_000);
+
+  it("brings the whole board into view when a combo's keys are to be picked on it", async () => {
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openComboEdit();
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    const combos = within(screen.getByRole('region', { name: 'Combos' }));
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+
+    scrolled.mockClear();
+    await user.click(combos.getByRole('button', { name: 'New combo' }));
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+    await user.click(combos.getByRole('button', { name: 'Cancel' }));
+
+    // A combo's card is a pick too: it is shown on the board, which is what the page is left on.
+    scrolled.mockClear();
+    await user.click(combos.getByRole('button', { name: 'Edit LHR+LHM' }));
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+
+    scrolled.mockClear();
+    const editor = within(screen.getByRole('group', { name: 'Edit combo LHR+LHM' }));
+    await user.click(editor.getByRole('button', { name: 'Pick again on the board' }));
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+  }, 90_000);
+
+  it('brings the whole board into view when a missing key is armed on it', async () => {
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    const chip = within(await screen.findByRole('list', { name: 'Missing keys' })).getAllByRole(
+      'button',
+    )[0];
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+
+    await user.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+
+    // A second tap puts the character down again, which waits for no tap on the board.
+    await user.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    expect(scrollsTo(scrolled, '.lb-edit-board')).toBe(1);
+  }, 90_000);
+
+  it("leaves the page on the board, not the key's editor, when a use is picked in Special Behaviors", async () => {
+    // A key picked there is selected, which on a phone brings its editor, under the board, into
+    // view; the board is what the card is for, so it is the last the page is taken to.
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openMagicRomak();
+    await user.click(screen.getByRole('tab', { name: 'Special Behaviors' }));
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+
+    const card = within(screen.getByRole('list', { name: 'Special behaviors' })).getAllByRole(
+      'button',
+      { name: / · [LR][HBT][A-Z]/ },
+    )[0];
+    await user.click(card);
+    expect(scrollsTo(scrolled, '.lb-edit-inspector')).toBeGreaterThan(0);
+    expect(scrolled.mock.contexts.at(-1)).toBe(document.querySelector('.lb-edit-board'));
+  }, 90_000);
+
+  it('leaves the page where it is when Undo or Redo bring a selection back', async () => {
+    // A phone: selecting a key brings its editor, under the board, into view. Undo and Redo are
+    // above the board, and a tap on one is no wish to be taken down to the editor.
+    setPointerKind('touch');
+    setViewportWidth(390);
+    const user = userEvent.setup();
+    await openEdit();
+    await user.click(key('Key LHM: d'));
+    await user.click(within(await inspector('LHM')).getByRole('button', { name: 'Swap with…' }));
+    await user.click(key('Key LHI: f'));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    const scrolled = vi.spyOn(Element.prototype, 'scrollIntoView');
+    onTestFinished(() => scrolled.mockRestore());
+
+    // Undo takes the swap back and the key swapped is selected again, the page left alone.
+    scrolled.mockClear();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(await inspector('LHM')).toBeInTheDocument();
+    expect(scrolled).not.toHaveBeenCalled();
+
+    // Redo puts it forward again: nothing selected, and the page left alone as well.
+    await user.click(screen.getByRole('button', { name: 'Redo' }));
+    expect(await screen.findByRole('button', { name: keyNamed('Key LHI: d') })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /^Edit / })).toBeNull();
+    expect(scrolled).not.toHaveBeenCalled();
+
+    // A key picked after that is the user's own pick, and its editor is brought into view as ever.
+    await user.click(key('Key LHM: f'));
+    expect(await inspector('LHM')).toBeInTheDocument();
+    expect(scrollsTo(scrolled, '.lb-edit-inspector')).toBeGreaterThan(0);
+  }, 90_000);
+
   it('brings the key back into view on a phone once a move lands, though it had focus all along', async () => {
     setPointerKind('touch');
     setViewportWidth(390);

@@ -28,6 +28,19 @@ const symbolAt = (state: UndoState, keyId: string): unknown =>
   state.layout.layers[0].bindings[keyId];
 
 describe('undo', () => {
+  it('counts each layout it puts back, which an edit or a selection is not', () => {
+    const before = start();
+    const typed = reducer(before, bind('LHM', { kind: 'kp', symbol: 'ç' }));
+    const selected = reducer(typed, { type: 'keyClick', keyId: 'LHI' });
+    expect(selected.restores).toBe(0);
+
+    const undone = reducer(selected, { type: 'undo' });
+    expect(undone.restores).toBe(1);
+    expect(reducer(undone, { type: 'redo' }).restores).toBe(2);
+    // Nothing to take back is nothing put back.
+    expect(reducer(before, { type: 'undo' }).restores).toBe(0);
+  });
+
   it('takes back an edit and puts it forward again', () => {
     const before = start();
     const typed = reducer(before, bind('LHM', { kind: 'kp', symbol: 'ç' }));

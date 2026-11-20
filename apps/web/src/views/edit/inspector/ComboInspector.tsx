@@ -20,10 +20,13 @@ export function ComboInspector({
   state,
   send,
   combo,
+  revealBoard,
 }: {
   state: EditState;
   send: Dispatch<EditAction>;
   combo: number;
+  /** Bring the whole board into view: the combo's keys are picked again on it. */
+  revealBoard: () => void;
 }) {
   const { compiled, layout } = state;
   const scope = useEditorScope(compiled);
@@ -124,7 +127,10 @@ export function ComboInspector({
                 <button
                   type="button"
                   className="btn btn-xs btn-ghost"
-                  onClick={() => send({ type: 'comboPickStart', combo })}
+                  onClick={() => {
+                    send({ type: 'comboPickStart', combo });
+                    revealBoard();
+                  }}
                 >
                   Pick again on the board
                 </button>
