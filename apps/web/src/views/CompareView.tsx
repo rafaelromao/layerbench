@@ -354,7 +354,7 @@ export function CompareView() {
                         heatName={colours ? drawn : undefined}
                         // Room for it from the start: the arrows stay put when the score comes in.
                         layerShare={scored ? layerShare(scored, layer) : null}
-                        // Why the board is plain, right under it, above the list of numbered keys.
+                        // Why the board is plain, right under it, above the Legend.
                         note={
                           <HeatNote
                             pending={!heatSettled && heat !== null}

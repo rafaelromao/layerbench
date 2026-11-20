@@ -182,11 +182,15 @@ test.describe('on a phone', () => {
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeInViewport();
-    // Under the Board card, whose Legend, key numbers and Summary are between it and the board.
-    const card = await page.getByRole('region', { name: 'Board', exact: true }).boundingBox();
-    const editor = await inspector.boundingBox();
-    expect(card && editor).toBeTruthy();
-    expect(editor?.y ?? 0).toBeGreaterThanOrEqual((card?.y ?? 0) + (card?.height ?? 0) - 1);
+    // Under the Board card, whose Legend, key numbers and Summary are between it and the board. Both
+    // boxes are read in one frame: the page is still scrolling to the editor, smoothly, and two
+    // reads apart would each catch it at another point.
+    const gap = await inspector.evaluate(
+      (el) =>
+        el.getBoundingClientRect().top -
+        (document.querySelector('.lb-edit-board') as Element).getBoundingClientRect().bottom,
+    );
+    expect(gap).toBeGreaterThanOrEqual(-1);
 
     // The board is not pinned, which on a phone would take most of the screen: scrolled far enough
     // down, it is gone, and the inspector has the room.

@@ -95,7 +95,10 @@ describe('Analyze: the Board tab and the board’s card', () => {
     expect(screen.queryByRole('region', { name: 'Board' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Legend' })).toBeNull();
     const summary = screen.getByRole('region', { name: 'Summary' });
-    expect(summary.closest('.card')).not.toBeNull();
+    // A card of its own: not the Editor card, which holds the tabs.
+    const own = summary.closest('.card');
+    expect(own).not.toBeNull();
+    expect(own).not.toContainElement(screen.getByRole('region', { name: 'Editor' }));
   }, 60_000);
 });
 

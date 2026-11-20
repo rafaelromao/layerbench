@@ -32,7 +32,7 @@ export interface KeyInspectorProps {
  */
 export function KeyHint({ className = '' }: { className?: string }) {
   return (
-    <section className={`lb-key-hint min-w-0 space-y-1 ${className}`} aria-label="Key">
+    <section className={`min-w-0 space-y-1 ${className}`} aria-label="Key">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Key</h2>
         <HelpLink help={HELP.editKey} />

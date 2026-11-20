@@ -59,7 +59,7 @@ again straight away, and the numbers say *updating…* meanwhile. A larger **Sam
 numbers, a smaller one quicker updates.
 
 The selected key's [own numbers](analyzing.md#a-keys-numbers) on the layer shown open in the
-board's card, right above the summary.
+board's card on the **Board** tab, right above the summary.
 
 ## Choosing what a key does
 

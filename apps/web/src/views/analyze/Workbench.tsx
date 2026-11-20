@@ -1312,8 +1312,10 @@ export function Workbench({
 
       {showBoard && (
         <div className="min-w-0">
-          {/* The board first, then the selected key's editor under it on a phone, beside it at a desk,
-          and the board scrolls with the page at every width. */}
+          {/* The board's card first, with the board, the legend, the selected key's numbers and the
+          summary in it; then the selected key's editor, under the card on a phone (the page is
+          brought down to it) and beside it at a desk. The board scrolls with the page at every
+          width. */}
           <div className={`lb-edit-grid ${state.selected ? 'lb-editing' : ''}`}>
             <div className="lb-edit-main">
               {showBoard && (

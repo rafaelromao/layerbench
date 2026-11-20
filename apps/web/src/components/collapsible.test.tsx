@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 import { useSession } from '../state/session.js';
@@ -67,7 +67,11 @@ describe('a group that folds away', () => {
         <p>the list</p>
       </Collapsible>,
     );
-    expect(screen.getByRole('button', { name: 'Legend' })).toHaveAttribute('aria-expanded', 'true');
+    const toggle = screen.getByRole('button', { name: 'Legend' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    // The choice is what opens it: without it, the same group starts folded.
+    act(() => useSession.setState({ openedGroups: [] }));
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('folds and opens together two groups that share an id, each with a body of its own', async () => {
