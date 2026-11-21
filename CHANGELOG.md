@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 (2026-11-21)
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+### Features
+* feat(web): move the language chips into the Summary, above the metrics by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/201
+* feat(library): add a Bundled layouts switch to Rank and filter by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/205
+* feat(web): put Key and A word in the Board tab, Legend and Summary in the board's card by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/206
+* feat(editor): keep the board in sight on a phone under the Board, Combos and Special Behaviors tabs by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/207
+### Bug Fixes
+* fix(editor): show the whole board when a pick is armed; Undo and Redo no longer scroll by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/200
+* fix(rules): measure trigram categories and hand balance on finger presses alone by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/199
+* fix(library): keep a card still when its language chip re-ranks the list by @rafaelromao in https://github.com/rafaelromao/layerbench/pull/203
+
+
+**Full Changelog**: https://github.com/rafaelromao/layerbench/compare/v0.3.0...v0.4.0
+
 ## 0.3.0 (2026-11-17)
 
 <!-- Release notes generated using configuration in .github/release.yml at main -->
