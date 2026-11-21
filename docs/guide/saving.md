@@ -12,9 +12,9 @@ A layout of your own starts in **Library**, in one of these ways:
   to call the copy, or, on one that comes with the app or a community layout, whether to propose
   your change instead, and keeps it among your custom layouts. See
   [Saving a layout that is not yours](#saving-a-layout-that-is-not-yours) below.
-- Press **Save as copy**, beside **Save** in **Analyze**, on any layout: it asks what to call the
-  copy, keeps it among your custom layouts and opens it. See [Saving as a copy](#saving-as-a-copy)
-  below.
+- Press **Save as copy** (**Copy** on a phone), beside **Save** in **Analyze**, on any layout: it
+  asks what to call the copy, keeps it among your custom layouts and opens it. See
+  [Saving as a copy](#saving-as-a-copy) below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
   Accents and, where the board needs it, Extras, described under [Default layers](editing.md#default-layers).

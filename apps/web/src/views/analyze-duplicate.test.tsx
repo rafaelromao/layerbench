@@ -59,7 +59,8 @@ describe('Save as copy', () => {
     await within(bar()).findByRole('button', { name: 'Cancel' });
     const order = within(bar())
       .getAllByRole('button')
-      .map((b) => b.textContent?.trim())
+      // By name: on a phone Save as copy says Copy, its name the same.
+      .map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim())
       .filter((t) => ['Cancel', 'Save', 'Save as copy', 'Submit'].includes(t ?? ''));
     expect(order).toEqual(['Cancel', 'Save', 'Save as copy', 'Submit']);
   }, 60_000);

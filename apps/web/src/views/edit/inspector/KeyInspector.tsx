@@ -37,7 +37,11 @@ export function KeyHint({ className = '' }: { className?: string }) {
         <h2 className="text-sm font-semibold">Key</h2>
         <HelpLink help={HELP.editKey} />
       </div>
-      <p className="text-xs opacity-70">
+      {/* A phone has the board under it: the hint is short there, the rest behind the "?". */}
+      <p className="text-xs opacity-70 sm:hidden">
+        Tap a key to edit it; drag it onto another to swap.
+      </p>
+      <p className="text-xs opacity-70 max-sm:hidden">
         Tap or click a key on the board to edit it. Drag a key onto another to swap the two — hold
         Alt to copy instead. To send a key to another layer, select it and use Send to layer….
         Shift-click keys, or rest a finger on them, to select several and send, copy or clear them

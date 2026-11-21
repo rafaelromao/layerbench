@@ -344,7 +344,7 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test("the bar's buttons take a line under the name, which an edit leaves as it is", async ({
+  test("the bar's buttons share the name's line, which an edit leaves as it is", async ({
     page,
   }) => {
     await openEdit(page);
@@ -360,10 +360,13 @@ test.describe('on a phone', () => {
     const height = async () => (await box(bar)).height;
     const before = await height();
     const named = await box(name);
+    // The name keeps room to be read beside them.
+    expect(named.width).toBeGreaterThanOrEqual(96);
     for (const button of [save, copy]) {
       const b = await box(button);
-      // Under the name, and big enough to tap (WCAG 2.5.8).
-      expect(b.y).toBeGreaterThanOrEqual(named.y + named.height);
+      // Beside the name, and big enough to tap (WCAG 2.5.8).
+      expect(Math.abs(b.y + b.height / 2 - (named.y + named.height / 2))).toBeLessThanOrEqual(4);
+      expect(b.x).toBeGreaterThanOrEqual(named.x + named.width);
       expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(24);
     }
 
@@ -393,6 +396,22 @@ test.describe('on a phone', () => {
     expect(Math.abs(saveNow.y - saveAt.y)).toBeLessThanOrEqual(1);
     expect(Math.abs((await height()) - before)).toBeLessThanOrEqual(1);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('a phone as tall as most opens with the board and its layer navigator in sight', async ({
+    page,
+  }) => {
+    // The smallest phone has too little height for it; one of 640px and more has room.
+    test.skip((page.viewportSize()?.height ?? 0) < 640, 'a short screen');
+    await openEdit(page);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const keys = await page.locator('#kb-analyze').boundingBox();
+    const nav = await page.getByRole('group', { name: 'Layers' }).boundingBox();
+    const screen = page.viewportSize()?.height ?? 0;
+    expect(keys && nav).toBeTruthy();
+    if (!keys || !nav) return;
+    expect(keys.y).toBeGreaterThanOrEqual(0);
+    expect(nav.y + nav.height).toBeLessThanOrEqual(screen);
   });
 
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {

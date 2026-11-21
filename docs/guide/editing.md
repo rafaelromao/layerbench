@@ -4,7 +4,8 @@ A layout is edited where it is analyzed, in **Analyze**: the board shows one lay
 the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
 **Typing paths**, **Configuration** and **Export**, hold everything there is to edit:
 **Board** is the first, and holds **Key**, which says how a key is picked and moved, and **A word,
-typed**. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
+typed**, side by side, so on most phones the board and its layer navigator are in sight under them
+as the page opens; on a phone **Key** says it in a line, and its **?** says the rest. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
 it, the selected key's numbers and the **Summary**; **Combos** and **Special Behaviors** draw that
 card too, with the **Legend** and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
 key to select it. The editor beside the board (under its card, on a phone) says what the key does
