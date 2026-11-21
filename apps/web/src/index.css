@@ -1089,6 +1089,49 @@ button.lb-combo-apart:focus-visible {
   margin-top: 0.25rem;
 }
 /*
+ * On a phone the strips of Combos and Special Behaviors, which draw the board under them, are short,
+ * so the board and its layer navigator are in sight with them as on the Board tab: a combo's slide
+ * leaves its small board out (the board below shows the combo picked), and the hint is one line.
+ */
+@media (width < 40rem) {
+  .lb-carousel-short {
+    --lb-carousel-h: 4.5rem;
+  }
+  .lb-carousel-short .lb-combo-slide {
+    --lb-slide-w: 10rem;
+  }
+  .lb-carousel-short .lb-combo-slide-board {
+    display: none;
+  }
+  .lb-carousel-short .lb-combo-slide-pick {
+    justify-content: center;
+  }
+  /* Clear of the Remove button in the corner, and the layers in two lines, "not typed" with them. */
+  .lb-carousel-short .lb-combo-slide-foot {
+    padding-inline-end: 1.5rem;
+  }
+  .lb-carousel-short .lb-combo-slide-layers {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+  }
+  .lb-carousel-short .lb-slide-new {
+    padding-block: 0.375rem;
+  }
+  .lb-carousel-short .lb-slide-new-button {
+    flex-direction: row;
+  }
+  /* Picking a new combo's keys: room for its two buttons on one line. */
+  .lb-carousel-short .lb-slide-new:has(output) {
+    --lb-slide-w: 16rem;
+  }
+  .lb-carousel-hint-short {
+    min-height: 1lh;
+  }
+}
+/*
  * A symbol on a key's shape: the keycap at the left of a typing path, and on a combo's and a
  * special behavior's slide, smaller. A long legend gets smaller type; a hold sits under the tap.
  */

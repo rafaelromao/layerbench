@@ -94,11 +94,32 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     );
     // Soft: a failing tab says so and the rest are still looked at, so one run names every tab.
     expect.soft(cut, tab).toEqual([]);
+    // A combo's keys are clear of its Remove button, a tap on one never reaching the other.
+    const under = await strip.evaluate((el) =>
+      [...el.querySelectorAll('.lb-combo-slide')].flatMap((slide) => {
+        const x = slide.querySelector('.lb-slide-remove')?.getBoundingClientRect();
+        const k = slide.querySelector('.lb-combo-slide-keys')?.getBoundingClientRect();
+        if (!x || !k) return [];
+        const across = Math.min(x.right, k.right) - Math.max(x.left, k.left);
+        const down = Math.min(x.bottom, k.bottom) - Math.max(x.top, k.top);
+        return across > 0 && down > 0
+          ? [k.width ? (slide.textContent ?? '').slice(0, 20) : '']
+          : [];
+      }),
+    );
+    expect.soft(under, tab).toEqual([]);
   }
+  // On a phone the strips of Combos and Special Behaviors, which draw the board under them, are
+  // shorter, and as tall as each other; the rest are as tall as each other.
+  const phone = (page.viewportSize()?.width ?? 0) < 640;
+  const short = phone ? ['Combos', 'Special Behaviors'] : [];
+  const tall = Object.keys(heights).filter((tab) => !short.includes(tab));
   for (const [tab, height] of Object.entries(heights)) {
     expect(height, tab).toBeGreaterThan(0);
-    expect(Math.abs(height - heights.Combos), tab).toBeLessThanOrEqual(1);
+    const like = short.includes(tab) ? heights.Combos : heights[tall[0]];
+    expect(Math.abs(height - like), tab).toBeLessThanOrEqual(1);
   }
+  if (phone) expect(heights.Combos).toBeLessThan(heights[tall[0]]);
 });
 
 test('the Board tab holds the Key hint and A word, typed over the board, whose card holds the Legend, folded, and the Summary', async ({
@@ -119,6 +140,9 @@ test('the Board tab holds the Key hint and A word, typed over the board, whose c
   if (!h || !w || !area) return;
   expect(h.y + h.height).toBeLessThanOrEqual(area.y);
   expect(w.y + w.height).toBeLessThanOrEqual(area.y);
+  // Side by side, and as tall as each other.
+  expect(Math.abs(h.y - w.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(h.height - w.height)).toBeLessThanOrEqual(1);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 
   // The legend and the summary are in the board's card, the legend folded until it is opened.
@@ -325,7 +349,7 @@ test.describe('on a phone', () => {
     const picker = await bar.getByRole('combobox', { name: 'Layout' }).boundingBox();
     expect(picker?.width ?? 0).toBeGreaterThanOrEqual(144);
 
-    // On a phone the buttons take a line under the name, which keeps room to be read.
+    // Beside Save and Copy, the name of a layout that comes with the app keeps room to be read.
     const name = await bar.getByRole('textbox', { name: 'Name', exact: true }).boundingBox();
     expect(name?.width ?? 0).toBeGreaterThanOrEqual(144);
 
@@ -344,7 +368,7 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test("the bar's buttons take a line under the name, which an edit leaves as it is", async ({
+  test("the bar's buttons share the name's line, which an edit leaves as it is", async ({
     page,
   }) => {
     await openEdit(page);
@@ -360,10 +384,13 @@ test.describe('on a phone', () => {
     const height = async () => (await box(bar)).height;
     const before = await height();
     const named = await box(name);
+    // The name keeps room to be read beside them.
+    expect(named.width).toBeGreaterThanOrEqual(96);
     for (const button of [save, copy]) {
       const b = await box(button);
-      // Under the name, and big enough to tap (WCAG 2.5.8).
-      expect(b.y).toBeGreaterThanOrEqual(named.y + named.height);
+      // Beside the name, and big enough to tap (WCAG 2.5.8).
+      expect(Math.abs(b.y + b.height / 2 - (named.y + named.height / 2))).toBeLessThanOrEqual(4);
+      expect(b.x).toBeGreaterThanOrEqual(named.x + named.width);
       expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(24);
     }
 
@@ -392,6 +419,80 @@ test.describe('on a phone', () => {
     expect(Math.abs(saveNow.x - saveAt.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(saveNow.y - saveAt.y)).toBeLessThanOrEqual(1);
     expect(Math.abs((await height()) - before)).toBeLessThanOrEqual(1);
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('a phone of 360×640 has the board and its layer navigator in sight on every tab that draws it', async ({
+    page,
+  }) => {
+    // A small phone still in wide use: the larger ones have more room.
+    await page.setViewportSize({ width: 360, height: 640 });
+    await openEdit(page);
+    for (const tab of ['Board', 'Combos', 'Special Behaviors']) {
+      await page.getByRole('tab', { name: tab }).click();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const keys = await page.locator('#kb-analyze').boundingBox();
+      const nav = await page.getByRole('group', { name: 'Layers' }).boundingBox();
+      const header = await page.locator('header.sticky').first().boundingBox();
+      expect(keys && nav && header, tab).toBeTruthy();
+      if (!keys || !nav || !header) return;
+      // Under the sticky header, and over the bottom of the screen.
+      expect.soft(keys.y, tab).toBeGreaterThanOrEqual(header.y + header.height);
+      expect.soft(nav.y + nav.height, tab).toBeLessThanOrEqual(640);
+    }
+  });
+
+  test("a custom layout's buttons stay where they are when it is edited, at every phone width", async ({
+    page,
+  }) => {
+    test.slow();
+    await openEdit(page);
+    const bar = page.getByRole('region', { name: 'Layout' });
+    // A copy is a custom layout: it has Submit, the most a bar holds but for a change proposed.
+    await bar.getByRole('button', { name: 'Save as copy' }).tap();
+    await page.getByRole('dialog').getByRole('button', { name: 'Save copy' }).tap();
+    await expect(bar.getByRole('button', { name: 'Submit' })).toBeVisible({ timeout: 20_000 });
+    const places = () =>
+      bar.evaluate((b) => {
+        const at = b.getBoundingClientRect();
+        const of = (name: string) => {
+          const el = [...b.querySelectorAll('button')].find(
+            (e) => (e.getAttribute('aria-label') ?? e.textContent?.trim()) === name,
+          );
+          const r = el?.getBoundingClientRect();
+          return r ? [Math.round(r.x - at.x), Math.round(r.y - at.y)] : null;
+        };
+        return {
+          height: Math.round(at.height),
+          save: of('Save'),
+          copy: of('Save as copy'),
+          submit: of('Submit'),
+        };
+      });
+    for (const width of [320, 360, 384, 412]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const before = await places();
+      await page.getByRole('button', { name: /^Key LHI:/ }).press('Delete');
+      const cancel = bar.getByRole('button', { name: 'Cancel' });
+      await expect(cancel).toBeVisible();
+      expect.soft(await places(), `${width}px`).toEqual(before);
+      const name = await bar.getByRole('textbox', { name: 'Name', exact: true }).boundingBox();
+      expect.soft(name?.width ?? 0, `${width}px`).toBeGreaterThanOrEqual(64);
+      expect.soft(await overflow(page), `${width}px`).toBeLessThanOrEqual(0);
+      await cancel.tap();
+      await expect(cancel).toBeHidden();
+    }
+  });
+
+  test('a word typed takes the row on a phone, its presses inside its card', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await openEdit(page);
+    await page.getByLabel('How is this typed?').fill('ação');
+    const word = page.getByRole('region', { name: 'A word, typed', exact: true });
+    await expect(word.getByRole('list', { name: 'Presses' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Key', exact: true })).toBeHidden();
+    expect(await word.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(0);
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 

@@ -692,7 +692,7 @@ export function CombosPanel({
   }, [state.comboPicks]);
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Combos">
-      <Carousel label="Combo boards">
+      <Carousel label="Combo boards" className="lb-carousel-short">
         {combos.map((c, i) => {
           const name = c.keys.join('+');
           const shown = legend(compiled, c.binding);
@@ -757,37 +757,40 @@ export function CombosPanel({
         })}
         <Slide className="lb-slide-new">
           {picking ? (
-            <div className="flex w-full flex-col gap-2">
+            <div className="flex w-full flex-col gap-2 max-sm:gap-1">
               <output aria-label="Combo keys picked" className="font-mono text-xs">
                 {chosen.length > 0 ? chosen.join('+') : 'Click the keys on the board'}
               </output>
-              <button
-                type="button"
-                className="btn btn-xs btn-primary"
-                disabled={chosen.length < 2}
-                onClick={() => {
-                  send({
-                    type: 'edit',
-                    edit: {
-                      kind: 'addCombo',
-                      layer: shownLayer(state),
-                      keys: chosen,
-                      binding: { kind: 'none' },
-                    },
-                  });
-                  // The new combo is last: open it, to give it an output.
-                  send({ type: 'selectCombo', combo: combos.length });
-                }}
-              >
-                Add combo on {layerName}
-              </button>
-              <button
-                type="button"
-                className="btn btn-xs btn-ghost"
-                onClick={() => send({ type: 'comboPickCancel' })}
-              >
-                Cancel
-              </button>
+              {/* Side by side on a phone, where the strip is short. */}
+              <div className="flex flex-col gap-2 max-sm:flex-row max-sm:gap-1">
+                <button
+                  type="button"
+                  className="btn btn-xs btn-primary max-sm:flex-1"
+                  disabled={chosen.length < 2}
+                  onClick={() => {
+                    send({
+                      type: 'edit',
+                      edit: {
+                        kind: 'addCombo',
+                        layer: shownLayer(state),
+                        keys: chosen,
+                        binding: { kind: 'none' },
+                      },
+                    });
+                    // The new combo is last: open it, to give it an output.
+                    send({ type: 'selectCombo', combo: combos.length });
+                  }}
+                >
+                  Add combo on {layerName}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-ghost"
+                  onClick={() => send({ type: 'comboPickCancel' })}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <button
@@ -806,7 +809,7 @@ export function CombosPanel({
           )}
         </Slide>
       </Carousel>
-      <CarouselHint>
+      <CarouselHint short="Pick a combo to edit it on the board below, or add one.">
         A combo types when its keys go down together. Pick one to edit it on the board below, or add
         a new one.
       </CarouselHint>
@@ -969,7 +972,7 @@ export function BehaviorsPanel({
   const slides = useFeatureSlides(state, send, panel, onShow);
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
-      <Carousel label="Special behaviors">
+      <Carousel label="Special behaviors" className="lb-carousel-short">
         {slides.length === 0 && (
           <Slide className="lb-slide-wide text-xs">
             This layout has no adaptive keys, alt repeats, macros, mod morphs or sentence spaces.
@@ -977,7 +980,7 @@ export function BehaviorsPanel({
         )}
         {slides}
       </Carousel>
-      <CarouselHint>
+      <CarouselHint short="Pick a use to see it on the board below.">
         Pick a use to see it on the board below: its layer turned up with the key selected, or the
         combo open. Adaptive keys, alt repeats and sentence spaces need a ZMK module, linked in the
         key editor.

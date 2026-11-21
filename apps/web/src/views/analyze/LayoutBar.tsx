@@ -95,27 +95,37 @@ export function LayoutBar({
 }) {
   return (
     <section
-      className="lb-editor-bar card bg-base-100 border border-base-300 gap-3 px-3 py-2"
+      className="lb-editor-bar card bg-base-100 border border-base-300 gap-1 sm:gap-3 px-3 py-2"
       aria-label="Layout"
     >
-      {/* One line at a desk. A phone has no room for the name beside four buttons: the name, its
-          badges and Cancel take a line, and Save, Save as copy and Submit one of their own under it,
-          at its end. The bar is as tall before the first edit as after, on the narrowest phone too,
-          and what comes with an edit takes room from the name, never moving a button. */}
-      <div className="flex items-center justify-end gap-1 sm:gap-2 max-sm:flex-wrap">
-        <div className="flex flex-1 items-center gap-1 sm:gap-2 min-w-0 max-sm:basis-full">
+      {/* One line, the name and the ways to save it, on a phone too, and what comes with an
+          edit takes room from the name, never moving a button. On a phone the unsaved badge is a
+          dot and Save as copy says Copy. A custom layout has Submit too, and room for the name
+          beside it all only from 24rem, or, with a change proposed, at a desk: narrower, its
+          buttons take a line of their own under the name, edited or not. */}
+      <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+        <div
+          className={`flex flex-1 items-center gap-1 sm:gap-2 ${
+            proposal ? 'max-sm:basis-full' : onSubmit ? 'max-[24rem]:basis-full' : ''
+          }`}
+        >
           <TextField
             label="Name"
             value={layout.name}
             mono={false}
-            className="input-ghost font-semibold text-base flex-1 min-w-0 px-1"
+            className="input-ghost font-semibold text-base flex-1 w-16 min-w-16 px-1"
             onCommit={(name) => {
               if (name.trim()) onMeta({ name: name.trim() });
             }}
           />
           {proposal && <ProposedBadge href={proposal} size="sm" merged={proposalMerged} />}
           {dirty && (
-            <span className="badge badge-warning badge-sm shrink-0 max-sm:px-1.5">unsaved</span>
+            <span
+              className="badge badge-warning badge-sm shrink-0 max-sm:size-2.5 max-sm:p-0"
+              title="Unsaved changes"
+            >
+              <span className="max-sm:sr-only">unsaved</span>
+            </span>
           )}
           {/* Only while there is something to discard; Undo takes it back, so it does not ask. */}
           {dirty && onCancel && (
@@ -146,8 +156,10 @@ export function LayoutBar({
           title="Save a copy of it under a new name, and open the copy"
           disabled={saving}
           onClick={onSaveAsCopy}
+          aria-label="Save as copy"
         >
-          Save as copy
+          <span className="max-sm:hidden">Save as copy</span>
+          <span className="sm:hidden">Copy</span>
         </button>
         {onSubmit && (
           <button

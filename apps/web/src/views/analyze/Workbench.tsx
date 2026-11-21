@@ -985,9 +985,14 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'board' && (
-        <div className="grid items-start gap-3 md:grid-cols-2">
-          <KeyHint className="lb-card" />
-          <section className="lb-card min-w-0" aria-label="A word, typed">
+        // Side by side at every width, so the board is in sight under them on a phone too, and as tall
+        // as each other. On a phone a word being explained takes the row, its presses too wide for half.
+        <div className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
+          <KeyHint className={`lb-card max-sm:p-2! ${explain ? 'max-sm:hidden' : ''}`} />
+          <section
+            className={`lb-card max-sm:p-2! min-w-0 ${explain ? 'max-sm:col-span-2' : ''}`}
+            aria-label="A word, typed"
+          >
             <Collapsible id="analyze.word" title="A word, typed">
               <div className="flex flex-col gap-2 min-w-0">
                 <form
@@ -996,7 +1001,8 @@ export function Workbench({
                   onSubmit={(e) => e.preventDefault()}
                 >
                   <div className="form-control flex-1">
-                    <label className="label-text text-xs" htmlFor="explain-text">
+                    {/* On a phone the heading says what the field is for. */}
+                    <label className="label-text text-xs max-sm:sr-only" htmlFor="explain-text">
                       How is this typed?
                     </label>
                     <input
@@ -1124,7 +1130,7 @@ export function Workbench({
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: undo belongs to the whole view, reached from whatever inside it has focus.
     <div
-      className="lb-analyze space-y-4"
+      className="lb-analyze space-y-2 sm:space-y-4"
       onKeyDown={(e) => {
         if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z') return;
         const target = e.target as HTMLElement;
@@ -1265,7 +1271,7 @@ export function Workbench({
       {analysisError && <ErrorAlert message={`Could not analyze: ${analysisError}`} />}
 
       <section className="card bg-base-100 border border-base-300 min-w-0" aria-label="Editor">
-        <div className="card-body gap-3 p-3 sm:p-4 min-w-0">
+        <div className="card-body gap-2 sm:gap-3 p-2 sm:p-3 sm:p-4 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <Tabs
               label="Editor panels"
@@ -1323,7 +1329,7 @@ export function Workbench({
                   className="lb-edit-board card bg-base-100 border border-base-300 min-w-0"
                   aria-label="Board"
                 >
-                  <div className="card-body gap-2 p-3 sm:p-4 min-w-0">
+                  <div className="card-body gap-2 p-3 max-sm:pt-2 sm:p-4 min-w-0">
                     <Collapsible id="analyze.board" title="Board">
                       {/* The board first, with nothing above it; the layers centred under it, as on a
                     Library card; then Heat and Undo and Redo, in a row of their own. */}

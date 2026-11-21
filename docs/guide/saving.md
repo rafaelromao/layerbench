@@ -12,9 +12,9 @@ A layout of your own starts in **Library**, in one of these ways:
   to call the copy, or, on one that comes with the app or a community layout, whether to propose
   your change instead, and keeps it among your custom layouts. See
   [Saving a layout that is not yours](#saving-a-layout-that-is-not-yours) below.
-- Press **Save as copy**, beside **Save** in **Analyze**, on any layout: it asks what to call the
-  copy, keeps it among your custom layouts and opens it. See [Saving as a copy](#saving-as-a-copy)
-  below.
+- Press **Save as copy** (**Copy** on a phone), beside **Save** in **Analyze**, on any layout: it
+  asks what to call the copy, keeps it among your custom layouts and opens it. See
+  [Saving as a copy](#saving-as-a-copy) below.
 - **New layout** starts one on the board you choose, empty or from Qwerty to rearrange, and
   **Create and edit** saves it and opens it. **Add the default layers** gives it Numbers, Symbols,
   Accents and, where the board needs it, Extras, described under [Default layers](editing.md#default-layers).
@@ -27,7 +27,7 @@ A layout of your own starts in **Library**, in one of these ways:
 Saved, it is a custom layout: listed in **Library** among the layouts that come with the app, marked *custom* and
 ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze**, then press
 **Save**, beside its name at the top, to keep the edits. Until you do, the name is marked
-*unsaved*, and your edits live only in the page's link and in this tab. Opened in another tab or
+*unsaved* (a dot, on a phone), and your edits live only in the page's link and in this tab. Opened in another tab or
 browser where the layout is saved, the same link is that layout with your edits, still marked
 *unsaved*, and **Save** there saves over it. Opened where it is not saved, it is a layout of its
 own, and saving it makes a copy.

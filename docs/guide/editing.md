@@ -4,7 +4,7 @@ A layout is edited where it is analyzed, in **Analyze**: the board shows one lay
 the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
 **Typing paths**, **Configuration** and **Export**, hold everything there is to edit:
 **Board** is the first, and holds **Key**, which says how a key is picked and moved, and **A word,
-typed**. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
+typed**, side by side. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
 it, the selected key's numbers and the **Summary**; **Combos** and **Special Behaviors** draw that
 card too, with the **Legend** and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
 key to select it. The editor beside the board (under its card, on a phone) says what the key does
@@ -445,7 +445,8 @@ layer in the end, which is why it stays first.
 ## Combos, typing paths and the rest
 
 The other tabs hold what is not on a single key. Every tab but **Board** shows what it holds as
-cards in one strip, as tall as a combo's card on every tab. The strip scrolls sideways inside its
+cards in one strip, as tall as a combo's card on every tab (on a phone, **Combos** and **Special
+Behaviors** have a shorter one: see [On a phone](#on-a-phone)). The strip scrolls sideways inside its
 panel, with its scroll bar, by swiping, or with the mouse wheel while the pointer is over it, which
 keeps the page where it is, at either end too:
 
@@ -553,6 +554,15 @@ dragged straight away, or tapped and then the key tapped.
 on a key and lifting it without moving adds it to the keys selected, to [move or clear several at
 once](#several-keys-at-once). The on-screen keyboard stays down until you tap a text field, such
 as **Or type**.
+
+The page opens with the whole board and its layer navigator in sight, on a phone of 360×640 and
+larger, on **Board**, **Combos** and **Special Behaviors** alike. To make room, the bar at the top
+holds the name beside **Save** and **Copy** (**Save as copy**), and marks unsaved edits with a dot
+rather than the word *unsaved*; a custom layout narrower than 384px, or with a change proposed, has
+its buttons on a line of their own under the name. **Key** says in a line how to pick and swap a key,
+and its **?** leads to [Moving keys around](#moving-keys-around); a word typed in **A word, typed**
+takes the whole row. The strips of **Combos** and **Special Behaviors** are short, a combo's card
+leaving its small board to the board below.
 
 A quick swipe up or down scrolls the page, and a quick swipe sideways on the board turns it to the
 next or the previous layer. A board wider than the screen pans under your finger first; swipe from

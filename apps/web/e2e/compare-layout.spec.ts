@@ -10,8 +10,11 @@ function overflow(page: Page): Promise<number> {
 /** What a tap reaches at the left, the middle and the right of the Settings button, by name. */
 function settingsTaps(page: Page): Promise<(string | null)[]> {
   return page.evaluate(() => {
-    const box = document.querySelector('button[aria-label="Settings"]')?.getBoundingClientRect();
-    if (!box) return ['no Settings button'];
+    const button = document.querySelector('button[aria-label="Settings"]');
+    if (!button) return ['no Settings button'];
+    // Opening the Legend scrolls a phone's page past the bar: a tap reaches only what is on screen.
+    button.scrollIntoView({ block: 'center' });
+    const box = button.getBoundingClientRect();
     return [0.2, 0.5, 0.8].map((f) => {
       const hit = document
         .elementFromPoint(box.left + box.width * f, box.top + box.height / 2)
