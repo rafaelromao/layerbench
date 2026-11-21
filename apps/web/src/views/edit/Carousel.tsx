@@ -20,7 +20,8 @@ function scrollsItself(target: Element | null, strip: Element, down: boolean): b
 
 /**
  * Every editor panel but the Board, as one strip of slides at one height, scrolled sideways inside
- * its panel. The mouse wheel scrolls it too while the pointer is over it, and keeps the page where
+ * its panel. On a phone the strips of Combos and Special Behaviors, the tabs that draw the board
+ * under them, are short (`lb-carousel-short`), so the board is in sight under them. The mouse wheel scrolls it too while the pointer is over it, and keeps the page where
  * it is, at either end as well: the page moves only when the pointer is off the strip.
  */
 export function Carousel({
@@ -105,9 +106,18 @@ export function Keycap({
   );
 }
 
-/** What the panel says under its carousel; two lines are kept for it, and more where the width needs. */
-export function CarouselHint({ children }: { children: ReactNode }) {
-  return <p className="lb-carousel-hint text-[11px] opacity-60">{children}</p>;
+/**
+ * What the panel says under its carousel; two lines are kept for it, and more where the width needs.
+ * A panel with a short strip on a phone says `short` there instead, in one line.
+ */
+export function CarouselHint({ children, short }: { children: ReactNode; short?: string }) {
+  if (!short) return <p className="lb-carousel-hint text-[11px] opacity-60">{children}</p>;
+  return (
+    <p className="lb-carousel-hint lb-carousel-hint-short text-[11px] opacity-60">
+      <span className="max-sm:hidden">{children}</span>
+      <span className="sm:hidden">{short}</span>
+    </p>
+  );
 }
 
 /**

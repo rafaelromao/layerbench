@@ -446,7 +446,9 @@ layer in the end, which is why it stays first.
 ## Combos, typing paths and the rest
 
 The other tabs hold what is not on a single key. Every tab but **Board** shows what it holds as
-cards in one strip, as tall as a combo's card on every tab. The strip scrolls sideways inside its
+cards in one strip, as tall as a combo's card on every tab; on a phone the strips of **Combos** and
+**Special Behaviors** are shorter, so the board and its layer navigator are in sight under them, a
+combo's card leaving its small board to the board below. The strip scrolls sideways inside its
 panel, with its scroll bar, by swiping, or with the mouse wheel while the pointer is over it, which
 keeps the page where it is, at either end too:
 

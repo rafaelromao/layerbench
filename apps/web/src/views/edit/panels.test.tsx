@@ -874,7 +874,7 @@ describe('the Special Behaviors board', () => {
       const s = initialState(behaving, compileLayout(behaving));
       const { rerender } = render(<BehaviorsPanel state={s} send={vi.fn()} />);
       expect(scrollTo).not.toHaveBeenCalled();
-      expect(screen.getByText(/on the board below/)).toBeInTheDocument();
+      expect(screen.getByText(/on the board below: its layer turned up/)).toBeInTheDocument();
       rerender(<BehaviorsPanel state={{ ...s, selected: 'RHP' }} send={vi.fn()} />);
       expect(scrollTo).toHaveBeenCalledOnce();
     } finally {

@@ -95,10 +95,17 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     // Soft: a failing tab says so and the rest are still looked at, so one run names every tab.
     expect.soft(cut, tab).toEqual([]);
   }
+  // On a phone the strips of Combos and Special Behaviors, which draw the board under them, are
+  // shorter, and as tall as each other; the rest are as tall as each other.
+  const phone = (page.viewportSize()?.width ?? 0) < 640;
+  const short = phone ? ['Combos', 'Special Behaviors'] : [];
+  const tall = Object.keys(heights).filter((tab) => !short.includes(tab));
   for (const [tab, height] of Object.entries(heights)) {
     expect(height, tab).toBeGreaterThan(0);
-    expect(Math.abs(height - heights.Combos), tab).toBeLessThanOrEqual(1);
+    const like = short.includes(tab) ? heights.Combos : heights[tall[0]];
+    expect(Math.abs(height - like), tab).toBeLessThanOrEqual(1);
   }
+  if (phone) expect(heights.Combos).toBeLessThan(heights[tall[0]]);
 });
 
 test('the Board tab holds the Key hint and A word, typed over the board, whose card holds the Legend, folded, and the Summary', async ({
@@ -398,20 +405,23 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test('a phone as tall as most opens with the board and its layer navigator in sight', async ({
+  test('a phone as tall as most has the board and its layer navigator in sight on every tab that draws it', async ({
     page,
   }) => {
     // The smallest phone has too little height for it; one of 640px and more has room.
     test.skip((page.viewportSize()?.height ?? 0) < 640, 'a short screen');
     await openEdit(page);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    const keys = await page.locator('#kb-analyze').boundingBox();
-    const nav = await page.getByRole('group', { name: 'Layers' }).boundingBox();
-    const screen = page.viewportSize()?.height ?? 0;
-    expect(keys && nav).toBeTruthy();
-    if (!keys || !nav) return;
-    expect(keys.y).toBeGreaterThanOrEqual(0);
-    expect(nav.y + nav.height).toBeLessThanOrEqual(screen);
+    for (const tab of ['Board', 'Combos', 'Special Behaviors']) {
+      await page.getByRole('tab', { name: tab }).click();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const keys = await page.locator('#kb-analyze').boundingBox();
+      const nav = await page.getByRole('group', { name: 'Layers' }).boundingBox();
+      const screen = page.viewportSize()?.height ?? 0;
+      expect(keys && nav, tab).toBeTruthy();
+      if (!keys || !nav) return;
+      expect.soft(keys.y, tab).toBeGreaterThanOrEqual(0);
+      expect.soft(nav.y + nav.height, tab).toBeLessThanOrEqual(screen);
+    }
   });
 
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {
