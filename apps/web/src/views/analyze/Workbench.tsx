@@ -1009,7 +1009,7 @@ export function Workbench({
                       id="explain-text"
                       name="text"
                       autoComplete="off"
-                      placeholder="ação · chave · hello"
+                      placeholder="hello · don't · Keyboard"
                       className="input input-sm input-bordered w-full font-mono"
                       value={explainText}
                       onChange={(e) => setExplainText(e.target.value)}
