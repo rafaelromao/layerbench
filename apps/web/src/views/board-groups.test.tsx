@@ -44,7 +44,7 @@ describe('Analyze: the Board tab and the board’s card', () => {
 
     // Still worth playing on the board: a word that takes Shift, and one that reaches a symbol.
     expect(examples.some((word) => /[A-Z]/.test(word))).toBe(true);
-    expect(examples.some((word) => /[^A-Za-z]/.test(word))).toBe(true);
+    expect(examples.some((word) => /\P{L}/u.test(word))).toBe(true);
   }, 60_000);
 
   it('starts the Legend folded, opens it by its heading, and starts the Summary open', async () => {
