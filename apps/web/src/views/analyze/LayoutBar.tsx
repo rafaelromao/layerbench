@@ -95,16 +95,20 @@ export function LayoutBar({
 }) {
   return (
     <section
-      className="lb-editor-bar card bg-base-100 border border-base-300 gap-2 sm:gap-3 px-3 py-2"
+      className="lb-editor-bar card bg-base-100 border border-base-300 gap-1 sm:gap-3 px-3 py-2"
       aria-label="Layout"
     >
-      {/* One line, the name and the ways to save it, on a phone too: what comes with an edit
-          takes room from the name, never moving a button. On a phone the unsaved badge is a dot
-          and Save as copy says Copy, so the name keeps room with every badge and button there is;
-          only on the narrowest phone, a custom layout's every badge and button, unsaved and with a
-          change proposed, leave the name too little, and the buttons go under it. */}
+      {/* One line, the name and the ways to save it, on a phone too, and what comes with an
+          edit takes room from the name, never moving a button. On a phone the unsaved badge is a
+          dot and Save as copy says Copy. A custom layout has Submit too, and room for the name
+          beside it all only from 24rem, or, with a change proposed, at a desk: narrower, its
+          buttons take a line of their own under the name, edited or not. */}
       <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-        <div className="flex flex-1 items-center gap-1 sm:gap-2">
+        <div
+          className={`flex flex-1 items-center gap-1 sm:gap-2 ${
+            proposal ? 'max-sm:basis-full' : onSubmit ? 'max-[24rem]:basis-full' : ''
+          }`}
+        >
           <TextField
             label="Name"
             value={layout.name}

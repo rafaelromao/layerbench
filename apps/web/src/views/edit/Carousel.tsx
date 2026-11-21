@@ -21,8 +21,9 @@ function scrollsItself(target: Element | null, strip: Element, down: boolean): b
 /**
  * Every editor panel but the Board, as one strip of slides at one height, scrolled sideways inside
  * its panel. On a phone the strips of Combos and Special Behaviors, the tabs that draw the board
- * under them, are short (`lb-carousel-short`), so the board is in sight under them. The mouse wheel scrolls it too while the pointer is over it, and keeps the page where
- * it is, at either end as well: the page moves only when the pointer is off the strip.
+ * under them, are short (`lb-carousel-short`), so the board is in sight under them. The mouse
+ * wheel scrolls it too while the pointer is over it, and keeps the page where it is, at either end
+ * as well: the page moves only when the pointer is off the strip.
  */
 export function Carousel({
   label,

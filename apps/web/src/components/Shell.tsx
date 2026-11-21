@@ -250,7 +250,7 @@ export function Shell({ children }: { children: ReactNode }) {
         id="main"
         ref={main}
         tabIndex={-1}
-        className="px-3 py-4 sm:px-4 lg:px-6 focus:outline-none"
+        className="px-3 pt-3 pb-4 sm:px-4 sm:pt-4 lg:px-6 focus:outline-none"
       >
         <div className="mx-auto max-w-[1600px] space-y-4">{children}</div>
       </main>

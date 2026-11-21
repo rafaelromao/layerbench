@@ -1106,6 +1106,17 @@ button.lb-combo-apart:focus-visible {
   .lb-carousel-short .lb-combo-slide-pick {
     justify-content: center;
   }
+  /* Clear of the Remove button in the corner, and the layers in two lines, "not typed" with them. */
+  .lb-carousel-short .lb-combo-slide-foot {
+    padding-inline-end: 1.5rem;
+  }
+  .lb-carousel-short .lb-combo-slide-layers {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+  }
   .lb-carousel-short .lb-slide-new {
     padding-block: 0.375rem;
   }

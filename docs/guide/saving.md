@@ -27,7 +27,7 @@ A layout of your own starts in **Library**, in one of these ways:
 Saved, it is a custom layout: listed in **Library** among the layouts that come with the app, marked *custom* and
 ranked with them, and **Delete**, on its card, removes it. Edit it in **Analyze**, then press
 **Save**, beside its name at the top, to keep the edits. Until you do, the name is marked
-*unsaved*, and your edits live only in the page's link and in this tab. Opened in another tab or
+*unsaved* (a dot, on a phone), and your edits live only in the page's link and in this tab. Opened in another tab or
 browser where the layout is saved, the same link is that layout with your edits, still marked
 *unsaved*, and **Save** there saves over it. Opened where it is not saved, it is a layout of its
 own, and saving it makes a copy.

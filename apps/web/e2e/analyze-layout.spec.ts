@@ -94,6 +94,20 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
     );
     // Soft: a failing tab says so and the rest are still looked at, so one run names every tab.
     expect.soft(cut, tab).toEqual([]);
+    // A combo's keys are clear of its Remove button, a tap on one never reaching the other.
+    const under = await strip.evaluate((el) =>
+      [...el.querySelectorAll('.lb-combo-slide')].flatMap((slide) => {
+        const x = slide.querySelector('.lb-slide-remove')?.getBoundingClientRect();
+        const k = slide.querySelector('.lb-combo-slide-keys')?.getBoundingClientRect();
+        if (!x || !k) return [];
+        const across = Math.min(x.right, k.right) - Math.max(x.left, k.left);
+        const down = Math.min(x.bottom, k.bottom) - Math.max(x.top, k.top);
+        return across > 0 && down > 0
+          ? [k.width ? (slide.textContent ?? '').slice(0, 20) : '']
+          : [];
+      }),
+    );
+    expect.soft(under, tab).toEqual([]);
   }
   // On a phone the strips of Combos and Special Behaviors, which draw the board under them, are
   // shorter, and as tall as each other; the rest are as tall as each other.
@@ -335,7 +349,7 @@ test.describe('on a phone', () => {
     const picker = await bar.getByRole('combobox', { name: 'Layout' }).boundingBox();
     expect(picker?.width ?? 0).toBeGreaterThanOrEqual(144);
 
-    // On a phone the buttons take a line under the name, which keeps room to be read.
+    // Beside Save and Copy, the name of a layout that comes with the app keeps room to be read.
     const name = await bar.getByRole('textbox', { name: 'Name', exact: true }).boundingBox();
     expect(name?.width ?? 0).toBeGreaterThanOrEqual(144);
 
@@ -408,23 +422,78 @@ test.describe('on a phone', () => {
     expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
-  test('a phone as tall as most has the board and its layer navigator in sight on every tab that draws it', async ({
+  test('a phone of 360×640 has the board and its layer navigator in sight on every tab that draws it', async ({
     page,
   }) => {
-    // The smallest phone has too little height for it; one of 640px and more has room.
-    test.skip((page.viewportSize()?.height ?? 0) < 640, 'a short screen');
+    // A small phone still in wide use: the larger ones have more room.
+    await page.setViewportSize({ width: 360, height: 640 });
     await openEdit(page);
     for (const tab of ['Board', 'Combos', 'Special Behaviors']) {
       await page.getByRole('tab', { name: tab }).click();
       await page.evaluate(() => window.scrollTo(0, 0));
       const keys = await page.locator('#kb-analyze').boundingBox();
       const nav = await page.getByRole('group', { name: 'Layers' }).boundingBox();
-      const screen = page.viewportSize()?.height ?? 0;
-      expect(keys && nav, tab).toBeTruthy();
-      if (!keys || !nav) return;
-      expect.soft(keys.y, tab).toBeGreaterThanOrEqual(0);
-      expect.soft(nav.y + nav.height, tab).toBeLessThanOrEqual(screen);
+      const header = await page.locator('header.sticky').first().boundingBox();
+      expect(keys && nav && header, tab).toBeTruthy();
+      if (!keys || !nav || !header) return;
+      // Under the sticky header, and over the bottom of the screen.
+      expect.soft(keys.y, tab).toBeGreaterThanOrEqual(header.y + header.height);
+      expect.soft(nav.y + nav.height, tab).toBeLessThanOrEqual(640);
     }
+  });
+
+  test("a custom layout's buttons stay where they are when it is edited, at every phone width", async ({
+    page,
+  }) => {
+    test.slow();
+    await openEdit(page);
+    const bar = page.getByRole('region', { name: 'Layout' });
+    // A copy is a custom layout: it has Submit, the most a bar holds but for a change proposed.
+    await bar.getByRole('button', { name: 'Save as copy' }).tap();
+    await page.getByRole('dialog').getByRole('button', { name: 'Save copy' }).tap();
+    await expect(bar.getByRole('button', { name: 'Submit' })).toBeVisible({ timeout: 20_000 });
+    const places = () =>
+      bar.evaluate((b) => {
+        const at = b.getBoundingClientRect();
+        const of = (name: string) => {
+          const el = [...b.querySelectorAll('button')].find(
+            (e) => (e.getAttribute('aria-label') ?? e.textContent?.trim()) === name,
+          );
+          const r = el?.getBoundingClientRect();
+          return r ? [Math.round(r.x - at.x), Math.round(r.y - at.y)] : null;
+        };
+        return {
+          height: Math.round(at.height),
+          save: of('Save'),
+          copy: of('Save as copy'),
+          submit: of('Submit'),
+        };
+      });
+    for (const width of [320, 360, 384, 412]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const before = await places();
+      await page.getByRole('button', { name: /^Key LHI:/ }).press('Delete');
+      const cancel = bar.getByRole('button', { name: 'Cancel' });
+      await expect(cancel).toBeVisible();
+      expect.soft(await places(), `${width}px`).toEqual(before);
+      const name = await bar.getByRole('textbox', { name: 'Name', exact: true }).boundingBox();
+      expect.soft(name?.width ?? 0, `${width}px`).toBeGreaterThanOrEqual(64);
+      expect.soft(await overflow(page), `${width}px`).toBeLessThanOrEqual(0);
+      await cancel.tap();
+      await expect(cancel).toBeHidden();
+    }
+  });
+
+  test('a word typed takes the row on a phone, its presses inside its card', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await openEdit(page);
+    await page.getByLabel('How is this typed?').fill('ação');
+    const word = page.getByRole('region', { name: 'A word, typed', exact: true });
+    await expect(word.getByRole('list', { name: 'Presses' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Key', exact: true })).toBeHidden();
+    expect(await word.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(0);
+    expect(await overflow(page)).toBeLessThanOrEqual(0);
   });
 
   test('the layer navigator fits an iPhone SE with no sideways scroll', async ({ page }) => {

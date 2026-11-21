@@ -33,10 +33,10 @@ export interface KeyInspectorProps {
 export function KeyHint({ className = '' }: { className?: string }) {
   return (
     <section className={`min-w-0 space-y-1 ${className}`} aria-label="Key">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold">Key</h2>
-        <HelpLink help={HELP.editKey} />
-      </div>
+      {/* What the hint is about: moving keys, which leads on to several keys at once. Floated, so
+          the words go on beside it rather than under a line of its own. */}
+      <HelpLink help={HELP.moving} className="float-right ml-2" />
+      <h2 className="text-sm font-semibold">Key</h2>
       {/* A phone has the board under it: the hint is short there, the rest behind the "?". */}
       <p className="text-xs opacity-70 sm:hidden">
         Tap a key to edit it; drag it onto another to swap.
