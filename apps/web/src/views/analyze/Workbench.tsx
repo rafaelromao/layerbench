@@ -985,8 +985,9 @@ export function Workbench({
       className="min-w-0"
     >
       {state.panel === 'board' && (
-        // Side by side at every width, so the board is in sight under them on a phone too.
-        <div className="grid grid-cols-2 items-start gap-2 sm:gap-3">
+        // Side by side at every width, so the board is in sight under them on a phone too, and as tall
+        // as each other.
+        <div className="grid grid-cols-2 items-stretch gap-2 sm:gap-3">
           <KeyHint className="lb-card max-sm:p-2!" />
           <section className="lb-card max-sm:p-2! min-w-0" aria-label="A word, typed">
             <Collapsible id="analyze.word" title="A word, typed">

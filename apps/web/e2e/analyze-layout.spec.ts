@@ -126,6 +126,9 @@ test('the Board tab holds the Key hint and A word, typed over the board, whose c
   if (!h || !w || !area) return;
   expect(h.y + h.height).toBeLessThanOrEqual(area.y);
   expect(w.y + w.height).toBeLessThanOrEqual(area.y);
+  // Side by side, and as tall as each other.
+  expect(Math.abs(h.y - w.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(h.height - w.height)).toBeLessThanOrEqual(1);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 
   // The legend and the summary are in the board's card, the legend folded until it is opened.
