@@ -3,6 +3,7 @@ import { creditOf } from './credits.js';
 import {
   CARD_WIDTH,
   type CardBoard,
+  type CardLayer,
   canCopyImage,
   composeCard,
   copyImage,
@@ -51,13 +52,17 @@ const palette: Palette = {
   heat: ['rgb(10, 10, 10)', 'rgb(40, 40, 60)', 'rgb(70, 70, 120)', 'rgb(100, 100, 180)', 'blue'],
 };
 
+/** A layer as the card draws it: a board with its name and share of the typing. */
+function cardLayer(over: Partial<CardLayer> = {}): CardLayer {
+  return { svg: board(), name: 'Alpha 1', share: '91.2% of presses', ...over };
+}
+
 function cardBoard(over: Partial<CardBoard> = {}): CardBoard {
   return {
-    svg: board(),
     tag: null,
     credit: creditOf({ name: 'Romak', author: 'Ana' }, { unsaved: false, editor: '' }),
-    layer: 'Alpha 1',
-    share: '91.2% of presses',
+    layers: [cardLayer()],
+    omitted: 0,
     summary: [],
     ...over,
   };
@@ -217,7 +222,7 @@ describe('composeCard', () => {
 
   it('puts the board in the card at its width, as tall as its own proportions', () => {
     const { svg } = composeCard({
-      boards: [cardBoard({ svg: board('0 0 600 200') })],
+      boards: [cardBoard({ layers: [cardLayer({ svg: board('0 0 600 200') })] })],
       heat: 'Usage',
       heatNote: null,
       settings: '',
@@ -309,7 +314,7 @@ describe('composeCard with text that is not plain', () => {
       boards: [
         cardBoard({
           credit: creditOf({ name, author: name }, { unsaved: edits !== '', editor: edits }),
-          layer: name,
+          layers: [cardLayer({ name })],
         }),
       ],
       heat: name,
@@ -387,7 +392,7 @@ describe('text as long as a link can carry', () => {
     );
     const started = performance.now();
     const { svg } = composeCard({
-      boards: [cardBoard({ credit, layer: long, share: long })],
+      boards: [cardBoard({ credit, layers: [cardLayer({ name: long, share: long })] })],
       heat: long,
       heatNote: long,
       settings: `${'word '.repeat(HUGE / 5)}`,
@@ -407,6 +412,97 @@ describe('text as long as a link can carry', () => {
     expect(performance.now() - started).toBeLessThan(BUDGET_MS);
     expect(lines).toHaveLength(1);
     expect(lines[0]?.endsWith('…')).toBe(true);
+  });
+});
+
+describe('several layers of a layout', () => {
+  const names = ['Alpha 1', 'Alpha 2', 'Numbers'];
+  const layers = names.map((name, i) =>
+    cardLayer({ name, share: `${90 - 40 * i}.0% of presses`, svg: board() }),
+  );
+  const compose = (over: Partial<CardBoard> = {}) =>
+    composeCard({
+      boards: [cardBoard({ layers, ...over })],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+  const one = composeCard({
+    boards: [cardBoard()],
+    heat: 'Usage',
+    heatNote: null,
+    settings: '',
+    palette,
+  });
+
+  it('heads each board with which layer it is, in order, and its share of the typing', () => {
+    const text = parse(compose().svg).documentElement.textContent ?? '';
+    const at = names.map((n, i) => text.indexOf(`${i + 1} / 3 · ${n}`));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    for (const share of ['90.0% of presses', '50.0% of presses', '10.0% of presses']) {
+      expect(text).toContain(share);
+    }
+  });
+
+  it('stacks the boards one under another, each at the width of the card’s content', () => {
+    const boards = [...parse(compose().svg).documentElement.getElementsByTagName('svg')].filter(
+      (el) => el.hasAttribute('viewBox') && el.hasAttribute('x'),
+    );
+    expect(boards).toHaveLength(3);
+    const ys = boards.map((b) => Number(b.getAttribute('y')));
+    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    expect(new Set(ys).size).toBe(3);
+    for (const b of boards) expect(b.getAttribute('x')).toBe('48');
+  });
+
+  it('is as much taller as the boards it adds, and no caption sits under a board', () => {
+    const three = compose();
+    // Two more boards, each with its heading.
+    expect(three.height).toBeGreaterThan(one.height + 2 * 300);
+    const text = parse(three.svg).documentElement.textContent ?? '';
+    // A caption under a board names its layer and share together: with headings it would repeat them.
+    expect(text).not.toContain('Alpha 1 · 90.0% of presses');
+  });
+
+  it('puts the Summary once, after the last layer', () => {
+    const summary: SummaryCell[] = [
+      { id: 'effort', label: 'Effort', value: '6.55', band: 'good', quality: 'good' },
+    ];
+    const text = parse(compose({ summary }).svg).documentElement.textContent ?? '';
+    expect(text.match(/Effort/g)).toHaveLength(1);
+    expect(text.indexOf('Effort')).toBeGreaterThan(text.indexOf('3 / 3 · Numbers'));
+  });
+
+  it('says how many layers the card could not hold, after the last one', () => {
+    const many = parse(compose({ omitted: 8 }).svg).documentElement.textContent ?? '';
+    expect(many).toContain('8 more layers not drawn');
+    expect(parse(compose({ omitted: 1 }).svg).documentElement.textContent).toContain(
+      '1 more layer not drawn',
+    );
+    expect(parse(compose({ omitted: 0 }).svg).documentElement.textContent).not.toContain(
+      'not drawn',
+    );
+  });
+
+  it('draws one layer as it always did: no heading, its name and share under the board', () => {
+    const text = parse(one.svg).documentElement.textContent ?? '';
+    expect(text).toContain('Alpha 1 · 91.2% of presses');
+    expect(text).not.toContain('1 / 1');
+  });
+
+  it('is well formed and cut to a line, whatever the layers are called', () => {
+    const long = 'N'.repeat(500);
+    const { svg } = compose({
+      layers: [
+        cardLayer({ name: long, share: long }),
+        cardLayer({ name: 'A & <B>', share: '"x"' }),
+      ],
+    });
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
   });
 });
 

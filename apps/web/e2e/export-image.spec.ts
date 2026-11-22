@@ -111,6 +111,41 @@ async function edgesOf(page: Page, png: Buffer) {
   }, png.toString('base64'));
 }
 
+test('Analyze: All layers draws every layer of the layout, one under another', async ({ page }) => {
+  test.slow();
+  const found = problems(page);
+  await page.goto(ANALYZE);
+  const first = await exportImage(page);
+  const dialog = page.getByRole('dialog', { name: 'Export image' });
+  expect(first.name).toBe('layerbench-magic-romak.png');
+
+  await dialog.getByLabel('All layers').check();
+  const download = dialog.getByRole('button', { name: 'Download PNG' });
+  // The image for the first layer is withdrawn the moment the card changes, and made again.
+  await expect(download).toBeEnabled({ timeout: 30_000 });
+  const svg = await previewSvg(page);
+  expect(svg).toMatch(/1 \/ \d+ · /);
+  const count = Number(/1 \/ (\d+) · /.exec(svg)?.[1]);
+  expect(count).toBeGreaterThan(2);
+  for (let i = 1; i <= count; i++) expect(svg).toContain(`${i} / ${count} · `);
+  // The Summary once, after the last layer.
+  expect(svg.match(/>Effort</g)).toHaveLength(1);
+  expect(svg).not.toContain('var(');
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), download.click()]);
+  expect(saved.suggestedFilename()).toBe('layerbench-magic-romak-all-layers.png');
+  const png = await readFile(await saved.path());
+  expect([...png.subarray(0, 8)]).toEqual(PNG_SIGNATURE);
+  // Taller by the boards it adds. A card this tall is made smaller, to fit what a canvas can
+  // hold, so it is the proportions that tell: never wider than the first layer's, much taller.
+  const one = sizeOf(first.png);
+  const all = sizeOf(png);
+  expect(all.width).toBeLessThanOrEqual(one.width);
+  expect(all.width).toBeGreaterThan(one.width / 2);
+  expect(all.height / all.width).toBeGreaterThan((one.height / one.width) * 1.5);
+  expect(found).toEqual([]);
+});
+
 test('Analyze: the image is a rounded panel, its corners clear and its border drawn', async ({
   page,
 }) => {

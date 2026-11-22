@@ -22,9 +22,13 @@ export interface SharedLayout {
 
 const BUSIEST = 'against the busiest key of all layers';
 
+/** The most layers an image draws of a layout: ZMK's own limit, which no keymap passes. */
+export const MAX_LAYERS = 32;
+
 /**
- * The image of the layout open in Analyze: its first layer, coloured as Analyze colours a layer
- * (every layer on the scale of the busiest key of all of them), whatever layer the board is on.
+ * The image of the layout open in Analyze: its first layer, or all of them (the dialog chooses),
+ * each coloured as Analyze colours a layer (every layer on the scale of the busiest key of all of
+ * them), whatever layer the board is on.
  */
 export function analyzeImage(shared: SharedLayout, mode: HeatMode, settings: string): ShareImage {
   return {
@@ -62,13 +66,21 @@ function board(
   mode: HeatMode,
   top: number | undefined,
 ): ShareBoard {
+  // Every layer's heat and share, on the scale the page uses for all of them; the dialog draws the
+  // first alone or all of them. The most a card holds is ZMK's own limit, so a layout whose file
+  // names thousands is not drawn thousands of times.
+  const layers = compiled.layers.slice(0, MAX_LAYERS).map((layer, i) => ({
+    name: layer.name,
+    heat: heatMap(report, mode, i, top),
+    share: layerShare(report, i),
+  }));
   return {
     tag,
     layout,
     compiled,
     typed,
-    heat: heatMap(report, mode, 0, top),
-    share: layerShare(report, 0),
+    layers,
+    layerTotal: compiled.layers.length,
     summary: summaryCells(report.results),
     unsaved,
     combos,

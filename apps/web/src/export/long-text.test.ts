@@ -65,14 +65,17 @@ const READERS: Record<string, (text: string) => unknown> = {
     composeCard({
       boards: [
         {
-          svg: board(),
           tag: 'A',
           credit: creditOf(
             { name: t, author: t, link: `https://example.com/${t}` },
             { unsaved: true, editor: t },
           ),
-          layer: t,
-          share: t,
+          // Several layers, so the heading over each board is read with the hostile name too.
+          layers: [
+            { svg: board(), name: t, share: t },
+            { svg: board(), name: t, share: t },
+          ],
+          omitted: 3,
           summary: [{ id: 'x', label: t, value: t, band: t, quality: 'good' }],
         },
       ],

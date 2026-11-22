@@ -428,7 +428,11 @@ made from are of the layout in hand: while **Analyze** is still working out an e
 layouts of **Compare** are scored, its title says which.
 
 The image holds each layout's **first layer**, whichever layer the board is showing, drawn as the
-page draws it with the same **Heat**, and the scale of that heat. Under **Compare** the two layouts
+page draws it with the same **Heat**, and the scale of that heat. For a layout of more than one
+layer, **All layers**, in the dialog, draws every layer instead, one under another, each headed by
+its place and name and the share of the typing it does, with the Summary once, after the last (a
+card holds the first 32 layers, which is as many as ZMK has, and says how many it left out). The
+file is then named `layerbench-<layout>-all-layers.png`. Under **Compare** the two layouts
 are one over the other, on the one scale both boards are coloured on. It also holds:
 
 - **Credits.** The layout's name, `by` its author, and the address of its link, as **Settings** in

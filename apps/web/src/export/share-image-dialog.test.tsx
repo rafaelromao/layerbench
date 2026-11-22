@@ -39,8 +39,8 @@ function board(over: Partial<ShareBoard> = {}): ShareBoard {
     layout: { name: 'Qwerty', author: 'Ana', link: 'https://example.com/qwerty' },
     compiled,
     typed: compiled,
-    heat: { 0: 1, 1: 0.25 },
-    share: 0.9,
+    layers: [{ name: 'Base', heat: { 0: 1, 1: 0.25 }, share: 0.9 }],
+    layerTotal: 1,
     summary: SUMMARY,
     unsaved: false,
     combos: true,
@@ -292,6 +292,150 @@ describe('names as long as a link can carry', () => {
     expect(await previewSvg()).not.toContain('L'.repeat(500));
     await waitFor(() => expect(download()).toBeEnabled());
   }, 30_000);
+});
+
+describe('all layers', () => {
+  const romak = compileLayout(bundledLayout('magic-romak') as NonNullable<typeof qwerty>);
+  const layers = romak.layers.map((layer, i) => ({
+    name: layer.name,
+    heat: { 0: i === 0 ? 1 : 0.2 },
+    share: i === 0 ? 0.9 : 0.025,
+  }));
+  /** Magic Romak: a layout of several layers, as the builders give it. */
+  const several = (over: Partial<ShareBoard> = {}) =>
+    board({
+      compiled: romak,
+      typed: romak,
+      layout: { name: 'Magic Romak', author: 'Rafael' },
+      layers,
+      layerTotal: layers.length,
+      ...over,
+    });
+  const option = () => screen.getByRole('checkbox', { name: 'All layers' });
+
+  it('is not offered for a layout of one layer, which has no others to draw', () => {
+    render(<ShareImageDialog image={image()} onClose={() => {}} />);
+    expect(screen.queryByRole('checkbox', { name: 'All layers' })).toBeNull();
+  });
+
+  it('is offered where a layout has more than one, and starts off: the first layer alone', async () => {
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    expect(option()).not.toBeChecked();
+    const svg = await previewSvg();
+    expect(svg).toContain(`${romak.layers[0]?.name} · 90% of presses`);
+    expect(svg).not.toContain('2 / ');
+    expect(
+      screen.getByText(/Draws every layer of the layout, one under another \(5 layers\)/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^The first layer/)).toBeInTheDocument();
+  });
+
+  it('draws every layer, in order, once it is ticked', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));
+    const svg = await previewSvg();
+    romak.layers.forEach((layer, i) => {
+      expect(svg).toContain(`${i + 1} / ${romak.layers.length} · ${layer.name}`);
+    });
+    expect(screen.getByText(/^Every layer/)).toBeInTheDocument();
+  });
+
+  it('says every layer to a screen reader, by name', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    await user.click(option());
+    await waitFor(() => {
+      const alt = screen.getByRole('img', { name: /Preview of the image/ }).getAttribute('alt');
+      expect(alt).toContain(`${romak.layers.length} layers: ${romak.layers[0]?.name}`);
+    });
+  });
+
+  it('names the file for it, so a download of every layer is not taken for the first', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await waitFor(() => expect(download()).toBeEnabled());
+    await user.click(download());
+    expect(vi.mocked(card.downloadBlob).mock.calls.at(-1)?.[1]).toBe('layerbench-magic-romak.png');
+
+    await user.click(option());
+    // The PNG is made again for the new card, and is not there until it is.
+    await waitFor(() => expect(download()).toBeDisabled());
+    await waitFor(() => expect(download()).toBeEnabled());
+    await user.click(download());
+    expect(vi.mocked(card.downloadBlob).mock.calls.at(-1)?.[1]).toBe(
+      'layerbench-magic-romak-all-layers.png',
+    );
+  });
+
+  it('goes back to the first layer once it is unticked', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).not.toContain('2 / '));
+    expect(await previewSvg()).toContain(`${romak.layers[0]?.name} · 90% of presses`);
+  });
+
+  it('is never an error to change it: the card follows the choice it was drawn for', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    for (let i = 0; i < 4; i++) await user.click(option());
+    await waitFor(() => expect(download()).toBeEnabled());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('holds a card to 32 layers and says how many it left out', async () => {
+    const user = userEvent.setup();
+    const thirtyTwo = Array.from({ length: 32 }, (_, i) => ({
+      ...(layers[0] as (typeof layers)[0]),
+      name: `L${i + 1}`,
+    }));
+    render(
+      <ShareImageDialog
+        image={image([several({ layers: thirtyTwo, layerTotal: 40 })])}
+        onClose={() => {}}
+      />,
+    );
+    expect(screen.getByText(/A card holds the first 32 of each/)).toBeInTheDocument();
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).toContain('32 / 32 · L32'));
+    const svg = await previewSvg();
+    expect(svg).toContain('8 more layers not drawn');
+    expect(svg).not.toContain('33 / ');
+  }, 30_000);
+
+  it('draws each layout’s layers when two are compared, one layer stays one', async () => {
+    const user = userEvent.setup();
+    const two = image([several({ tag: 'A' }), board({ tag: 'B', layout: { name: 'Qwerty' } })]);
+    render(<ShareImageDialog image={two} onClose={() => {}} />);
+    expect(
+      screen.getByText(/each layout's layers, one under another \(A has 5 layers, B has 1 layer\)/),
+    ).toBeInTheDocument();
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));
+    const svg = await previewSvg();
+    // B has one layer: no heading over it, its name and share under it as ever.
+    expect(svg).not.toContain('1 / 1');
+    expect(svg).toContain('Base · 90% of presses');
+  });
+
+  it('scrolls the preview when every layer is drawn, and shows one layer whole', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    expect(screen.queryByRole('region', { name: 'Preview of every layer' })).toBeNull();
+    await user.click(option());
+    expect(
+      await screen.findByRole('region', { name: 'Preview of every layer' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('the combos on the image', () => {

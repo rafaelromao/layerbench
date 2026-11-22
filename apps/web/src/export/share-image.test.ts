@@ -1,7 +1,13 @@
 import { bundledLayout, compileLayout, type Layout, type RuleResult } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import type { ReportDTO } from '../engine/protocol.js';
-import { analyzeImage, compareImage, type SharedLayout, unsavedVersion } from './share-image.js';
+import {
+  analyzeImage,
+  compareImage,
+  MAX_LAYERS,
+  type SharedLayout,
+  unsavedVersion,
+} from './share-image.js';
 
 const layout = bundledLayout('qwerty') as Layout;
 const compiled = compileLayout(layout);
@@ -51,10 +57,10 @@ describe('the image of the layout open in Analyze', () => {
     const [board] = image.boards;
     expect(board?.tag).toBeNull();
     // One scale for every layer: the busiest key of all is the second layer's, with 10 presses.
-    expect(board?.heat[0]).toBeCloseTo(0.8);
-    expect(board?.heat[1]).toBeCloseTo(0.2);
+    expect(board?.layers[0]?.heat[0]).toBeCloseTo(0.8);
+    expect(board?.layers[0]?.heat[1]).toBeCloseTo(0.2);
     // 10 of the 20 presses are on the first layer.
-    expect(board?.share).toBeCloseTo(0.5);
+    expect(board?.layers[0]?.share).toBeCloseTo(0.5);
     expect(image.settings).toBe('English · Layouts Doc');
   });
 
@@ -82,13 +88,61 @@ describe('the image of the layout open in Analyze', () => {
   });
 });
 
+describe('every layer of a layout', () => {
+  const romak = compileLayout(bundledLayout('magic-romak') as Layout);
+
+  it('has each layer’s name, heat and share, in the order of the layers', () => {
+    const [board] = analyzeImage(shared({ compiled: romak, typed: romak }), 'usage', '').boards;
+    expect(board?.layerTotal).toBe(romak.layers.length);
+    expect(board?.layers.map((l) => l.name)).toEqual(romak.layers.map((l) => l.name));
+    expect(romak.layers.length).toBeGreaterThan(2);
+    // The first two layers have presses in the report, on the one scale for all of them.
+    expect(board?.layers[0]?.heat[0]).toBeCloseTo(0.8);
+    expect(board?.layers[1]?.heat[0]).toBeCloseTo(1);
+    expect(board?.layers[0]?.share).toBeCloseTo(0.5);
+    expect(board?.layers[1]?.share).toBeCloseTo(0.5);
+  });
+
+  it('has the one layer of a layout that has one', () => {
+    const [board] = analyzeImage(shared(), 'usage', '').boards;
+    expect(board?.layers).toHaveLength(1);
+    expect(board?.layerTotal).toBe(1);
+  });
+
+  it('holds no more than ZMK’s own limit, and says how many the layout has', () => {
+    const forty = { ...compiled, layers: Array.from({ length: 40 }, () => compiled.layers[0]) };
+    const [board] = analyzeImage(
+      shared({ compiled: forty as typeof compiled, typed: forty as typeof compiled }),
+      'usage',
+      '',
+    ).boards;
+    expect(MAX_LAYERS).toBe(32);
+    expect(board?.layers).toHaveLength(32);
+    expect(board?.layerTotal).toBe(40);
+  });
+
+  it('colours every layer on the scale Compare gives both layouts', () => {
+    const image = compareImage(
+      shared({ compiled: romak, typed: romak }),
+      shared({ compiled: romak, typed: romak }),
+      'usage',
+      20,
+      '',
+    );
+    for (const b of image.boards) {
+      expect(b.layers[0]?.heat[0]).toBeCloseTo(0.4);
+      expect(b.layers[1]?.heat[0]).toBeCloseTo(0.5);
+    }
+  });
+});
+
 describe('the image of two layouts in Compare', () => {
   it('tags them A and B and draws both on the one scale given', () => {
     const image = compareImage(shared(), shared(), 'usage', 16, 'English');
     expect(image.boards.map((b) => b.tag)).toEqual(['A', 'B']);
     // The busiest key of either layout is 16, so 8 presses are half the scale on both.
-    expect(image.boards[0]?.heat[0]).toBeCloseTo(0.5);
-    expect(image.boards[1]?.heat[0]).toBeCloseTo(0.5);
+    expect(image.boards[0]?.layers[0]?.heat[0]).toBeCloseTo(0.5);
+    expect(image.boards[1]?.layers[0]?.heat[0]).toBeCloseTo(0.5);
     expect(image.heatNote).toMatch(/one scale for both layouts/);
   });
 

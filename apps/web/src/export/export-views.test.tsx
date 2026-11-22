@@ -145,6 +145,36 @@ describe('Export image in Analyze', () => {
     expect(await previewSvg()).toContain('Unsaved edits');
   }, 60_000);
 
+  it('draws every layer of the layout once All layers is ticked, each on the page’s heat', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=en-general&sample=1000&heat=usage', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
+    await user.click(exportButton());
+    // One layer to start: the digits of the Numbers layer are not on it.
+    expect(await previewSvg()).not.toContain('>7<');
+
+    await user.click(within(dialog()).getByRole('checkbox', { name: 'All layers' }));
+    const names = (bundledLayout('magic-romak') as Layout).layers.map((l) => l.name);
+    expect(names.length).toBeGreaterThan(2);
+    await waitFor(async () =>
+      expect(await previewSvg()).toContain(`${names.length} / ${names.length} · ${names.at(-1)}`),
+    );
+    const svg = await previewSvg();
+    for (const [i, name] of names.entries()) {
+      expect(svg).toContain(`${i + 1} / ${names.length} · ${name}`);
+    }
+    // Each layer's own keys: the Numbers layer's digits are there now.
+    expect(svg).toContain('>7<');
+    // The Summary is once, after the last layer.
+    expect(svg.match(/>Effort</g)).toHaveLength(1);
+    expect(svg.indexOf('>Effort<')).toBeGreaterThan(
+      svg.indexOf(`${names.length} / ${names.length}`),
+    );
+  }, 60_000);
+
   it('asks who made the edits once the layout has changes that are not saved, and names them', async () => {
     const user = userEvent.setup();
     renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=1000', {

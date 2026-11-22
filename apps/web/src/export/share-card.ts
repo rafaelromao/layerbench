@@ -130,18 +130,29 @@ export function readPalette(host: SVGSVGElement): Palette {
   };
 }
 
+/** One layer of a layout, drawn as a board. */
+export interface CardLayer {
+  /** The layer's board, inlined (`inlineBoard`). */
+  svg: SVGSVGElement;
+  /** The layer, by its name. */
+  name: string;
+  /** What share of the typing the layer does, as the board writes it, if it is known. */
+  share: string | null;
+}
+
 /** One layout on the card. */
 export interface CardBoard {
-  /** The board, inlined (`inlineBoard`). */
-  svg: SVGSVGElement;
   /** `A` or `B` when two layouts share the card; null for one. */
   tag: string | null;
   credit: Credit;
-  /** The layer drawn, by its name. */
-  layer: string;
-  /** What share of the typing the layer does, as the board writes it, if it is known. */
-  share: string | null;
-  /** The page's Summary for this layout, drawn as a compact table under its board; empty for none. */
+  /**
+   * The layers drawn, in order: the first alone, or every one. With several, each board has a
+   * heading over it that says which layer it is; with one, its name is a caption under it.
+   */
+  layers: CardLayer[];
+  /** How many layers the layout has that are not drawn, for a note after the last one; 0 for none. */
+  omitted: number;
+  /** The page's Summary for this layout, drawn as a compact table under its boards; empty for none. */
   summary: SummaryCell[];
 }
 
@@ -417,25 +428,67 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
     }
     y += 12;
 
-    // A copy, so the card can be made again from the same boards, as a name is typed.
-    const drawing = board.svg.cloneNode(true) as SVGSVGElement;
-    const size = drawingSize(drawing);
-    const height = (INNER * size.height) / size.width;
-    drawing.setAttribute('x', String(PAD));
-    drawing.setAttribute('y', String(round(y)));
-    drawing.setAttribute('width', String(INNER));
-    drawing.setAttribute('height', String(round(height)));
-    body.append(drawing);
-    y += height;
+    const several = board.layers.length > 1;
+    board.layers.forEach((layer, l) => {
+      if (several) {
+        // A heading over each board: which layer it is, and how much of the typing it does.
+        body.append(
+          label(
+            ellipsize(`${l + 1} / ${board.layers.length} · ${layer.name}`, INNER * 0.6, CREDIT),
+            PAD,
+            y + 24,
+            { size: CREDIT, weight: 600, fill: p.text },
+          ),
+        );
+        if (layer.share) {
+          body.append(
+            label(ellipsize(layer.share, INNER * 0.35, SMALL), CARD_WIDTH - PAD, y + 24, {
+              size: SMALL,
+              anchor: 'end',
+              fill: p.text,
+              opacity: MUTED,
+            }),
+          );
+        }
+        y += 42;
+      }
 
-    const caption = [board.layer, board.share].filter(Boolean).join(' · ');
-    if (caption) {
+      // A copy, so the card can be made again from the same boards, as a name is typed.
+      const drawing = layer.svg.cloneNode(true) as SVGSVGElement;
+      const size = drawingSize(drawing);
+      const height = (INNER * size.height) / size.width;
+      drawing.setAttribute('x', String(PAD));
+      drawing.setAttribute('y', String(round(y)));
+      drawing.setAttribute('width', String(INNER));
+      drawing.setAttribute('height', String(round(height)));
+      body.append(drawing);
+      y += height;
+
+      if (several) {
+        y += 20;
+        return;
+      }
+      const caption = [layer.name, layer.share].filter(Boolean).join(' · ');
+      if (caption) {
+        body.append(
+          label(ellipsize(caption, INNER, SMALL), PAD, y + 28, {
+            size: SMALL,
+            fill: p.text,
+            opacity: MUTED,
+          }),
+        );
+        y += 38;
+      }
+    });
+
+    if (board.omitted > 0) {
       body.append(
-        label(ellipsize(caption, INNER, SMALL), PAD, y + 28, {
-          size: SMALL,
-          fill: p.text,
-          opacity: MUTED,
-        }),
+        label(
+          `${board.omitted} more layer${board.omitted === 1 ? '' : 's'} not drawn`,
+          PAD,
+          y + 24,
+          { size: SMALL, fill: p.text, opacity: MUTED },
+        ),
       );
       y += 38;
     }
