@@ -33,6 +33,20 @@ describe('Analyze: the Board tab and the board’s card', () => {
     expect(screen.getAllByRole('region', { name: 'Summary' })).toHaveLength(1);
   }, 60_000);
 
+  it('suggests English words to type in A word, typed, a capital and a symbol among them', async () => {
+    await openEdit();
+    const field = screen.getByLabelText('How is this typed?');
+    const examples = (field.getAttribute('placeholder') ?? '').split(' · ');
+
+    // English words: letters a to z and an apostrophe, no accent and no other alphabet.
+    expect.soft(examples.length).toBeGreaterThanOrEqual(3);
+    for (const word of examples) expect.soft(word).toMatch(/^[A-Za-z]+(?:'[A-Za-z]+)?$/);
+
+    // Still worth playing on the board: a word that takes Shift, and one that reaches a symbol.
+    expect(examples.some((word) => /[A-Z]/.test(word))).toBe(true);
+    expect(examples.some((word) => /\P{L}/u.test(word))).toBe(true);
+  }, 60_000);
+
   it('starts the Legend folded, opens it by its heading, and starts the Summary open', async () => {
     const user = userEvent.setup();
     await openEdit();
