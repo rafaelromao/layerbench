@@ -162,6 +162,8 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
   }, [prepared, image, editor]);
   const card = made && 'card' in made ? made.card : null;
   const preview = made && 'card' in made ? made.preview : null;
+  // Made for what it is made from, not on every render: it names every layout and its credit.
+  const alt = useMemo(() => previewAlt(image, editor), [image, editor]);
   const problem = failure ?? (made && 'error' in made ? made.error : null);
 
   // The PNG is made a moment after the last change to the card, so typing a name does not make
@@ -247,7 +249,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
             src={preview}
             width={card.width}
             height={card.height}
-            alt={previewAlt(image, editor)}
+            alt={alt}
             // Capped in height so the buttons stay in reach: a layout with two boards is tall.
             className="mx-auto block h-auto w-auto max-h-[55vh] max-w-full rounded-box border border-base-300"
           />

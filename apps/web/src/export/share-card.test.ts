@@ -8,7 +8,9 @@ import {
   copyImage,
   ellipsize,
   inlineBoard,
+  MAX_PIXELS,
   type Palette,
+  renderPng,
   svgDataUrl,
   wrapLines,
 } from './share-card.js';
@@ -418,6 +420,23 @@ describe('the source of a layout with a long author', () => {
     const text = parse(svg).documentElement.textContent ?? '';
     expect(text).toContain('example.com/romak');
     expect(text).toContain('…');
+  });
+});
+
+describe('a card no canvas can hold', () => {
+  it('is refused before an image is made for it, and says why', async () => {
+    // A board one key wide and ten thousand tall: far past what a browser gives a canvas.
+    const tall = {
+      svg: '<svg xmlns="http://www.w3.org/2000/svg"/>',
+      width: 1200,
+      height: 10_000_000,
+    };
+    await expect(renderPng(tall)).rejects.toThrow(/too large/);
+  });
+
+  it('is a size well past any card a layout makes', () => {
+    // A Compare card of two square boards is about 2400 by 6000 pixels.
+    expect(MAX_PIXELS).toBeGreaterThan(2400 * 6000);
   });
 });
 

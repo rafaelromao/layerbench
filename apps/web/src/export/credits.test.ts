@@ -99,6 +99,25 @@ describe('a name as long as a link can carry', () => {
     }
   });
 
+  it('reads a link whose path is a long run of slashes in time that does not grow with the run', () => {
+    // A regular expression for the slashes at the end of a path tries each slash in turn on a path
+    // like this one: 100,000 of them took four seconds, and a link can carry a million.
+    for (const slashes of [100_000, 1_000_000]) {
+      const started = performance.now();
+      const credit = creditOf(
+        { name: 'Romak', link: `https://example.com/docs/${'/'.repeat(slashes)}a` },
+        { unsaved: false, editor: '' },
+      );
+      expect(performance.now() - started).toBeLessThan(1500);
+      expect(credit.source?.startsWith('example.com/docs')).toBe(true);
+    }
+  });
+
+  it('still takes the slashes off the end of an ordinary path', () => {
+    expect(sourceOf('https://example.com/a/b///')).toBe('example.com/a/b');
+    expect(sourceOf('https://example.com////')).toBe('example.com');
+  });
+
   it('makes a file name from the start of it, in no time', () => {
     const started = performance.now();
     const name = imageFileName(['N'.repeat(5_000_000), 'M'.repeat(5_000_000)]);

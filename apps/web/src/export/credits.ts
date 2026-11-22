@@ -1,5 +1,5 @@
 import type { Layout } from '@layerbench/core';
-import { plain } from './plain-text.js';
+import { PLAIN_MAX, plain } from './plain-text.js';
 
 /**
  * What a shared image says about whose a layout is, and about whose edits it carries when nobody
@@ -35,6 +35,17 @@ export function loginName(login: string | null): string {
 }
 
 /**
+ * `path` without the slashes at its end, found by walking back from the end. Not a pattern such as
+ * `/\/+$/`, which a path with a long run of slashes followed by another character makes the engine
+ * try from each slash in turn: quadratic, on a text a link can make as long as it likes.
+ */
+function withoutTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && path.charCodeAt(end - 1) === 47) end--;
+  return path.slice(0, end);
+}
+
+/**
  * A link as a person reads it under a title: without its scheme, its `www.`, a query or fragment and
  * a closing slash. `null` for a link that is not one, as a document's can be.
  */
@@ -43,7 +54,7 @@ export function sourceOf(link: string | undefined): string | null {
   try {
     const url = new URL(link);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    const path = url.pathname.replace(/\/+$/, '');
+    const path = withoutTrailingSlashes(url.pathname.slice(0, PLAIN_MAX));
     return plain(`${url.host.replace(/^www\./, '')}${path}`) || null;
   } catch {
     return null;

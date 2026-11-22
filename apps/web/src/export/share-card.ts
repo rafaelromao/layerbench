@@ -22,6 +22,8 @@ const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-
 export const CARD_WIDTH = 1200;
 const PAD = 48;
 const INNER = CARD_WIDTH - 2 * PAD;
+/** The most pixels a PNG may have: a little under what the smallest canvases of today's browsers allow. */
+export const MAX_PIXELS = 16_000_000;
 /** A PNG is drawn at twice the card's size, so it stays sharp on a high-density screen. */
 export const PNG_SCALE = 2;
 
@@ -449,6 +451,11 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 /** The card as a PNG, drawn through a canvas at `scale` times its size. */
 export async function renderPng(card: Composed, scale = PNG_SCALE): Promise<Blob> {
+  // A board of a shape no canvas can hold is refused here, before an image is made for it: asking
+  // for more pixels than a browser will give fails late, or takes the tab's memory first.
+  if (card.width * scale * card.height * scale > MAX_PIXELS) {
+    throw new Error('This image is too large to make: its layout is too tall for a picture.');
+  }
   const img = await loadImage(svgDataUrl(card.svg));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(card.width * scale);
