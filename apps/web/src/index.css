@@ -246,6 +246,16 @@
   display: block;
 }
 
+/* The boards of the image to share, laid out where nobody sees them: their styles are read from
+   here, so they need a place in the page's layout but none on the screen. */
+.lb-share-stage {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 1104px;
+  pointer-events: none;
+}
+
 .lb-key-cap {
   stroke: var(--lb-key-stroke);
   stroke-width: 1.5;

@@ -58,6 +58,9 @@ import { measureLanguagesOf } from '../../engine/measure-languages.js';
 import type { AnalyzeRequest, ExplainDTO, ProducerDTO, ReportDTO } from '../../engine/protocol.js';
 import { useAnalysis } from '../../engine/use-analysis.js';
 import { useKeyStats } from '../../engine/use-key-stats.js';
+import { ExportImageButton } from '../../export/ExportImageButton.js';
+import { type ShareImage, ShareImageDialog } from '../../export/ShareImageDialog.js';
+import { analyzeImage } from '../../export/share-image.js';
 import { HELP, type HelpTopic, rulerShown } from '../../guide/help.js';
 import type { LayoutSource } from '../../layout-session/open.js';
 import type { OpenSession } from '../../layout-session/use-layout-session.js';
@@ -91,6 +94,7 @@ import {
 } from '../edit/reducer.js';
 import { charLabel, missingKeys, spoken } from '../edit/tray.js';
 import { initialUndoState, undoable } from '../edit/undo.js';
+import { settingsSummary } from '../SettingsDialog.js';
 import { textLanguage, textName } from '../text-of.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 import { useTypedLayout } from '../useLayout.js';
@@ -602,6 +606,37 @@ export function Workbench({
   /** A pair ending on a layer key, opened to show what that key was pressed for. */
   const [pressedFor, setPressedFor] = useState<{ rule: string; item: RuleItem } | null>(null);
   const [showCombos, setShowCombos] = useState(true);
+
+  /**
+   * The image of the layout, while its dialog is open: made of the numbers on show as they were
+   * when it was asked for. Only numbers of this layout on these settings are shown in one
+   * (`current`): an edit's estimate, or the analysis before it, is not what the layout is.
+   */
+  const [sharing, setSharing] = useState<ShareImage | null>(null);
+  const exportBlocked =
+    shown === null
+      ? 'Available once the layout is scored'
+      : current
+        ? null
+        : 'Available once the analysis has caught up with your edits';
+  const exportImage = () => {
+    if (!shown || !current) return;
+    setSharing(
+      analyzeImage(
+        {
+          layout: state.layout,
+          compiled: state.compiled,
+          typed: typedCompiled,
+          report: shown,
+          // Unsaved edits are this tab's, made by whoever shares the image.
+          unsaved: state.dirty,
+          combos: showCombos,
+        },
+        params.heat,
+        settingsSummary(settings, corpora),
+      ),
+    );
+  };
 
   const clearOutline = useCallback(() => {
     setOutline([]);
@@ -1171,6 +1206,8 @@ export function Workbench({
         <SubmitDialog layout={submitted} dirty={state.dirty} onClose={() => setSubmitting(false)} />
       )}
 
+      {sharing && <ShareImageDialog image={sharing} onClose={() => setSharing(null)} />}
+
       {choosing && (
         <ProposeDialog
           layout={state.layout}
@@ -1419,6 +1456,9 @@ export function Workbench({
                                 />
                               )}
                             </>
+                          }
+                          toolsEnd={
+                            <ExportImageButton blocked={exportBlocked} onClick={exportImage} />
                           }
                         />
 

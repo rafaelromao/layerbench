@@ -61,5 +61,5 @@ Start a layout, import yours, or open one in **Analyze**, change it and **Save**
 **Library**; **Save** keeps your edits to it, and **Save as copy** copies the layout in hand under a new
 name. Your custom layouts, rule sets and texts stay in this browser. Sign in with GitHub, under
 **Storage** in the header, to keep them in your GitHub account too, in secret gists. A link carries the analysis, and the layout travels whole in it, saved or not, so
-copying the address shares it; a custom text or rule set opens only where it is saved. A custom
+copying the address shares it, and **Export image** makes a picture of the board to post where a link will not do; a custom text or rule set opens only where it is saved. A custom
 layout can join the Library, for everyone, by a pull request. See [Saving and sharing](saving.md).
