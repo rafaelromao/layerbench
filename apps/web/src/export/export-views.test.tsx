@@ -78,6 +78,12 @@ describe('Export image in Analyze', () => {
     expect(svg).toContain('by Rafael Romão');
     expect(svg).toContain('Usage');
     expect(svg).toContain('% of presses');
+    // The page's Summary of the real report, under the board: its captions, in the page's order.
+    const captions = [...svg.matchAll(/>(Effort|SFB|SFS|LSB|FSB|HSB|Alt|Rolls)</g)].map(
+      (m) => m[1],
+    );
+    expect(captions.slice(0, 3)).toEqual(['Effort', 'SFB', 'SFS']);
+    expect(svg.indexOf('>Effort<')).toBeGreaterThan(svg.indexOf('% of presses'));
     // The layout is as it was opened: no edits to name anyone for.
     expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
     expect(svg).not.toContain('Unsaved edits');
@@ -210,6 +216,8 @@ describe('Export image in Compare', () => {
     expect(svg).toContain('B · Magic Romak');
     expect(svg).toContain('by Rafael Romão');
     expect(svg).toContain('one scale for both layouts');
+    // The Summary of each layout, under its own board: Effort once for A and once for B.
+    expect(svg.match(/>Effort</g)).toHaveLength(2);
     // Both are bundled layouts as they come: nobody has edits to be named for.
     expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
   }, 60_000);

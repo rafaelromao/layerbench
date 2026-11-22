@@ -35,6 +35,9 @@ const palette: Palette = {
   border: '#ccc',
   text: '#000',
   warning: '#f80',
+  good: '#0a0',
+  ok: '#fa0',
+  bad: '#c00',
   heat: ['#eee', '#ccc', '#999', '#666', '#000'],
 };
 
@@ -70,6 +73,7 @@ const READERS: Record<string, (text: string) => unknown> = {
           ),
           layer: t,
           share: t,
+          summary: [{ id: 'x', label: t, value: t, band: t, quality: 'good' }],
         },
       ],
       heat: t,

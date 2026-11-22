@@ -1,6 +1,7 @@
 import { eachGrapheme, textWidth } from '../components/fit-label.js';
 import type { Credit } from './credits.js';
 import { plain } from './plain-text.js';
+import type { SummaryCell } from './summary.js';
 
 /**
  * The image LayerBench makes to be shared where a link will not do (a post, a chat): a card with
@@ -17,6 +18,7 @@ import { plain } from './plain-text.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 
 /** The card is this wide, in CSS pixels; it is as tall as what it holds. */
 export const CARD_WIDTH = 1200;
@@ -86,6 +88,10 @@ export interface Palette {
   text: string;
   /** The pill that says a version is unsaved, tinted with this and written in the text colour. */
   warning: string;
+  /** The dot beside a band's name, by how the band rates the number. */
+  good: string;
+  ok: string;
+  bad: string;
   /** The heat scale, from a key with none to the busiest one: the board's own mix at each stop. */
   heat: string[];
 }
@@ -112,6 +118,9 @@ export function readPalette(host: SVGSVGElement): Palette {
     border: probe('var(--color-base-300)'),
     text: probe('var(--color-base-content)'),
     warning: probe('var(--color-warning)'),
+    good: probe('var(--color-success)'),
+    ok: probe('var(--color-warning)'),
+    bad: probe('var(--color-error)'),
     heat: HEAT_STOPS.map((pct) =>
       probe(`color-mix(in oklab, var(--lb-key-bg) ${100 - pct}%, var(--lb-heat) ${pct}%)`),
     ),
@@ -129,6 +138,8 @@ export interface CardBoard {
   layer: string;
   /** What share of the typing the layer does, as the board writes it, if it is known. */
   share: string | null;
+  /** The page's Summary for this layout, drawn as a compact table under its board; empty for none. */
+  summary: SummaryCell[];
 }
 
 export interface CardSpec {
@@ -207,13 +218,15 @@ interface TextStyle {
   anchor?: 'start' | 'middle' | 'end';
   fill: string;
   opacity?: number;
+  /** The board's own monospace, for numbers that are read down a column. */
+  mono?: boolean;
 }
 
 function label(content: string, x: number, y: number, style: TextStyle): SVGTextElement {
   const el = node('text', {
     x,
     y,
-    'font-family': FONT,
+    'font-family': style.mono ? MONO : FONT,
     'font-size': style.size,
     'font-weight': style.weight ?? 400,
     'text-anchor': style.anchor ?? 'start',
@@ -245,6 +258,84 @@ const TITLE = 42;
 const CREDIT = 26;
 const SMALL = 22;
 const FOOT = 24;
+
+/** Cells to a row of the Summary table: the page's thirteen numbers go in two rows of seven. */
+const SUMMARY_COLUMNS = 7;
+const SUMMARY_ROW = 88;
+const SUMMARY_PAD = 10;
+
+/**
+ * The page's Summary as a compact table in a frame, `SUMMARY_COLUMNS` to a row: each cell its
+ * caption, its value in the board's monospace, and its band's name after a dot that says, by colour,
+ * how the band rates it. The word says it too, so colour is never the only way to read it. Returns
+ * the height it took, from `y`.
+ */
+function summaryTable(body: SVGGElement, cells: SummaryCell[], y: number, p: Palette): number {
+  const rows = Math.ceil(cells.length / SUMMARY_COLUMNS);
+  const cellWidth = INNER / SUMMARY_COLUMNS;
+  const height = rows * SUMMARY_ROW + 2 * SUMMARY_PAD;
+  body.append(
+    node('rect', {
+      x: PAD,
+      y,
+      width: INNER,
+      height,
+      rx: 14,
+      fill: 'none',
+      stroke: p.border,
+      'stroke-width': 2,
+    }),
+  );
+  for (let row = 1; row < rows; row++) {
+    const at = y + SUMMARY_PAD + row * SUMMARY_ROW;
+    body.append(
+      node('line', {
+        x1: PAD + 14,
+        x2: PAD + INNER - 14,
+        y1: at,
+        y2: at,
+        stroke: p.border,
+        'stroke-width': 1.5,
+      }),
+    );
+  }
+  const dot = { good: p.good, ok: p.ok, bad: p.bad, neutral: p.text } as const;
+  cells.forEach((cell, i) => {
+    const x = PAD + (i % SUMMARY_COLUMNS) * cellWidth + 16;
+    const top = y + SUMMARY_PAD + Math.floor(i / SUMMARY_COLUMNS) * SUMMARY_ROW;
+    const room = cellWidth - 24;
+    body.append(
+      label(ellipsize(cell.label, room, SMALL), x, top + 26, {
+        size: SMALL,
+        fill: p.text,
+        opacity: MUTED,
+      }),
+      label(ellipsize(cell.value, room, 30), x, top + 58, {
+        size: 30,
+        weight: 700,
+        fill: p.text,
+        mono: true,
+      }),
+    );
+    if (cell.band) {
+      body.append(
+        node('circle', {
+          cx: x + 6,
+          cy: top + 72,
+          r: 6,
+          fill: dot[cell.quality] ?? p.text,
+          ...(cell.quality === 'neutral' ? { 'fill-opacity': 0.45 } : {}),
+        }),
+        label(ellipsize(cell.band, room - 20, 20), x + 20, top + 78, {
+          size: 20,
+          fill: p.text,
+          opacity: MUTED,
+        }),
+      );
+    }
+  });
+  return height;
+}
 
 /**
  * Lay the card out: each layout's name, credits and board one under another, then the heat's scale,
@@ -344,6 +435,11 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
         }),
       );
       y += 38;
+    }
+
+    if (board.summary.length > 0) {
+      y += 6;
+      y += summaryTable(body, board.summary, y, p);
     }
   });
 
@@ -449,11 +545,27 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-/** The card as a PNG, drawn through a canvas at `scale` times its size. */
-export async function renderPng(card: Composed, scale = PNG_SCALE): Promise<Blob> {
-  // A board of a shape no canvas can hold is refused here, before an image is made for it: asking
-  // for more pixels than a browser will give fails late, or takes the tab's memory first.
-  if (card.width * scale * card.height * scale > MAX_PIXELS) {
+/** The least a PNG is drawn at, as a share of the card's size: under it the writing is not legible. */
+const MIN_SCALE = 0.5;
+
+/**
+ * How large a card is drawn: twice its size, so it is sharp on a high-density screen, or smaller
+ * where that would pass what a canvas holds (`MAX_PIXELS`), so a tall card, two boards and their
+ * Summaries, is drawn smaller rather than refused. Null where even `MIN_SCALE` does not fit: a board
+ * of a shape no picture can hold.
+ */
+export function pngScale(width: number, height: number): number | null {
+  const fits = Math.sqrt(MAX_PIXELS / (width * height));
+  const scale = Math.min(PNG_SCALE, fits);
+  return scale >= MIN_SCALE ? scale : null;
+}
+
+/** The card as a PNG, drawn through a canvas at the size `pngScale` gives it. */
+export async function renderPng(card: Composed): Promise<Blob> {
+  // A card no canvas can hold is refused here, before an image is made for it: asking for more
+  // pixels than a browser will give fails late, or takes the tab's memory first.
+  const scale = pngScale(card.width, card.height);
+  if (scale === null) {
     throw new Error('This image is too large to make: its layout is too tall for a picture.');
   }
   const img = await loadImage(svgDataUrl(card.svg));

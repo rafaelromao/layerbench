@@ -1,13 +1,23 @@
-import { bundledLayout, compileLayout, type Layout } from '@layerbench/core';
+import { bundledLayout, compileLayout, type Layout, type RuleResult } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
-import type { HeatSource } from '../engine/heat.js';
+import type { ReportDTO } from '../engine/protocol.js';
 import { analyzeImage, compareImage, type SharedLayout, unsavedVersion } from './share-image.js';
 
 const layout = bundledLayout('qwerty') as Layout;
 const compiled = compileLayout(layout);
 
+/** A rule's result with only what the Summary reads: not a rule a heat mode is made from. */
+const rule = (id: string, value: number, label: string): RuleResult =>
+  ({
+    id,
+    label,
+    value,
+    unit: 'percent',
+    band: { index: 1, label: 'good', quality: 'good' },
+  }) as RuleResult;
+
 /** A report of presses on two layers: 8 and 2 on the first's keys 0 and 1, 10 on the second's. */
-function report(over: Partial<HeatSource> = {}): HeatSource {
+function report(over: Partial<ReportDTO> = {}): ReportDTO {
   const first = new Array(compiled.keys.length).fill(0);
   first[0] = 8;
   first[1] = 2;
@@ -17,9 +27,9 @@ function report(over: Partial<HeatSource> = {}): HeatSource {
     usageByLayer: [first, second],
     usageAll: first.map((v, i) => v + second[i]),
     layerTapsByLayer: [],
-    results: [],
+    results: [rule('rolls', 41.2, 'Rolls'), rule('alternation', 30.5, 'Alternation')],
     ...over,
-  };
+  } as unknown as ReportDTO;
 }
 
 function shared(over: Partial<SharedLayout> = {}): SharedLayout {
@@ -48,6 +58,14 @@ describe('the image of the layout open in Analyze', () => {
     expect(image.settings).toBe('English · Layouts Doc');
   });
 
+  it('carries the page’s Summary of the report under the board', () => {
+    const [board] = analyzeImage(shared(), 'usage', '').boards;
+    expect(board?.summary.map((c) => [c.label, c.value])).toEqual([
+      ['Alt', '30.50%'],
+      ['Rolls', '41.20%'],
+    ]);
+  });
+
   it('names what the colours measure, as the page does', () => {
     expect(analyzeImage(shared(), 'usage', '').heat).toBe('Usage');
   });
@@ -72,6 +90,13 @@ describe('the image of two layouts in Compare', () => {
     expect(image.boards[0]?.heat[0]).toBeCloseTo(0.5);
     expect(image.boards[1]?.heat[0]).toBeCloseTo(0.5);
     expect(image.heatNote).toMatch(/one scale for both layouts/);
+  });
+
+  it('gives each side the Summary of its own report', () => {
+    const other = report({ results: [rule('rolls', 12.3, 'Rolls')] });
+    const image = compareImage(shared(), shared({ report: other }), 'usage', 10, '');
+    expect(image.boards[0]?.summary.map((c) => c.value)).toEqual(['30.50%', '41.20%']);
+    expect(image.boards[1]?.summary.map((c) => c.value)).toEqual(['12.30%']);
   });
 
   it('keeps each side’s own credit and unsaved state', () => {

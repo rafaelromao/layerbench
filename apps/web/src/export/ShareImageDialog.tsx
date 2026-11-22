@@ -21,6 +21,7 @@ import {
   renderPng,
   svgDataUrl,
 } from './share-card.js';
+import type { SummaryCell } from './summary.js';
 
 /** One layout on the image: its first layer, with the heat the page shows it with. */
 export interface ShareBoard {
@@ -35,6 +36,8 @@ export interface ShareBoard {
   heat: Record<number, number>;
   /** The share of the typing the first layer does, 0–1; null when it is not known. */
   share: number | null;
+  /** The page's Summary for the layout, drawn under its board as a compact table. */
+  summary: SummaryCell[];
   /** What is shown has changes that are saved nowhere. */
   unsaved: boolean;
   /** Whether the combos that type are drawn. */
@@ -50,6 +53,15 @@ export interface ShareImage {
   heatNote: string | null;
   /** The text, the rules and the switches the numbers are made on. */
   settings: string;
+}
+
+/** The two numbers a layout is judged by, in words, for the description: `Effort 6.55 good`. */
+function headline(summary: SummaryCell[]): string | null {
+  const first = summary
+    .slice(0, 2)
+    .map((c) => plain(`${c.label} ${c.value}${c.band ? ` ${c.band}` : ''}`))
+    .join(', ');
+  return first || null;
 }
 
 /** The first layer's name as it goes on the image and in its description. */
@@ -69,6 +81,7 @@ function previewAlt(image: ShareImage, editor: string): string {
       credit.byline,
       credit.edits,
       `first layer, ${firstLayerName(b)}`,
+      headline(b.summary),
     ]
       .filter(Boolean)
       .join(', ');
@@ -149,6 +162,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
           credit: creditOf(b.layout, { unsaved: b.unsaved, editor }),
           layer: firstLayerName(b),
           share: b.share === null ? null : `${formatShare(b.share)} of presses`,
+          summary: b.summary,
         })),
         heat: image.heat,
         heatNote: image.heatNote,

@@ -443,6 +443,11 @@ are one over the other, on the one scale both boards are coloured on. It also ho
   edits: the name is yours to give, and the picture is of whatever it says. A layout you save has no
   such line, and its image is of the saved version. A layout you were sent whole in a link is not an
   edit of yours, and is credited to its author alone.
+- **Summary.** Under each layout's board, the numbers of the **Summary** the page shows there
+  (**Effort** and **SFB** first), in a compact table: each with its value as the page writes it, and
+  its band's name after a dot coloured by how the band rates it, so colour is never the only way to
+  read it. A metric the rule set does not have is left out, as on the page; in **Compare** each
+  layout has its own table.
 - **What the numbers were made on.** The text, the rule set and the switches, as the line beside
   **Settings** says them, so a picture of one text is not read as a picture of another.
 

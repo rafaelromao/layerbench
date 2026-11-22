@@ -10,10 +10,12 @@ import {
   inlineBoard,
   MAX_PIXELS,
   type Palette,
+  pngScale,
   renderPng,
   svgDataUrl,
   wrapLines,
 } from './share-card.js';
+import type { SummaryCell } from './summary.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -43,6 +45,9 @@ const palette: Palette = {
   border: 'rgb(2, 2, 2)',
   text: 'rgb(250, 250, 250)',
   warning: 'rgb(200, 100, 0)',
+  good: 'rgb(0, 160, 0)',
+  ok: 'rgb(220, 150, 0)',
+  bad: 'rgb(200, 0, 0)',
   heat: ['rgb(10, 10, 10)', 'rgb(40, 40, 60)', 'rgb(70, 70, 120)', 'rgb(100, 100, 180)', 'blue'],
 };
 
@@ -53,6 +58,7 @@ function cardBoard(over: Partial<CardBoard> = {}): CardBoard {
     credit: creditOf({ name: 'Romak', author: 'Ana' }, { unsaved: false, editor: '' }),
     layer: 'Alpha 1',
     share: '91.2% of presses',
+    summary: [],
     ...over,
   };
 }
@@ -404,6 +410,108 @@ describe('text as long as a link can carry', () => {
   });
 });
 
+describe('the Summary table under a board', () => {
+  const cell = (id: string, over: Partial<SummaryCell> = {}): SummaryCell => ({
+    id,
+    label: id.toUpperCase(),
+    value: '1.23%',
+    band: 'good',
+    quality: 'good',
+    ...over,
+  });
+  /** The thirteen numbers of the page's Summary. */
+  const thirteen = Array.from({ length: 13 }, (_, i) => cell(`m${i}`, { label: `M${i}` }));
+  const compose = (summary: SummaryCell[]) =>
+    composeCard({
+      boards: [cardBoard({ summary })],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+
+  it('draws every number of the Summary, with its caption, value and band', () => {
+    const { svg } = compose([
+      cell('effort', { label: 'Effort', value: '6.55', band: 'good' }),
+      cell('sfb', { label: 'SFB', value: '0.84%', band: 'very good' }),
+    ]);
+    const text = parse(svg).documentElement.textContent ?? '';
+    for (const part of ['Effort', '6.55', 'SFB', '0.84%', 'very good']) {
+      expect(text).toContain(part);
+    }
+  });
+
+  it('puts the thirteen in two rows, and fewer in one: a table, not a pile', () => {
+    const none = compose([]);
+    const one = compose(thirteen.slice(0, 7));
+    const two = compose(thirteen);
+    expect(one.height).toBeGreaterThan(none.height + 80);
+    expect(two.height - one.height).toBe(88);
+    // A single frame, and a rule between the two rows.
+    expect(two.svg.match(/rx="14"/g)).toHaveLength(1);
+    expect(one.svg).not.toMatch(/<line[^>]*stroke-width="1.5"/);
+    expect(two.svg).toMatch(/<line[^>]*stroke-width="1.5"/);
+  });
+
+  it('draws nothing for a layout with no Summary, as the page draws none', () => {
+    const { svg } = compose([]);
+    expect(svg).not.toContain('rx="14"');
+    expect(svg).not.toContain('<circle');
+  });
+
+  it('marks each band by how it rates the number, in the palette’s colours, and in words too', () => {
+    const { svg } = compose([
+      cell('a', { band: 'excellent', quality: 'good' }),
+      cell('b', { band: 'fair', quality: 'ok' }),
+      cell('c', { band: 'poor', quality: 'bad' }),
+      cell('d', { band: 'plain', quality: 'neutral' }),
+    ]);
+    for (const colour of [palette.good, palette.ok, palette.bad]) {
+      expect(svg).toContain(`fill="${colour}"`);
+    }
+    const text = parse(svg).documentElement.textContent ?? '';
+    for (const word of ['excellent', 'fair', 'poor', 'plain']) expect(text).toContain(word);
+    expect(svg.match(/<circle/g)).toHaveLength(4);
+  });
+
+  it('draws no dot for a rule that has no band', () => {
+    const { svg } = compose([cell('a', { band: '', quality: 'neutral' })]);
+    expect(svg).not.toContain('<circle');
+  });
+
+  it('writes the values in the board’s monospace', () => {
+    const { svg } = compose([cell('a', { value: '9.87' })]);
+    expect(svg).toMatch(/font-family="ui-monospace[^"]*"[^>]*>9\.87</);
+  });
+
+  it('is well formed and cut to its cells, whatever the rule set calls things', () => {
+    const long = 'N'.repeat(500);
+    const { svg } = compose([cell('a', { label: long, value: long, band: long })]);
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
+    const hostile = compose([cell('a', { label: 'A & <B>', band: '"x"' })]);
+    expect(parse(hostile.svg).getElementsByTagName('parsererror')).toHaveLength(0);
+  });
+
+  it('is under each board when two are compared', () => {
+    const { svg } = composeCard({
+      boards: [
+        cardBoard({ tag: 'A', summary: [cell('effort', { label: 'Effort', value: '1.11' })] }),
+        cardBoard({ tag: 'B', summary: [cell('effort', { label: 'Effort', value: '2.22' })] }),
+      ],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+    const text = parse(svg).documentElement.textContent ?? '';
+    expect(text.indexOf('1.11')).toBeGreaterThan(text.indexOf('A · '));
+    expect(text.indexOf('2.22')).toBeGreaterThan(text.indexOf('B · '));
+    expect(text.indexOf('1.11')).toBeLessThan(text.indexOf('B · '));
+  });
+});
+
 describe('the source of a layout with a long author', () => {
   it('stays on the card: the author is held to a share of the line', () => {
     const credit = creditOf(
@@ -424,6 +532,27 @@ describe('the source of a layout with a long author', () => {
 });
 
 describe('a card no canvas can hold', () => {
+  it('is drawn at twice its size, and smaller where that would pass what a canvas holds', () => {
+    expect(pngScale(1200, 1000)).toBe(2);
+    // 1200 by 4000 at twice its size is 38 million pixels: drawn smaller, to the limit.
+    const scale = pngScale(1200, 4000) as number;
+    expect(scale).toBeGreaterThan(1.5);
+    expect(scale).toBeLessThan(2);
+    expect(1200 * scale * 4000 * scale).toBeLessThanOrEqual(MAX_PIXELS * 1.0001);
+  });
+
+  it('still draws a Compare of two tall boards with their Summaries, at the size of the screen or more', () => {
+    // Two near-square boards (about 1100 by 1000 each), their credits, tables and the footer.
+    expect(pngScale(1200, 2 * (1000 + 52 + 38 + 38 + 200) + 400)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('is refused where not even half its size fits, which is a board of no real shape', () => {
+    expect(pngScale(1200, 10_000_000)).toBeNull();
+    const edge = Math.floor(MAX_PIXELS / (0.5 * 0.5 * 1200));
+    expect(pngScale(1200, edge)).not.toBeNull();
+    expect(pngScale(1200, edge + 1000)).toBeNull();
+  });
+
   it('is refused before an image is made for it, and says why', async () => {
     // A board one key wide and ten thousand tall: far past what a browser gives a canvas.
     const tall = {
@@ -432,11 +561,6 @@ describe('a card no canvas can hold', () => {
       height: 10_000_000,
     };
     await expect(renderPng(tall)).rejects.toThrow(/too large/);
-  });
-
-  it('is a size well past any card a layout makes', () => {
-    // A Compare card of two square boards is about 2400 by 6000 pixels.
-    expect(MAX_PIXELS).toBeGreaterThan(2400 * 6000);
   });
 });
 

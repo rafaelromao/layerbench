@@ -77,6 +77,10 @@ test('Analyze: saves a PNG of the first layer, its colours resolved, whatever th
   expect(svg).not.toContain('class=');
   expect(svg).toContain('Magic Romak');
   expect(svg).toContain('% of presses');
+  // The page's Summary, under the board: its captions and values, from the real analysis.
+  for (const caption of ['Effort', 'SFB', 'SFS', 'Rolls']) expect(svg).toContain(`>${caption}<`);
+  expect(svg).toMatch(/>\d+\.\d{2}%?</);
+  expect(svg.indexOf('>Effort<')).toBeGreaterThan(svg.indexOf('% of presses'));
   // The heat is in the keys' own fills, one colour for each key, not one colour for all.
   const fills = new Set([...svg.matchAll(/<rect[^>]*style="fill:([^;"]+)/g)].map((m) => m[1]));
   expect(fills.size).toBeGreaterThan(4);
@@ -130,6 +134,8 @@ test('Compare: one PNG of both layouts, one over the other', async ({ page }) =>
   expect(svg).toContain('A · Qwerty');
   expect(svg).toContain('B · Graphite');
   expect(svg).toContain('one scale for both layouts');
+  // A Summary under each of the two boards.
+  expect(svg.match(/>Effort</g)).toHaveLength(2);
   expect(svg).not.toContain('var(');
   expect(svg).not.toContain('color-mix');
   // Both boards are coloured: many fills, not the one of a board with no heat.

@@ -6,6 +6,7 @@ import { useGitHubSession } from '../auth/github-session.js';
 import { useToasts } from '../state/toasts.js';
 import { type ShareBoard, type ShareImage, ShareImageDialog } from './ShareImageDialog.js';
 import * as card from './share-card.js';
+import type { SummaryCell } from './summary.js';
 
 // A canvas and a clipboard are what jsdom lacks: the card and the preview are real, the PNG is a
 // stand-in, and what is done with it is watched.
@@ -26,6 +27,12 @@ const qwerty = bundledLayout('qwerty');
 if (!qwerty) throw new Error('no Qwerty');
 const compiled = compileLayout(qwerty);
 
+/** The two numbers a layout is judged by, as the page's Summary starts. */
+const SUMMARY: SummaryCell[] = [
+  { id: 'effort', label: 'Effort', value: '6.55', band: 'good', quality: 'good' },
+  { id: 'sfb', label: 'SFB', value: '0.84%', band: 'very good', quality: 'good' },
+];
+
 function board(over: Partial<ShareBoard> = {}): ShareBoard {
   return {
     tag: null,
@@ -34,6 +41,7 @@ function board(over: Partial<ShareBoard> = {}): ShareBoard {
     typed: compiled,
     heat: { 0: 1, 1: 0.25 },
     share: 0.9,
+    summary: SUMMARY,
     unsaved: false,
     combos: true,
     ...over,
@@ -89,6 +97,29 @@ describe('the image to share', () => {
     ]) {
       expect(svg).toContain(part);
     }
+  });
+
+  it('shows the Summary under the board: each number with its value and its band', async () => {
+    render(<ShareImageDialog image={image()} onClose={() => {}} />);
+    const svg = await previewSvg();
+    for (const part of ['Effort', '6.55', 'SFB', '0.84%', 'very good']) expect(svg).toContain(part);
+    // Under the board, after the layer's caption.
+    expect(svg.indexOf('6.55')).toBeGreaterThan(svg.indexOf('% of presses'));
+  });
+
+  it('says the headline numbers to a screen reader, which a picture does not say', async () => {
+    render(<ShareImageDialog image={image()} onClose={() => {}} />);
+    await previewSvg();
+    const alt = screen.getByRole('img', { name: /Preview of the image/ }).getAttribute('alt');
+    expect(alt).toContain('Effort 6.55 good, SFB 0.84% very good');
+  });
+
+  it('has no Summary to show for a layout with none', async () => {
+    render(<ShareImageDialog image={image([board({ summary: [] })])} onClose={() => {}} />);
+    const svg = await previewSvg();
+    expect(svg).not.toContain('6.55');
+    const alt = screen.getByRole('img', { name: /Preview of the image/ }).getAttribute('alt');
+    expect(alt).not.toContain('Effort');
   });
 
   it('draws the board as the page does, from its first layer', async () => {

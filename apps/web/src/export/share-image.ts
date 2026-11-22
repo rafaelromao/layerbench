@@ -1,13 +1,9 @@
 import type { CompiledLayout, Layout } from '@layerbench/core';
-import {
-  effectiveHeat,
-  HEAT_LABELS,
-  type HeatSource,
-  heatMap,
-  layerShare,
-} from '../engine/heat.js';
+import { effectiveHeat, HEAT_LABELS, heatMap, layerShare } from '../engine/heat.js';
+import type { ReportDTO } from '../engine/protocol.js';
 import type { HeatMode } from '../url/params.js';
 import type { ShareBoard, ShareImage } from './ShareImageDialog.js';
+import { summaryCells } from './summary.js';
 
 /** One layout as Analyze or Compare has it open, with the numbers its heat is drawn from. */
 export interface SharedLayout {
@@ -16,8 +12,8 @@ export interface SharedLayout {
   compiled: CompiledLayout;
   /** As typed: the combos. */
   typed: CompiledLayout;
-  /** The report whose heat is drawn: the layout's own, on the settings shown. */
-  report: HeatSource;
+  /** The report whose heat and Summary are drawn: the layout's own, on the settings shown. */
+  report: ReportDTO;
   /** What is shown has changes that are saved nowhere (`unsavedVersion` in Compare). */
   unsaved: boolean;
   /** Whether the combos that type are drawn; Compare draws them always. */
@@ -73,6 +69,7 @@ function board(
     typed,
     heat: heatMap(report, mode, 0, top),
     share: layerShare(report, 0),
+    summary: summaryCells(report.results),
     unsaved,
     combos,
   };
