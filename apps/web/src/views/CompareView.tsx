@@ -26,7 +26,11 @@ import {
 } from '../engine/heat.js';
 import type { AnalyzeRequest, ReportDTO } from '../engine/protocol.js';
 import { type AnalysisState, useAnalysis } from '../engine/use-analysis.js';
+import { ExportImageButton } from '../export/ExportImageButton.js';
+import { type ShareImage, ShareImageDialog } from '../export/ShareImageDialog.js';
+import { compareImage, unsavedVersion } from '../export/share-image.js';
 import { HELP, rulerShown } from '../guide/help.js';
+import { tabDrafts } from '../layout-session/drafts.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
@@ -199,6 +203,49 @@ export function CompareView() {
       : params.layoutRef;
   const pickedB = b.ref === refB && b.storedId && !b.unsaved ? customRef(b.storedId) : refB;
 
+  /**
+   * The image of both layouts, while its dialog is open, made of what is on show when it is asked
+   * for. It needs both sides opened and scored: the one scale the boards are coloured on is of
+   * the two, and an image with one side plain would be read as that layout having no heat.
+   */
+  const [sharing, setSharing] = useState<ShareImage | null>(null);
+  const scoredA = heatSettled ? heatA : null;
+  const scoredB = heatSettled ? heatB : null;
+  const exportBlocked =
+    a.compiled && b.compiled && scoredA && scoredB && a.layout && b.layout
+      ? null
+      : error
+        ? 'Available once both layouts open and are scored'
+        : 'Available once both layouts are scored';
+  const exportImage = () => {
+    if (!(a.layout && b.layout && a.compiled && b.compiled && scoredA && scoredB)) return;
+    // The edits this tab sent along from Analyze are this user's; a link someone else made is not.
+    const madeHere = (ref: string) => tabDrafts().originOf(ref) !== undefined;
+    setSharing(
+      compareImage(
+        {
+          layout: a.layout,
+          compiled: a.compiled,
+          typed: typedA ?? a.compiled,
+          report: scoredA,
+          unsaved: unsavedVersion(a, madeHere),
+          combos: true,
+        },
+        {
+          layout: b.layout,
+          compiled: b.compiled,
+          typed: typedB ?? b.compiled,
+          report: scoredB,
+          unsaved: unsavedVersion(b, madeHere),
+          combos: true,
+        },
+        params.heat,
+        heatTop,
+        settingsSummary(settings, corpora),
+      ),
+    );
+  };
+
   // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
   const [layerA, setLayerA] = useState(0);
   const [layerB, setLayerB] = useState(0);
@@ -285,6 +332,8 @@ export function CompareView() {
         </div>
       </div>
 
+      {sharing && <ShareImageDialog image={sharing} onClose={() => setSharing(null)} />}
+
       {params.without.length > 0 && (
         <div className="alert text-sm py-2" role="status">
           <span>Both layouts typed without {featureList(params.without)}.</span>
@@ -303,13 +352,19 @@ export function CompareView() {
       <Collapsible id="compare.layouts" title="Layouts">
         {/* What both boards' colours measure, and what they mean, above the two of them. */}
         <div className="space-y-1 mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <HeatSelect
               id="compare-heat"
               value={params.heat}
               onChange={(heat) => setParams({ heat })}
             />
             <HelpLink help={HELP.heat} />
+            <ExportImageButton
+              className="ml-auto"
+              blocked={exportBlocked}
+              onClick={exportImage}
+              what="both layouts’ first layer"
+            />
           </div>
           {/* The scale is of both only while neither side has failed. */}
           <HeatLegend
