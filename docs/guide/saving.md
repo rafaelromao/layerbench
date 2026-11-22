@@ -454,7 +454,8 @@ are one over the other, on the one scale both boards are coloured on. It also ho
 The image is made in your browser and goes nowhere until you post it: **Download PNG** saves it, and
 **Copy image**, where the browser allows it, puts it on the clipboard to paste into a post or a
 chat.
-It is drawn in the theme you have on, light or dark. The names, the author and the link come from
+It is drawn in the theme you have on, light or dark, as a panel like the page's own: a rounded
+border round it, the corners outside it clear. The names, the author and the link come from
 the layout, and so may be from someone else's link: control characters and those that change which
 way a line reads are taken out before the image is drawn.
 

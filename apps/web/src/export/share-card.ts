@@ -24,6 +24,9 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 export const CARD_WIDTH = 1200;
 const PAD = 48;
 const INNER = CARD_WIDTH - 2 * PAD;
+/** The panel's border and the roundness of its corners, in the card's own pixels. */
+const PANEL_BORDER = 3;
+const PANEL_RADIUS = 24;
 /** The most pixels a PNG may have: a little under what the smallest canvases of today's browsers allow. */
 export const MAX_PIXELS = 16_000_000;
 /** A PNG is drawn at twice the card's size, so it stays sharp on a high-density screen. */
@@ -527,7 +530,23 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
   root.setAttribute('width', String(CARD_WIDTH));
   root.setAttribute('height', String(height));
   root.setAttribute('viewBox', `0 0 ${CARD_WIDTH} ${height}`);
-  root.append(defs, node('rect', { width: CARD_WIDTH, height, fill: p.background }), body);
+  // The card is a panel, as the page's own are: a rounded border round it, the corners outside it
+  // left clear. The border is drawn inside the card's edge, so none of it is cut off.
+  const half = PANEL_BORDER / 2;
+  root.append(
+    defs,
+    node('rect', {
+      x: half,
+      y: half,
+      width: CARD_WIDTH - PANEL_BORDER,
+      height: height - PANEL_BORDER,
+      rx: PANEL_RADIUS,
+      fill: p.background,
+      stroke: p.border,
+      'stroke-width': PANEL_BORDER,
+    }),
+    body,
+  );
   return { svg: new XMLSerializer().serializeToString(root), width: CARD_WIDTH, height };
 }
 

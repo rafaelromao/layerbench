@@ -410,6 +410,57 @@ describe('text as long as a link can carry', () => {
   });
 });
 
+describe('the card as a panel', () => {
+  const compose = () =>
+    composeCard({
+      boards: [cardBoard()],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+
+  it('has a rounded border in the page’s border colour, round the whole card', () => {
+    const { svg, width, height } = compose();
+    const panel = [...parse(svg).documentElement.getElementsByTagName('rect')].find(
+      (r) => r.getAttribute('rx') === '24',
+    ) as Element;
+    expect(panel.getAttribute('stroke')).toBe(palette.border);
+    expect(Number(panel.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(2);
+    expect(panel.getAttribute('fill')).toBe(palette.background);
+    // Inside the card's edge, so no half of the border is cut off by it.
+    const half = Number(panel.getAttribute('stroke-width')) / 2;
+    expect(Number(panel.getAttribute('x'))).toBe(half);
+    expect(Number(panel.getAttribute('y'))).toBe(half);
+    expect(Number(panel.getAttribute('width'))).toBe(width - 2 * half);
+    expect(Number(panel.getAttribute('height'))).toBe(height - 2 * half);
+  });
+
+  it('leaves no square background behind it, so the corners are clear', () => {
+    const { svg, width, height } = compose();
+    const fills = [...parse(svg).documentElement.getElementsByTagName('rect')].filter(
+      (r) =>
+        Number(r.getAttribute('width')) >= width - 4 &&
+        Number(r.getAttribute('height')) >= height - 4,
+    );
+    // The panel is the one thing as large as the card, and it is round.
+    expect(fills).toHaveLength(1);
+    expect(fills[0]?.getAttribute('rx')).toBe('24');
+  });
+
+  it('keeps everything inside the roundness of its corners', () => {
+    // The writing and the board start 48 pixels in, past a 24 pixel corner.
+    const { svg } = compose();
+    const root = parse(svg).documentElement;
+    // The card's own writing, not the board's, whose positions are the keys' own.
+    const xs = [...root.getElementsByTagName('text')]
+      .filter((t) => (t.closest('svg') as Element | null) === root)
+      .map((t) => Number(t.getAttribute('x')));
+    expect(xs.length).toBeGreaterThan(5);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(48);
+  });
+});
+
 describe('the Summary table under a board', () => {
   const cell = (id: string, over: Partial<SummaryCell> = {}): SummaryCell => ({
     id,

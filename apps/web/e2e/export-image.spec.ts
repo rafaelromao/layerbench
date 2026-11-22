@@ -88,6 +88,41 @@ test('Analyze: saves a PNG of the first layer, its colours resolved, whatever th
   expect(found).toEqual([]);
 });
 
+/**
+ * The alpha of the pixels of a PNG a browser has decoded: the four corners, and the middle of each
+ * edge. The browser reads it back through a canvas, so this is what it really drew.
+ */
+async function edgesOf(page: Page, png: Buffer) {
+  return page.evaluate(async (base64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    ctx.drawImage(img, 0, 0);
+    const alpha = (x: number, y: number) => ctx.getImageData(x, y, 1, 1).data[3] as number;
+    const { width: w, height: h } = img;
+    return {
+      corners: [alpha(0, 0), alpha(w - 1, 0), alpha(0, h - 1), alpha(w - 1, h - 1)],
+      edges: [alpha(w >> 1, 2), alpha(w >> 1, h - 3), alpha(2, h >> 1), alpha(w - 3, h >> 1)],
+    };
+  }, png.toString('base64'));
+}
+
+test('Analyze: the image is a rounded panel, its corners clear and its border drawn', async ({
+  page,
+}) => {
+  test.slow();
+  await page.goto(ANALYZE);
+  const { png } = await exportImage(page);
+  const { corners, edges } = await edgesOf(page, png);
+  // Outside the rounded corners nothing is drawn; along each edge, the border is.
+  expect(corners).toEqual([0, 0, 0, 0]);
+  expect(edges).toEqual([255, 255, 255, 255]);
+});
+
 test('Analyze: an edit that is not saved is credited to the name given, in the image', async ({
   page,
 }) => {
