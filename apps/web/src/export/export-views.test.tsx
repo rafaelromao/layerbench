@@ -78,6 +78,12 @@ describe('Export image in Analyze', () => {
     expect(svg).toContain('by Rafael Romão');
     expect(svg).toContain('Usage');
     expect(svg).toContain('% of presses');
+    // The page's Summary of the real report, under the board: its captions, in the page's order.
+    const captions = [...svg.matchAll(/>(Effort|SFB|SFS|LSB|FSB|HSB|Alt|Rolls)</g)].map(
+      (m) => m[1],
+    );
+    expect(captions.slice(0, 3)).toEqual(['Effort', 'SFB', 'SFS']);
+    expect(svg.indexOf('>Effort<')).toBeGreaterThan(svg.indexOf('% of presses'));
     // The layout is as it was opened: no edits to name anyone for.
     expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
     expect(svg).not.toContain('Unsaved edits');
@@ -137,6 +143,36 @@ describe('Export image in Analyze', () => {
     // or clear it.
     expect(within(dialog()).getByLabelText('Unsaved edits by')).toBeInTheDocument();
     expect(await previewSvg()).toContain('Unsaved edits');
+  }, 60_000);
+
+  it('draws every layer of the layout once All layers is ticked, each on the page’s heat', async () => {
+    const user = userEvent.setup();
+    renderRoute('/analyze?layout=magic-romak&corpus=en-general&sample=1000&heat=usage', {
+      storage: freshStorage(),
+    });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
+    await user.click(exportButton());
+    // One layer to start: the digits of the Numbers layer are not on it.
+    expect(await previewSvg()).not.toContain('>7<');
+
+    await user.click(within(dialog()).getByRole('checkbox', { name: 'All layers' }));
+    const names = (bundledLayout('magic-romak') as Layout).layers.map((l) => l.name);
+    expect(names.length).toBeGreaterThan(2);
+    await waitFor(async () =>
+      expect(await previewSvg()).toContain(`${names.length} / ${names.length} · ${names.at(-1)}`),
+    );
+    const svg = await previewSvg();
+    for (const [i, name] of names.entries()) {
+      expect(svg).toContain(`${i + 1} / ${names.length} · ${name}`);
+    }
+    // Each layer's own keys: the Numbers layer's digits are there now.
+    expect(svg).toContain('>7<');
+    // The Summary is once, after the last layer.
+    expect(svg.match(/>Effort</g)).toHaveLength(1);
+    expect(svg.indexOf('>Effort<')).toBeGreaterThan(
+      svg.indexOf(`${names.length} / ${names.length}`),
+    );
   }, 60_000);
 
   it('asks who made the edits once the layout has changes that are not saved, and names them', async () => {
@@ -210,6 +246,8 @@ describe('Export image in Compare', () => {
     expect(svg).toContain('B · Magic Romak');
     expect(svg).toContain('by Rafael Romão');
     expect(svg).toContain('one scale for both layouts');
+    // The Summary of each layout, under its own board: Effort once for A and once for B.
+    expect(svg.match(/>Effort</g)).toHaveLength(2);
     // Both are bundled layouts as they come: nobody has edits to be named for.
     expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
   }, 60_000);

@@ -35,6 +35,9 @@ const palette: Palette = {
   border: '#ccc',
   text: '#000',
   warning: '#f80',
+  good: '#0a0',
+  ok: '#fa0',
+  bad: '#c00',
   heat: ['#eee', '#ccc', '#999', '#666', '#000'],
 };
 
@@ -62,14 +65,18 @@ const READERS: Record<string, (text: string) => unknown> = {
     composeCard({
       boards: [
         {
-          svg: board(),
           tag: 'A',
           credit: creditOf(
             { name: t, author: t, link: `https://example.com/${t}` },
             { unsaved: true, editor: t },
           ),
-          layer: t,
-          share: t,
+          // Several layers, so the heading over each board is read with the hostile name too.
+          layers: [
+            { svg: board(), name: t, share: t },
+            { svg: board(), name: t, share: t },
+          ],
+          omitted: 3,
+          summary: [{ id: 'x', label: t, value: t, band: t, quality: 'good' }],
         },
       ],
       heat: t,

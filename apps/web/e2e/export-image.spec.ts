@@ -77,11 +77,85 @@ test('Analyze: saves a PNG of the first layer, its colours resolved, whatever th
   expect(svg).not.toContain('class=');
   expect(svg).toContain('Magic Romak');
   expect(svg).toContain('% of presses');
+  // The page's Summary, under the board: its captions and values, from the real analysis.
+  for (const caption of ['Effort', 'SFB', 'SFS', 'Rolls']) expect(svg).toContain(`>${caption}<`);
+  expect(svg).toMatch(/>\d+\.\d{2}%?</);
+  expect(svg.indexOf('>Effort<')).toBeGreaterThan(svg.indexOf('% of presses'));
   // The heat is in the keys' own fills, one colour for each key, not one colour for all.
   const fills = new Set([...svg.matchAll(/<rect[^>]*style="fill:([^;"]+)/g)].map((m) => m[1]));
   expect(fills.size).toBeGreaterThan(4);
 
   expect(found).toEqual([]);
+});
+
+/**
+ * The alpha of the pixels of a PNG a browser has decoded: the four corners, and the middle of each
+ * edge. The browser reads it back through a canvas, so this is what it really drew.
+ */
+async function edgesOf(page: Page, png: Buffer) {
+  return page.evaluate(async (base64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    ctx.drawImage(img, 0, 0);
+    const alpha = (x: number, y: number) => ctx.getImageData(x, y, 1, 1).data[3] as number;
+    const { width: w, height: h } = img;
+    return {
+      corners: [alpha(0, 0), alpha(w - 1, 0), alpha(0, h - 1), alpha(w - 1, h - 1)],
+      edges: [alpha(w >> 1, 2), alpha(w >> 1, h - 3), alpha(2, h >> 1), alpha(w - 3, h >> 1)],
+    };
+  }, png.toString('base64'));
+}
+
+test('Analyze: All layers draws every layer of the layout, one under another', async ({ page }) => {
+  test.slow();
+  const found = problems(page);
+  await page.goto(ANALYZE);
+  const first = await exportImage(page);
+  const dialog = page.getByRole('dialog', { name: 'Export image' });
+  expect(first.name).toBe('layerbench-magic-romak.png');
+
+  await dialog.getByLabel('All layers').check();
+  const download = dialog.getByRole('button', { name: 'Download PNG' });
+  // The image for the first layer is withdrawn the moment the card changes, and made again.
+  await expect(download).toBeEnabled({ timeout: 30_000 });
+  const svg = await previewSvg(page);
+  expect(svg).toMatch(/1 \/ \d+ · /);
+  const count = Number(/1 \/ (\d+) · /.exec(svg)?.[1]);
+  expect(count).toBeGreaterThan(2);
+  for (let i = 1; i <= count; i++) expect(svg).toContain(`${i} / ${count} · `);
+  // The Summary once, after the last layer.
+  expect(svg.match(/>Effort</g)).toHaveLength(1);
+  expect(svg).not.toContain('var(');
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), download.click()]);
+  expect(saved.suggestedFilename()).toBe('layerbench-magic-romak-all-layers.png');
+  const png = await readFile(await saved.path());
+  expect([...png.subarray(0, 8)]).toEqual(PNG_SIGNATURE);
+  // Taller by the boards it adds. A card this tall is made smaller, to fit what a canvas can
+  // hold, so it is the proportions that tell: never wider than the first layer's, much taller.
+  const one = sizeOf(first.png);
+  const all = sizeOf(png);
+  expect(all.width).toBeLessThanOrEqual(one.width);
+  expect(all.width).toBeGreaterThan(one.width / 2);
+  expect(all.height / all.width).toBeGreaterThan((one.height / one.width) * 1.5);
+  expect(found).toEqual([]);
+});
+
+test('Analyze: the image is a rounded panel, its corners clear and its border drawn', async ({
+  page,
+}) => {
+  test.slow();
+  await page.goto(ANALYZE);
+  const { png } = await exportImage(page);
+  const { corners, edges } = await edgesOf(page, png);
+  // Outside the rounded corners nothing is drawn; along each edge, the border is.
+  expect(corners).toEqual([0, 0, 0, 0]);
+  expect(edges).toEqual([255, 255, 255, 255]);
 });
 
 test('Analyze: an edit that is not saved is credited to the name given, in the image', async ({
@@ -130,6 +204,8 @@ test('Compare: one PNG of both layouts, one over the other', async ({ page }) =>
   expect(svg).toContain('A · Qwerty');
   expect(svg).toContain('B · Graphite');
   expect(svg).toContain('one scale for both layouts');
+  // A Summary under each of the two boards.
+  expect(svg.match(/>Effort</g)).toHaveLength(2);
   expect(svg).not.toContain('var(');
   expect(svg).not.toContain('color-mix');
   // Both boards are coloured: many fills, not the one of a board with no heat.

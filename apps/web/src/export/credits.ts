@@ -81,7 +81,7 @@ export function creditOf(
 }
 
 /** A file name for an image: the words of the names, in lowercase, joined by dashes. */
-export function imageFileName(names: readonly string[]): string {
+export function imageFileName(names: readonly string[], extra?: string): string {
   const slug = (name: string) =>
     name
       .slice(0, 200)
@@ -93,5 +93,5 @@ export function imageFileName(names: readonly string[]): string {
       .slice(0, 40)
       .replace(/-+$/g, '');
   const words = names.map(slug).filter(Boolean);
-  return `layerbench-${words.length > 0 ? words.join('-vs-') : 'layout'}.png`;
+  return `layerbench-${words.length > 0 ? words.join('-vs-') : 'layout'}${extra ? `-${extra}` : ''}.png`;
 }

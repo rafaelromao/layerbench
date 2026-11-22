@@ -3,6 +3,7 @@ import { creditOf } from './credits.js';
 import {
   CARD_WIDTH,
   type CardBoard,
+  type CardLayer,
   canCopyImage,
   composeCard,
   copyImage,
@@ -10,10 +11,12 @@ import {
   inlineBoard,
   MAX_PIXELS,
   type Palette,
+  pngScale,
   renderPng,
   svgDataUrl,
   wrapLines,
 } from './share-card.js';
+import type { SummaryCell } from './summary.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -43,16 +46,24 @@ const palette: Palette = {
   border: 'rgb(2, 2, 2)',
   text: 'rgb(250, 250, 250)',
   warning: 'rgb(200, 100, 0)',
+  good: 'rgb(0, 160, 0)',
+  ok: 'rgb(220, 150, 0)',
+  bad: 'rgb(200, 0, 0)',
   heat: ['rgb(10, 10, 10)', 'rgb(40, 40, 60)', 'rgb(70, 70, 120)', 'rgb(100, 100, 180)', 'blue'],
 };
 
+/** A layer as the card draws it: a board with its name and share of the typing. */
+function cardLayer(over: Partial<CardLayer> = {}): CardLayer {
+  return { svg: board(), name: 'Alpha 1', share: '91.2% of presses', ...over };
+}
+
 function cardBoard(over: Partial<CardBoard> = {}): CardBoard {
   return {
-    svg: board(),
     tag: null,
     credit: creditOf({ name: 'Romak', author: 'Ana' }, { unsaved: false, editor: '' }),
-    layer: 'Alpha 1',
-    share: '91.2% of presses',
+    layers: [cardLayer()],
+    omitted: 0,
+    summary: [],
     ...over,
   };
 }
@@ -211,7 +222,7 @@ describe('composeCard', () => {
 
   it('puts the board in the card at its width, as tall as its own proportions', () => {
     const { svg } = composeCard({
-      boards: [cardBoard({ svg: board('0 0 600 200') })],
+      boards: [cardBoard({ layers: [cardLayer({ svg: board('0 0 600 200') })] })],
       heat: 'Usage',
       heatNote: null,
       settings: '',
@@ -303,7 +314,7 @@ describe('composeCard with text that is not plain', () => {
       boards: [
         cardBoard({
           credit: creditOf({ name, author: name }, { unsaved: edits !== '', editor: edits }),
-          layer: name,
+          layers: [cardLayer({ name })],
         }),
       ],
       heat: name,
@@ -381,7 +392,7 @@ describe('text as long as a link can carry', () => {
     );
     const started = performance.now();
     const { svg } = composeCard({
-      boards: [cardBoard({ credit, layer: long, share: long })],
+      boards: [cardBoard({ credit, layers: [cardLayer({ name: long, share: long })] })],
       heat: long,
       heatNote: long,
       settings: `${'word '.repeat(HUGE / 5)}`,
@@ -401,6 +412,250 @@ describe('text as long as a link can carry', () => {
     expect(performance.now() - started).toBeLessThan(BUDGET_MS);
     expect(lines).toHaveLength(1);
     expect(lines[0]?.endsWith('…')).toBe(true);
+  });
+});
+
+describe('several layers of a layout', () => {
+  const names = ['Alpha 1', 'Alpha 2', 'Numbers'];
+  const layers = names.map((name, i) =>
+    cardLayer({ name, share: `${90 - 40 * i}.0% of presses`, svg: board() }),
+  );
+  const compose = (over: Partial<CardBoard> = {}) =>
+    composeCard({
+      boards: [cardBoard({ layers, ...over })],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+  const one = composeCard({
+    boards: [cardBoard()],
+    heat: 'Usage',
+    heatNote: null,
+    settings: '',
+    palette,
+  });
+
+  it('heads each board with which layer it is, in order, and its share of the typing', () => {
+    const text = parse(compose().svg).documentElement.textContent ?? '';
+    const at = names.map((n, i) => text.indexOf(`${i + 1} / 3 · ${n}`));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    for (const share of ['90.0% of presses', '50.0% of presses', '10.0% of presses']) {
+      expect(text).toContain(share);
+    }
+  });
+
+  it('stacks the boards one under another, each at the width of the card’s content', () => {
+    const boards = [...parse(compose().svg).documentElement.getElementsByTagName('svg')].filter(
+      (el) => el.hasAttribute('viewBox') && el.hasAttribute('x'),
+    );
+    expect(boards).toHaveLength(3);
+    const ys = boards.map((b) => Number(b.getAttribute('y')));
+    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    expect(new Set(ys).size).toBe(3);
+    for (const b of boards) expect(b.getAttribute('x')).toBe('48');
+  });
+
+  it('is as much taller as the boards it adds, and no caption sits under a board', () => {
+    const three = compose();
+    // Two more boards, each with its heading.
+    expect(three.height).toBeGreaterThan(one.height + 2 * 300);
+    const text = parse(three.svg).documentElement.textContent ?? '';
+    // A caption under a board names its layer and share together: with headings it would repeat them.
+    expect(text).not.toContain('Alpha 1 · 90.0% of presses');
+  });
+
+  it('puts the Summary once, after the last layer', () => {
+    const summary: SummaryCell[] = [
+      { id: 'effort', label: 'Effort', value: '6.55', band: 'good', quality: 'good' },
+    ];
+    const text = parse(compose({ summary }).svg).documentElement.textContent ?? '';
+    expect(text.match(/Effort/g)).toHaveLength(1);
+    expect(text.indexOf('Effort')).toBeGreaterThan(text.indexOf('3 / 3 · Numbers'));
+  });
+
+  it('says how many layers the card could not hold, after the last one', () => {
+    const many = parse(compose({ omitted: 8 }).svg).documentElement.textContent ?? '';
+    expect(many).toContain('8 more layers not drawn');
+    expect(parse(compose({ omitted: 1 }).svg).documentElement.textContent).toContain(
+      '1 more layer not drawn',
+    );
+    expect(parse(compose({ omitted: 0 }).svg).documentElement.textContent).not.toContain(
+      'not drawn',
+    );
+  });
+
+  it('draws one layer as it always did: no heading, its name and share under the board', () => {
+    const text = parse(one.svg).documentElement.textContent ?? '';
+    expect(text).toContain('Alpha 1 · 91.2% of presses');
+    expect(text).not.toContain('1 / 1');
+  });
+
+  it('is well formed and cut to a line, whatever the layers are called', () => {
+    const long = 'N'.repeat(500);
+    const { svg } = compose({
+      layers: [
+        cardLayer({ name: long, share: long }),
+        cardLayer({ name: 'A & <B>', share: '"x"' }),
+      ],
+    });
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
+  });
+});
+
+describe('the card as a panel', () => {
+  const compose = () =>
+    composeCard({
+      boards: [cardBoard()],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+
+  it('has a rounded border in the page’s border colour, round the whole card', () => {
+    const { svg, width, height } = compose();
+    const panel = [...parse(svg).documentElement.getElementsByTagName('rect')].find(
+      (r) => r.getAttribute('rx') === '24',
+    ) as Element;
+    expect(panel.getAttribute('stroke')).toBe(palette.border);
+    expect(Number(panel.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(2);
+    expect(panel.getAttribute('fill')).toBe(palette.background);
+    // Inside the card's edge, so no half of the border is cut off by it.
+    const half = Number(panel.getAttribute('stroke-width')) / 2;
+    expect(Number(panel.getAttribute('x'))).toBe(half);
+    expect(Number(panel.getAttribute('y'))).toBe(half);
+    expect(Number(panel.getAttribute('width'))).toBe(width - 2 * half);
+    expect(Number(panel.getAttribute('height'))).toBe(height - 2 * half);
+  });
+
+  it('leaves no square background behind it, so the corners are clear', () => {
+    const { svg, width, height } = compose();
+    const fills = [...parse(svg).documentElement.getElementsByTagName('rect')].filter(
+      (r) =>
+        Number(r.getAttribute('width')) >= width - 4 &&
+        Number(r.getAttribute('height')) >= height - 4,
+    );
+    // The panel is the one thing as large as the card, and it is round.
+    expect(fills).toHaveLength(1);
+    expect(fills[0]?.getAttribute('rx')).toBe('24');
+  });
+
+  it('keeps everything inside the roundness of its corners', () => {
+    // The writing and the board start 48 pixels in, past a 24 pixel corner.
+    const { svg } = compose();
+    const root = parse(svg).documentElement;
+    // The card's own writing, not the board's, whose positions are the keys' own.
+    const xs = [...root.getElementsByTagName('text')]
+      .filter((t) => (t.closest('svg') as Element | null) === root)
+      .map((t) => Number(t.getAttribute('x')));
+    expect(xs.length).toBeGreaterThan(5);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(48);
+  });
+});
+
+describe('the Summary table under a board', () => {
+  const cell = (id: string, over: Partial<SummaryCell> = {}): SummaryCell => ({
+    id,
+    label: id.toUpperCase(),
+    value: '1.23%',
+    band: 'good',
+    quality: 'good',
+    ...over,
+  });
+  /** The thirteen numbers of the page's Summary. */
+  const thirteen = Array.from({ length: 13 }, (_, i) => cell(`m${i}`, { label: `M${i}` }));
+  const compose = (summary: SummaryCell[]) =>
+    composeCard({
+      boards: [cardBoard({ summary })],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+
+  it('draws every number of the Summary, with its caption, value and band', () => {
+    const { svg } = compose([
+      cell('effort', { label: 'Effort', value: '6.55', band: 'good' }),
+      cell('sfb', { label: 'SFB', value: '0.84%', band: 'very good' }),
+    ]);
+    const text = parse(svg).documentElement.textContent ?? '';
+    for (const part of ['Effort', '6.55', 'SFB', '0.84%', 'very good']) {
+      expect(text).toContain(part);
+    }
+  });
+
+  it('puts the thirteen in two rows, and fewer in one: a table, not a pile', () => {
+    const none = compose([]);
+    const one = compose(thirteen.slice(0, 7));
+    const two = compose(thirteen);
+    expect(one.height).toBeGreaterThan(none.height + 80);
+    expect(two.height - one.height).toBe(88);
+    // A single frame, and a rule between the two rows.
+    expect(two.svg.match(/rx="14"/g)).toHaveLength(1);
+    expect(one.svg).not.toMatch(/<line[^>]*stroke-width="1.5"/);
+    expect(two.svg).toMatch(/<line[^>]*stroke-width="1.5"/);
+  });
+
+  it('draws nothing for a layout with no Summary, as the page draws none', () => {
+    const { svg } = compose([]);
+    expect(svg).not.toContain('rx="14"');
+    expect(svg).not.toContain('<circle');
+  });
+
+  it('marks each band by how it rates the number, in the palette’s colours, and in words too', () => {
+    const { svg } = compose([
+      cell('a', { band: 'excellent', quality: 'good' }),
+      cell('b', { band: 'fair', quality: 'ok' }),
+      cell('c', { band: 'poor', quality: 'bad' }),
+      cell('d', { band: 'plain', quality: 'neutral' }),
+    ]);
+    for (const colour of [palette.good, palette.ok, palette.bad]) {
+      expect(svg).toContain(`fill="${colour}"`);
+    }
+    const text = parse(svg).documentElement.textContent ?? '';
+    for (const word of ['excellent', 'fair', 'poor', 'plain']) expect(text).toContain(word);
+    expect(svg.match(/<circle/g)).toHaveLength(4);
+  });
+
+  it('draws no dot for a rule that has no band', () => {
+    const { svg } = compose([cell('a', { band: '', quality: 'neutral' })]);
+    expect(svg).not.toContain('<circle');
+  });
+
+  it('writes the values in the board’s monospace', () => {
+    const { svg } = compose([cell('a', { value: '9.87' })]);
+    expect(svg).toMatch(/font-family="ui-monospace[^"]*"[^>]*>9\.87</);
+  });
+
+  it('is well formed and cut to its cells, whatever the rule set calls things', () => {
+    const long = 'N'.repeat(500);
+    const { svg } = compose([cell('a', { label: long, value: long, band: long })]);
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
+    const hostile = compose([cell('a', { label: 'A & <B>', band: '"x"' })]);
+    expect(parse(hostile.svg).getElementsByTagName('parsererror')).toHaveLength(0);
+  });
+
+  it('is under each board when two are compared', () => {
+    const { svg } = composeCard({
+      boards: [
+        cardBoard({ tag: 'A', summary: [cell('effort', { label: 'Effort', value: '1.11' })] }),
+        cardBoard({ tag: 'B', summary: [cell('effort', { label: 'Effort', value: '2.22' })] }),
+      ],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+    const text = parse(svg).documentElement.textContent ?? '';
+    expect(text.indexOf('1.11')).toBeGreaterThan(text.indexOf('A · '));
+    expect(text.indexOf('2.22')).toBeGreaterThan(text.indexOf('B · '));
+    expect(text.indexOf('1.11')).toBeLessThan(text.indexOf('B · '));
   });
 });
 
@@ -424,6 +679,27 @@ describe('the source of a layout with a long author', () => {
 });
 
 describe('a card no canvas can hold', () => {
+  it('is drawn at twice its size, and smaller where that would pass what a canvas holds', () => {
+    expect(pngScale(1200, 1000)).toBe(2);
+    // 1200 by 4000 at twice its size is 38 million pixels: drawn smaller, to the limit.
+    const scale = pngScale(1200, 4000) as number;
+    expect(scale).toBeGreaterThan(1.5);
+    expect(scale).toBeLessThan(2);
+    expect(1200 * scale * 4000 * scale).toBeLessThanOrEqual(MAX_PIXELS * 1.0001);
+  });
+
+  it('still draws a Compare of two tall boards with their Summaries, at the size of the screen or more', () => {
+    // Two near-square boards (about 1100 by 1000 each), their credits, tables and the footer.
+    expect(pngScale(1200, 2 * (1000 + 52 + 38 + 38 + 200) + 400)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('is refused where not even half its size fits, which is a board of no real shape', () => {
+    expect(pngScale(1200, 10_000_000)).toBeNull();
+    const edge = Math.floor(MAX_PIXELS / (0.5 * 0.5 * 1200));
+    expect(pngScale(1200, edge)).not.toBeNull();
+    expect(pngScale(1200, edge + 1000)).toBeNull();
+  });
+
   it('is refused before an image is made for it, and says why', async () => {
     // A board one key wide and ten thousand tall: far past what a browser gives a canvas.
     const tall = {
@@ -432,11 +708,6 @@ describe('a card no canvas can hold', () => {
       height: 10_000_000,
     };
     await expect(renderPng(tall)).rejects.toThrow(/too large/);
-  });
-
-  it('is a size well past any card a layout makes', () => {
-    // A Compare card of two square boards is about 2400 by 6000 pixels.
-    expect(MAX_PIXELS).toBeGreaterThan(2400 * 6000);
   });
 });
 
