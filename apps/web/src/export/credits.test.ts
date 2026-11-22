@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { creditOf, EDITOR_MAX, editorName, imageFileName, loginName, sourceOf } from './credits.js';
+import { PLAIN_MAX } from './plain-text.js';
 
 describe('who made the edits', () => {
   it('writes a login as a mention, and nothing for no one signed in', () => {
@@ -83,6 +84,26 @@ describe('text from a layout that is not plain', () => {
 
   it('is cleaned in the editor’s name too', () => {
     expect(editorName('Ana\u202e\u0000 Bia')).toBe('Ana Bia');
+  });
+});
+
+describe('a name as long as a link can carry', () => {
+  it('is bounded in the credit, whatever field it is in', () => {
+    const huge = 'N'.repeat(2_000_000);
+    const credit = creditOf(
+      { name: huge, author: huge, link: `https://example.com/${huge}` },
+      { unsaved: true, editor: huge },
+    );
+    for (const text of [credit.name, credit.byline, credit.source, credit.edits]) {
+      expect((text ?? '').length).toBeLessThanOrEqual(PLAIN_MAX + 20);
+    }
+  });
+
+  it('makes a file name from the start of it, in no time', () => {
+    const started = performance.now();
+    const name = imageFileName(['N'.repeat(5_000_000), 'M'.repeat(5_000_000)]);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(name.length).toBeLessThan(120);
   });
 });
 

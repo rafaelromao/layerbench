@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plain } from './plain-text.js';
+import { PLAIN_MAX, plain } from './plain-text.js';
 
 describe('plain', () => {
   it('leaves ordinary text, accents and emoji as they are', () => {
@@ -29,5 +29,14 @@ describe('plain', () => {
   it('keeps joiners, which emoji and some scripts need', () => {
     const family = '\u{1f468}\u200d\u{1f469}\u200d\u{1f467}';
     expect(plain(family)).toBe(family);
+  });
+
+  it('keeps no more than a line of any card could hold, however long the text is', () => {
+    expect(plain('x'.repeat(5_000_000))).toHaveLength(PLAIN_MAX);
+  });
+
+  it('cuts first and cleans after, so a cut through a pair leaves no lone surrogate', () => {
+    const cut = plain(`${'a'.repeat(PLAIN_MAX - 1)}\u{1f680}`);
+    expect(() => encodeURIComponent(cut)).not.toThrow();
   });
 });

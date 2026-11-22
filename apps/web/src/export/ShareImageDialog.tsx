@@ -8,6 +8,7 @@ import { HELP } from '../guide/help.js';
 import { toast } from '../state/toasts.js';
 import { creditOf, EDITOR_MAX, editorName, imageFileName, loginName } from './credits.js';
 import { rememberEditor, rememberedEditor } from './editor-name.js';
+import { plain } from './plain-text.js';
 import {
   type Composed,
   canCopyImage,
@@ -51,6 +52,10 @@ export interface ShareImage {
   settings: string;
 }
 
+/** The first layer's name as it goes on the image and in its description. */
+const firstLayerName = (b: ShareBoard): string =>
+  plain(b.compiled.layers[0]?.name ?? '') || 'Layer 1';
+
 /**
  * What the preview shows, in words: each layout with its credit, the layer drawn, and what the
  * colours measure. The image's own text is not read out of an `<img>`, and the colours say what
@@ -63,7 +68,7 @@ function previewAlt(image: ShareImage, editor: string): string {
       `${b.tag ? `${b.tag}: ` : ''}${credit.name}`,
       credit.byline,
       credit.edits,
-      `first layer, ${b.compiled.layers[0]?.name ?? 'Layer 1'}`,
+      `first layer, ${firstLayerName(b)}`,
     ]
       .filter(Boolean)
       .join(', ');
@@ -142,7 +147,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
           svg: prepared.boards[i] as SVGSVGElement,
           tag: b.tag,
           credit: creditOf(b.layout, { unsaved: b.unsaved, editor }),
-          layer: b.compiled.layers[0]?.name ?? 'Layer 1',
+          layer: firstLayerName(b),
           share: b.share === null ? null : `${formatShare(b.share)} of presses`,
         })),
         heat: image.heat,

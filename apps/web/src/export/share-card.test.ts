@@ -336,6 +336,72 @@ describe('composeCard with text that is not plain', () => {
   });
 });
 
+describe('text as long as a link can carry', () => {
+  /** What a time budget allows: the work is that of what fits, which is a few milliseconds. */
+  const BUDGET_MS = 1500;
+  const HUGE = 100_000;
+
+  it('is cut to fit in time that does not grow with its length', () => {
+    // The first is small enough for a quadratic cut to fail it, not hang the run; the rest are not.
+    for (const text of [
+      'a'.repeat(8_000),
+      'a'.repeat(1_000_000),
+      'é '.repeat(500_000),
+      '\u{1f680}'.repeat(300_000),
+    ]) {
+      const started = performance.now();
+      const cut = ellipsize(text, 800, 42);
+      expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+      expect(cut.endsWith('…')).toBe(true);
+      expect(cut.length).toBeLessThan(80);
+    }
+  });
+
+  it('keeps text that fits whole, and cuts only what does not', () => {
+    expect(ellipsize('Romak', 800, 42)).toBe('Romak');
+    expect(ellipsize('', 800, 42)).toBe('');
+    // No room even for the ellipsis: what is left is the ellipsis.
+    expect(ellipsize('Romak', 1, 42)).toBe('…');
+  });
+
+  it('does not cut a character in half, or leave a space before the ellipsis', () => {
+    const cut = ellipsize('\u{1f468}\u200d\u{1f469}\u200d\u{1f467} '.repeat(5000), 400, 42);
+    expect(cut.endsWith('…')).toBe(true);
+    expect(cut).not.toMatch(/ …$/);
+    expect(cut).not.toMatch(/[\ud800-\udbff]…$/);
+  });
+
+  it('makes the whole card in time, whatever field the text is in', () => {
+    const long = 'N'.repeat(HUGE);
+    const credit = creditOf(
+      { name: long, author: long, link: `https://example.com/${'p'.repeat(HUGE)}` },
+      { unsaved: true, editor: long },
+    );
+    const started = performance.now();
+    const { svg } = composeCard({
+      boards: [cardBoard({ credit, layer: long, share: long })],
+      heat: long,
+      heatNote: long,
+      settings: `${'word '.repeat(HUGE / 5)}`,
+      palette,
+    });
+    expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    // The card holds a line of each, not the text: it stays a card, not a megabyte.
+    expect(svg.length).toBeLessThan(200_000);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(500));
+  });
+
+  it('wraps a settings line of one word as long as a link can carry', () => {
+    const started = performance.now();
+    const lines = wrapLines('w'.repeat(1_000_000), 1104, 22, 2);
+    expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.endsWith('…')).toBe(true);
+  });
+});
+
 describe('the source of a layout with a long author', () => {
   it('stays on the card: the author is held to a share of the line', () => {
     const credit = creditOf(

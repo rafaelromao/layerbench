@@ -20,9 +20,20 @@ const segmenter =
     ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
     : null;
 
+/**
+ * The graphemes of `text`, one at a time: a caller that stops early never segments the rest, which
+ * is what keeps a very long text from costing more than the part of it that is used.
+ */
+export function* eachGrapheme(text: string): Generator<string, void, undefined> {
+  if (!segmenter) {
+    yield* text;
+    return;
+  }
+  for (const part of segmenter.segment(text)) yield part.segment;
+}
+
 export function graphemes(text: string): string[] {
-  if (!segmenter) return [...text];
-  return [...segmenter.segment(text)].map((s) => s.segment);
+  return [...eachGrapheme(text)];
 }
 
 /** Advance of one grapheme, in ems. */

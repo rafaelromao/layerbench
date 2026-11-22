@@ -73,6 +73,7 @@ export function creditOf(
 export function imageFileName(names: readonly string[]): string {
   const slug = (name: string) =>
     name
+      .slice(0, 200)
       .normalize('NFKD')
       .replace(/[̀-ͯ]/g, '')
       .toLowerCase()

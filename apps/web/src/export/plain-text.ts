@@ -6,15 +6,23 @@
 const DIRECTION = /[؜‎‏‪-‮⁦-⁩]/g;
 
 /**
+ * The most of a text that is kept: far more than any line of the card holds, and a bound on what
+ * every later step costs, since a name from a link has no length of its own.
+ */
+export const PLAIN_MAX = 2000;
+
+/**
  * Text as it goes on a shared image: one line, with what an image document cannot hold or an
  * address cannot carry taken out. Control characters become spaces; a lone surrogate (which makes
  * `encodeURIComponent` throw) and the two non-characters (which XML refuses) become U+FFFD; the
  * direction marks above go; runs of white space become one space. Anything a layout's author may
- * have written, a name, an author, a link, a text's name, is put through here before it is drawn, so
+ * have written, a name, an author, a link, a text's name, is put through here before it is drawn, cut
+ * to `PLAIN_MAX` first, so
  * no name can stop the card from being made or change how the line beside it reads.
  */
 export function plain(text: string): string {
   return text
+    .slice(0, PLAIN_MAX)
     .replace(/\p{Cs}|[￾￿]/gu, '�')
     .replace(/\p{Cc}/gu, ' ')
     .replace(DIRECTION, '')

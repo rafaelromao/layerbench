@@ -1,4 +1,4 @@
-import { graphemes, textWidth } from '../components/fit-label.js';
+import { eachGrapheme, textWidth } from '../components/fit-label.js';
 import type { Credit } from './credits.js';
 import { plain } from './plain-text.js';
 
@@ -160,15 +160,23 @@ function node<K extends keyof SVGElementTagNameMap>(
   return el;
 }
 
-/** `text` cut short, with an ellipsis, to fit `width` at `size`. */
+/**
+ * `text` cut short, with an ellipsis, to fit `width` at `size`. It walks the text once and stops
+ * the moment the text is known not to fit, so what it costs is the length of what fits and never
+ * that of the text: a name from a link may be as long as a link can carry.
+ */
 export function ellipsize(text: string, width: number, size: number): string {
-  if (textWidth(text, size) <= width) return text;
-  const gs = graphemes(text);
-  for (let n = gs.length - 1; n > 0; n--) {
-    const cut = `${gs.slice(0, n).join('').trimEnd()}…`;
-    if (textWidth(cut, size) <= width) return cut;
+  const room = width - textWidth('…', size);
+  const kept: string[] = [];
+  let used = 0;
+  let keeping = true;
+  for (const g of eachGrapheme(text)) {
+    used += textWidth(g, size);
+    if (used > width) return `${kept.join('').trimEnd()}…`;
+    if (keeping && used <= room) kept.push(g);
+    else keeping = false;
   }
-  return '…';
+  return text;
 }
 
 /** `text` in lines of at most `width` at `size`, at most `max` of them; the last ends in `…`. */

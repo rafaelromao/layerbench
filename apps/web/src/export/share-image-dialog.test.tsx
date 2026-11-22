@@ -230,6 +230,39 @@ describe('the image to share', () => {
   });
 });
 
+describe('names as long as a link can carry', () => {
+  it('opens the dialog at once, and keeps its description and its card to a line of each', async () => {
+    const huge = 'L'.repeat(200_000);
+    const longLayers = compileLayout({
+      ...(qwerty as NonNullable<typeof qwerty>),
+      layers: (qwerty as NonNullable<typeof qwerty>).layers.map((layer, i) =>
+        i === 0 ? { ...layer, name: huge } : layer,
+      ),
+    });
+    const started = performance.now();
+    render(
+      <ShareImageDialog
+        image={image([
+          board({
+            compiled: longLayers,
+            typed: longLayers,
+            layout: { name: huge, author: huge, link: `https://example.com/${huge}` },
+            unsaved: true,
+          }),
+        ])}
+        onClose={() => {}}
+      />,
+    );
+    const alt = (await screen.findByRole('img', { name: /Preview of the image/ })).getAttribute(
+      'alt',
+    );
+    expect(performance.now() - started).toBeLessThan(5000);
+    expect((alt ?? '').length).toBeLessThan(10_000);
+    expect(await previewSvg()).not.toContain('L'.repeat(500));
+    await waitFor(() => expect(download()).toBeEnabled());
+  }, 30_000);
+});
+
 describe('the combos on the image', () => {
   const romak = compileLayout(bundledLayout('magic-romak') as NonNullable<typeof qwerty>);
   /** The boxes of the combos on a board: each is a rect in the group the board draws them in. */
