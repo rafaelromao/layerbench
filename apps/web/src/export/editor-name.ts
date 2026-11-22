@@ -5,7 +5,7 @@
  */
 const KEY = 'layerbench:export-editor';
 
-/** The name typed last, or null when none has been typed (an empty one is a choice, and is kept). */
+/** The name typed last, or null when none has been typed (an empty one is kept: it is a choice). */
 export function rememberedEditor(): string | null {
   try {
     return localStorage.getItem(KEY);

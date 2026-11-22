@@ -433,19 +433,22 @@ are one over the other, on the one scale both boards are coloured on. It also ho
 
 - **Credits.** The layout's name, `by` its author, and the address of its link, as **Settings** in
   **Analyze** gives them. A layout that names no author has no line for one.
-- **Unsaved edits.** A version nobody has saved, such as an edit that is not saved yet, a link that
-  carries changes, or what **Compare** was sent from an edited layout, is marked *unsaved*, and its
-  image says `Unsaved edits by` and a name, beside the author's, so the edits are not taken for the
-  author's own. The dialog asks for the name above the picture, and the picture shows it as you type.
-  It starts as the name you typed last, which this browser remembers, or, if you have typed none,
-  as your GitHub name (`@name`) when you are signed in; leave it empty and the image says only
-  `Unsaved edits`. LayerBench cannot tell who made the edits: the name is yours to give, and the picture is
-  of whatever it says. A layout you save has no such line, and its image is of the saved version.
+- **Unsaved edits.** A version nobody has saved, such as an edit that is not saved yet, a custom
+  layout opened from a link that carries other changes, or what **Compare** was sent from an edited
+  layout, is marked *unsaved*, and its image says `Unsaved edits by` and a name, beside the
+  author's, so the edits are not taken for the author's own. The dialog asks for the name above the
+  picture, and the picture shows it as you type. It starts as the name you typed last, which this
+  browser remembers, or, if you have typed none, as your GitHub name (`@name`) when you are signed
+  in; leave it empty and the image says only `Unsaved edits`. LayerBench cannot tell who made the
+  edits: the name is yours to give, and the picture is of whatever it says. A layout you save has no
+  such line, and its image is of the saved version. A layout you were sent whole in a link is not an
+  edit of yours, and is credited to its author alone.
 - **What the numbers were made on.** The text, the rule set and the switches, as the line beside
   **Settings** says them, so a picture of one text is not read as a picture of another.
 
 The image is made in your browser and goes nowhere until you post it: **Download PNG** saves it, and
-**Copy image**, where the browser allows it, puts it on the clipboard to paste into a post or a chat.
+**Copy image**, where the browser allows it, puts it on the clipboard to paste into a post or a
+chat.
 It is drawn in the theme you have on, light or dark. The names, the author and the link come from
 the layout, and so may be from someone else's link: control characters and those that change which
 way a line reads are taken out before the image is drawn.

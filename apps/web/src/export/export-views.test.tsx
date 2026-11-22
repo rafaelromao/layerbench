@@ -1,8 +1,9 @@
 import { bundledLayout, type Layout, toCanonicalJson } from '@layerbench/core';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AnalysisClient } from '../engine/protocol.js';
+import { tabDrafts } from '../layout-session/drafts.js';
 import { freshStorage, key } from '../test/analyze-editing.js';
 import { showLayer, shownLayer } from '../test/layers.js';
 import { renderRoute, testClient } from '../test/render.js';
@@ -48,6 +49,9 @@ function gatedEngine(): { client: AnalysisClient; hold: () => void; release: () 
     },
   };
 }
+
+// A draft is this tab's own record; one test's must not be the next one's.
+afterEach(() => sessionStorage.clear());
 
 const exportButton = () => screen.getByRole('button', { name: 'Export image' });
 const dialog = () => screen.getByRole('dialog', { name: 'Export image' });
@@ -96,6 +100,23 @@ describe('Export image in Analyze', () => {
     expect(svg).not.toContain('>Numbers<');
     expect(svg).toContain('>e<');
     expect(svg).not.toContain('>7<');
+  }, 60_000);
+
+  it('credits only the author of a layout opened whole from a link that is no draft of this tab', async () => {
+    const user = userEvent.setup();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const { id: _id, ...rest } = qwerty;
+    const link = inlineRef(await encodeInline({ ...rest, name: 'Qwerty, theirs' } as Layout));
+    const search = new URLSearchParams({ layout: link });
+    renderRoute(`/analyze?${search}&corpus=en-general&sample=1000`, { storage: freshStorage() });
+    await screen.findByRole('list', { name: 'Summary metrics' }, { timeout: 25_000 });
+    await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
+
+    await user.click(exportButton());
+    // Analyze marks no such layout unsaved either: nothing here was edited by whoever opened it.
+    expect(screen.queryByTitle('Unsaved changes', { exact: true })).toBeNull();
+    expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
+    expect(await previewSvg()).toContain('Qwerty, theirs');
   }, 60_000);
 
   it('asks who made the edits of a layout opened from a link that carries changes not saved', async () => {
@@ -199,6 +220,8 @@ describe('Export image in Compare', () => {
     // The edits of a bundled layout, as Analyze sends them along: carried whole, with no id.
     const { id: _id, ...rest } = qwerty;
     const draft = inlineRef(await encodeInline({ ...rest, name: 'Qwerty, my way' } as Layout));
+    // Analyze writes the draft and the tab remembers it, so Compare knows these edits are this tab's.
+    tabDrafts().remember(draft, null);
     const search = new URLSearchParams({ layout: draft, b: 'magic-romak' });
     renderRoute(`/compare?${search}&corpus=en-general&sample=1000`, { storage: freshStorage() });
     await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
@@ -213,6 +236,21 @@ describe('Export image in Compare', () => {
     expect(svg.match(/Unsaved edits/g)).toHaveLength(1);
   }, 60_000);
 
+  it('credits only the author of a layout carried whole in a link that is no draft of this tab', async () => {
+    const user = userEvent.setup();
+    const qwerty = bundledLayout('qwerty') as Layout;
+    const { id: _id, ...rest } = qwerty;
+    // Someone else's link: the layout whole, with no record in this tab of anyone editing it.
+    const link = inlineRef(await encodeInline({ ...rest, name: 'Qwerty, theirs' } as Layout));
+    const search = new URLSearchParams({ layout: link, b: 'magic-romak' });
+    renderRoute(`/compare?${search}&corpus=en-general&sample=1000`, { storage: freshStorage() });
+    await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
+
+    await user.click(exportButton());
+    expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
+    expect(await previewSvg()).not.toContain('Unsaved edits');
+  }, 60_000);
+
   it('names the edits of a custom layout carried with changes that are not saved in it', async () => {
     const user = userEvent.setup();
     const storage = freshStorage();
@@ -221,7 +259,7 @@ describe('Export image in Compare', () => {
     const edited = inlineRef(await encodeInline({ ...mine, description: 'edited' }));
     const search = new URLSearchParams({ layout: edited, b: 'custom:mine' });
     renderRoute(`/compare?${search}&corpus=en-general&sample=1000`, { storage });
-    // Compare puts the saved layout in the link whole, as it opens, and opens both again from it:
+    // Compare puts the custom layout in the link whole, as it opens, and opens both again from it:
     // the button is for the layouts once they have settled.
     await waitFor(
       () =>

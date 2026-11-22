@@ -131,6 +131,41 @@ test('Compare: one PNG of both layouts, one over the other', async ({ page }) =>
   expect(svg).toContain('B · Graphite');
   expect(svg).toContain('one scale for both layouts');
   expect(svg).not.toContain('var(');
+  expect(svg).not.toContain('color-mix');
+  // Both boards are coloured: many fills, not the one of a board with no heat.
+  const fills = new Set([...svg.matchAll(/<rect[^>]*style="fill:([^;"]+)/g)].map((m) => m[1]));
+  expect(fills.size).toBeGreaterThan(4);
+  expect(found).toEqual([]);
+});
+
+test('Compare: an edit sent from Analyze is credited to the name given, and only on its side', async ({
+  page,
+}) => {
+  test.slow();
+  const found = problems(page);
+  await page.goto(ANALYZE);
+  const rename = page.getByRole('textbox', { name: 'Name', exact: true }).first();
+  await rename.fill('Magic Romak (my tweak)');
+  await rename.press('Tab');
+  await expect(page.getByTitle('Unsaved changes', { exact: true })).toBeVisible();
+  // The edit travels in the link, and this tab remembers it wrote it.
+  await page.getByRole('button', { name: 'Compare', exact: true }).click();
+  await page.waitForURL(/\/compare/);
+
+  const open = page.getByRole('button', { name: 'Export image' });
+  await expect(open).toBeEnabled({ timeout: 60_000 });
+  await open.click();
+  const dialog = page.getByRole('dialog', { name: 'Export image' });
+  await dialog.getByLabel('Unsaved edits by').fill('@someone');
+  await expect(dialog.getByRole('button', { name: 'Download PNG' })).toBeEnabled({
+    timeout: 30_000,
+  });
+
+  const svg = await previewSvg(page);
+  expect(svg).toContain('A · Magic Romak (my tweak)');
+  expect(svg).toContain('B · Qwerty');
+  // One line of it: Qwerty, as it comes with the app, is nobody's edit.
+  expect(svg.match(/Unsaved edits by @someone/g)).toHaveLength(1);
   expect(found).toEqual([]);
 });
 

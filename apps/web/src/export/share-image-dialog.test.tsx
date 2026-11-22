@@ -57,7 +57,7 @@ async function previewSvg(): Promise<string> {
 }
 
 /** Type @bia into the field of unsaved edits. */
-async function user_type_name() {
+async function typeEditorName() {
   const user = userEvent.setup();
   await user.type(screen.getByLabelText('Unsaved edits by'), '@bia');
 }
@@ -189,7 +189,7 @@ describe('the image to share', () => {
 
   it('says what it shows to a screen reader: the credits, the layer and what the colours measure', async () => {
     render(<ShareImageDialog image={image([board({ unsaved: true })])} onClose={() => {}} />);
-    await user_type_name();
+    await typeEditorName();
     const alt = (await screen.findByRole('img', { name: /Preview of the image/ })).getAttribute(
       'alt',
     );
@@ -227,6 +227,30 @@ describe('the image to share', () => {
     await user.type(screen.getByLabelText('Unsaved edits by'), 'Bia');
     await waitFor(() => expect(download()).toBeEnabled());
     expect(card.renderPng).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the combos on the image', () => {
+  const romak = compileLayout(bundledLayout('magic-romak') as NonNullable<typeof qwerty>);
+  /** The boxes of the combos on a board: each is a rect in the group the board draws them in. */
+  const rects = (svg: string) => (svg.match(/<rect/g) ?? []).length;
+
+  it('draws the combos that type on the first layer when the page does, and not when it does not', async () => {
+    const withCombos = render(
+      <ShareImageDialog
+        image={image([board({ compiled: romak, typed: romak, combos: true })])}
+        onClose={() => {}}
+      />,
+    );
+    const drawn = rects(await previewSvg());
+    withCombos.unmount();
+    render(
+      <ShareImageDialog
+        image={image([board({ compiled: romak, typed: romak, combos: false })])}
+        onClose={() => {}}
+      />,
+    );
+    expect(drawn).toBeGreaterThan(rects(await previewSvg()));
   });
 });
 
@@ -292,6 +316,24 @@ describe('who made the unsaved edits', () => {
     const field = screen.getByLabelText('Unsaved edits by');
     await user.type(field, 'x'.repeat(80));
     expect((field as HTMLInputElement).value).toHaveLength(40);
+  });
+
+  it('says which layout the hint is about when only one of two is unsaved', () => {
+    const two = image([
+      board({ tag: 'A' }),
+      board({ tag: 'B', unsaved: true, layout: { name: 'Colemak DH' } }),
+    ]);
+    render(<ShareImageDialog image={two} onClose={() => {}} />);
+    expect(screen.getByText(/Layout B has changes that are not saved/)).toBeInTheDocument();
+  });
+
+  it('says so of both when both are unsaved, and of the one when one is shown', () => {
+    const both = image([board({ tag: 'A', unsaved: true }), board({ tag: 'B', unsaved: true })]);
+    const first = render(<ShareImageDialog image={both} onClose={() => {}} />);
+    expect(screen.getByText(/These layouts have changes that are not saved/)).toBeInTheDocument();
+    first.unmount();
+    render(<ShareImageDialog image={unsaved()} onClose={() => {}} />);
+    expect(screen.getByText(/This layout has changes that are not saved/)).toBeInTheDocument();
   });
 
   it('marks only the layout that is unsaved, when two are compared', async () => {

@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { creditOf } from './credits.js';
 import {
   CARD_WIDTH,
   type CardBoard,
+  canCopyImage,
   composeCard,
+  copyImage,
   ellipsize,
   inlineBoard,
   type Palette,
@@ -331,6 +333,76 @@ describe('composeCard with text that is not plain', () => {
     const text = parse(svg).documentElement.textContent ?? '';
     expect(text).not.toMatch(/[\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c]/);
     expect(text).toContain('Romak kamoR');
+  });
+});
+
+describe('the source of a layout with a long author', () => {
+  it('stays on the card: the author is held to a share of the line', () => {
+    const credit = creditOf(
+      { name: 'Romak', author: 'A'.repeat(300), link: 'https://example.com/romak' },
+      { unsaved: false, editor: '' },
+    );
+    const { svg } = composeCard({
+      boards: [cardBoard({ credit })],
+      heat: 'Usage',
+      heatNote: null,
+      settings: '',
+      palette,
+    });
+    const text = parse(svg).documentElement.textContent ?? '';
+    expect(text).toContain('example.com/romak');
+    expect(text).toContain('…');
+  });
+});
+
+describe('the clipboard', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  /** A `ClipboardItem` as a browser makes one: what it was given, by type. */
+  class FakeClipboardItem {
+    constructor(readonly types: Record<string, Blob>) {}
+  }
+
+  function withClipboard(write: (items: FakeClipboardItem[]) => Promise<void>) {
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem);
+    Object.defineProperty(navigator, 'clipboard', { value: { write }, configurable: true });
+  }
+
+  it('is offered where the browser has both a clipboard that writes and a clipboard item', () => {
+    withClipboard(async () => {});
+    expect(canCopyImage()).toBe(true);
+  });
+
+  it('is not offered without a clipboard item, or without one that writes', () => {
+    withClipboard(async () => {});
+    vi.stubGlobal('ClipboardItem', undefined);
+    expect(canCopyImage()).toBe(false);
+    vi.stubGlobal('ClipboardItem', FakeClipboardItem);
+    Object.defineProperty(navigator, 'clipboard', { value: {}, configurable: true });
+    expect(canCopyImage()).toBe(false);
+  });
+
+  it('puts the PNG on it as image/png, which is what a post or a chat pastes', async () => {
+    const written: FakeClipboardItem[][] = [];
+    withClipboard(async (items) => {
+      written.push(items);
+    });
+    const png = new Blob(['png'], { type: 'image/png' });
+    await copyImage(png);
+    expect(written).toHaveLength(1);
+    expect(written[0]).toHaveLength(1);
+    expect(Object.keys(written[0]?.[0]?.types ?? {})).toEqual(['image/png']);
+    expect(written[0]?.[0]?.types['image/png']).toBe(png);
+  });
+
+  it('lets the browser’s refusal reach the caller, which says so', async () => {
+    withClipboard(async () => {
+      throw new DOMException('denied', 'NotAllowedError');
+    });
+    await expect(copyImage(new Blob(['png'], { type: 'image/png' }))).rejects.toThrow('denied');
   });
 });
 

@@ -97,6 +97,14 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
   const [typed, setTyped] = useState(() => rememberedEditor() ?? loginName(login));
   const editor = editorName(typed);
   const edited = image.boards.some((b) => b.unsaved);
+  // Which of the layouts the hint is about: all, or the one of two that is not saved.
+  const unsavedBoards = image.boards.filter((b) => b.unsaved);
+  const whoseEdits =
+    unsavedBoards.length < image.boards.length
+      ? `Layout ${unsavedBoards.map((b) => b.tag).join(' and ')} has`
+      : image.boards.length > 1
+        ? 'These layouts have'
+        : 'This layout has';
 
   const combos = useMemo(
     () => image.boards.map((b) => (b.combos ? typingCombos(b.typed, 0) : [])),
@@ -217,9 +225,8 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
               }}
             />
             <p id={editorHint} className="mt-1 text-xs opacity-70">
-              {image.boards.length > 1 ? 'These layouts have' : 'This layout has'} changes that are
-              not saved, so the image names who made them beside the author. Leave it empty to name
-              no one.
+              {whoseEdits} changes that are not saved, so the image names who made them beside the
+              author. Leave it empty to name no one.
             </p>
           </div>
         )}

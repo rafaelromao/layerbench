@@ -171,7 +171,7 @@ export function ellipsize(text: string, width: number, size: number): string {
   return '…';
 }
 
-/** `text` in lines of at most `width` at `size`, no more than `max` of them; the last ends in `…`. */
+/** `text` in lines of at most `width` at `size`, at most `max` of them; the last ends in `…`. */
 export function wrapLines(text: string, width: number, size: number, max: number): string[] {
   const lines: string[] = [];
   let line = '';
@@ -288,7 +288,9 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
     }
     y += 58;
 
-    const meta = [credit.byline, credit.source].filter(Boolean).join(' · ');
+    // The author is held to a share of the line, so a long name cannot push the source off it.
+    const byline = credit.byline ? ellipsize(credit.byline, INNER * 0.55, CREDIT) : null;
+    const meta = [byline, credit.source].filter(Boolean).join(' · ');
     if (meta) {
       body.append(
         label(ellipsize(meta, INNER, CREDIT), PAD, y + 22, {

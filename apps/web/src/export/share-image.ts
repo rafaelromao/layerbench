@@ -7,7 +7,6 @@ import {
   layerShare,
 } from '../engine/heat.js';
 import type { HeatMode } from '../url/params.js';
-import { parseLayoutRef } from '../url/params.js';
 import type { ShareBoard, ShareImage } from './ShareImageDialog.js';
 
 /** One layout as Analyze or Compare has it open, with the numbers its heat is drawn from. */
@@ -80,18 +79,16 @@ function board(
 }
 
 /**
- * Whether a layout Compare has opened is a version saved nowhere here: a custom layout carried with
- * changes that are not saved in it, or a layout carried whole that is no saved layout, such as the
- * edits of a bundled layout that Analyze sends along when it opens Compare. A layout named by a
+ * Whether a layout Compare has opened is a version saved nowhere, as Analyze counts it (the *unsaved*
+ * of its bar): a custom layout carried with changes that are not saved in it, or a draft this tab
+ * wrote, which is what Analyze sends along when it opens Compare on an edited layout (`madeHere`:
+ * the tab's own record of them). A layout carried whole in a link someone else made is no edit of
+ * this browser's, in Analyze or here, so its image credits the author alone; a layout named by a
  * bundled, community or custom id is the layout as it is kept.
  */
-export function unsavedVersion(opened: {
-  ref: string | null;
-  storedId: string | null;
-  unsaved: boolean;
-}): boolean {
-  if (opened.unsaved) return true;
-  return (
-    opened.storedId === null && opened.ref !== null && parseLayoutRef(opened.ref).kind === 'inline'
-  );
+export function unsavedVersion(
+  opened: { ref: string | null; unsaved: boolean },
+  madeHere: (ref: string) => boolean,
+): boolean {
+  return opened.unsaved || (opened.ref !== null && madeHere(opened.ref));
 }

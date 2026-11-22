@@ -6,7 +6,7 @@ import { analyzeImage, compareImage, type SharedLayout, unsavedVersion } from '.
 const layout = bundledLayout('qwerty') as Layout;
 const compiled = compileLayout(layout);
 
-/** A report of presses on two layers: 8 and 2 on the first layer's keys 0 and 1, 10 on the second's. */
+/** A report of presses on two layers: 8 and 2 on the first's keys 0 and 1, 10 on the second's. */
 function report(over: Partial<HeatSource> = {}): HeatSource {
   const first = new Array(compiled.keys.length).fill(0);
   first[0] = 8;
@@ -81,25 +81,33 @@ describe('the image of two layouts in Compare', () => {
 });
 
 describe('an unsaved version, in Compare', () => {
+  const never = () => false;
+  const drafts =
+    (...made: string[]) =>
+    (ref: string) =>
+      made.includes(ref);
+
   it('is a custom layout carried with changes that are not saved in it', () => {
-    expect(unsavedVersion({ ref: 'inline:abc', storedId: 'mine', unsaved: true })).toBe(true);
+    expect(unsavedVersion({ ref: 'inline:abc', unsaved: true }, never)).toBe(true);
   });
 
-  it('is a layout carried whole that no saved layout is: the edits Analyze sends along', () => {
-    expect(unsavedVersion({ ref: 'inline:abc', storedId: null, unsaved: false })).toBe(true);
+  it('is a draft this tab wrote: the edits Analyze sends along when it opens Compare', () => {
+    expect(unsavedVersion({ ref: 'inline:abc', unsaved: false }, drafts('inline:abc'))).toBe(true);
   });
 
-  it('is not a layout carried whole that is the saved one', () => {
-    expect(unsavedVersion({ ref: 'inline:abc', storedId: 'mine', unsaved: false })).toBe(false);
+  it('is not a layout carried whole in a link someone else made, as in Analyze', () => {
+    expect(unsavedVersion({ ref: 'inline:abc', unsaved: false }, drafts('inline:other'))).toBe(
+      false,
+    );
   });
 
   it('is not a bundled, community or custom layout named by its id', () => {
-    expect(unsavedVersion({ ref: 'qwerty', storedId: null, unsaved: false })).toBe(false);
-    expect(unsavedVersion({ ref: 'community:ana-1', storedId: null, unsaved: false })).toBe(false);
-    expect(unsavedVersion({ ref: 'custom:mine', storedId: 'mine', unsaved: false })).toBe(false);
+    for (const ref of ['qwerty', 'community:ana-1', 'custom:mine']) {
+      expect(unsavedVersion({ ref, unsaved: false }, never)).toBe(false);
+    }
   });
 
   it('is not known for a layout not opened yet', () => {
-    expect(unsavedVersion({ ref: null, storedId: null, unsaved: false })).toBe(false);
+    expect(unsavedVersion({ ref: null, unsaved: false }, drafts('inline:abc'))).toBe(false);
   });
 });

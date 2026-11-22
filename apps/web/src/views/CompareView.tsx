@@ -30,6 +30,7 @@ import { ExportImageButton } from '../export/ExportImageButton.js';
 import { type ShareImage, ShareImageDialog } from '../export/ShareImageDialog.js';
 import { compareImage, unsavedVersion } from '../export/share-image.js';
 import { HELP, rulerShown } from '../guide/help.js';
+import { tabDrafts } from '../layout-session/drafts.js';
 import { carriedRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
@@ -218,6 +219,8 @@ export function CompareView() {
         : 'Available once both layouts are scored';
   const exportImage = () => {
     if (!(a.layout && b.layout && a.compiled && b.compiled && scoredA && scoredB)) return;
+    // The edits this tab sent along from Analyze are this user's; a link someone else made is not.
+    const madeHere = (ref: string) => tabDrafts().originOf(ref) !== undefined;
     setSharing(
       compareImage(
         {
@@ -225,7 +228,7 @@ export function CompareView() {
           compiled: a.compiled,
           typed: typedA ?? a.compiled,
           report: scoredA,
-          unsaved: unsavedVersion(a),
+          unsaved: unsavedVersion(a, madeHere),
           combos: true,
         },
         {
@@ -233,7 +236,7 @@ export function CompareView() {
           compiled: b.compiled,
           typed: typedB ?? b.compiled,
           report: scoredB,
-          unsaved: unsavedVersion(b),
+          unsaved: unsavedVersion(b, madeHere),
           combos: true,
         },
         params.heat,
