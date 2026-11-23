@@ -1,6 +1,6 @@
 import { type CorpusManifest, layoutLanguages, toCanonicalJson } from '@layerbench/core';
 import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
 import { ErrorAlert } from '../components/ErrorAlert.js';
 import { FamilyFilter, useFamilyShown } from '../components/FamilyFilter.js';
@@ -53,6 +53,12 @@ import { type LayoutState, useLayout, useTypedLayout } from './useLayout.js';
 
 const DEFAULT_B = 'qwerty';
 
+interface PendingPortableLayouts {
+  rules: string;
+  rulesSnapshot?: string;
+  waiting: Partial<Record<'layout' | 'b', string>>;
+}
+
 /** A loaded custom layout may stand in during its own local-ID-to-inline URL replacement. */
 async function capturedLayoutRef(ref: string, loaded: LayoutState): Promise<string | null> {
   if (!loaded.layout || !loaded.compiled) return null;
@@ -79,7 +85,12 @@ function parsedLayer(value: string | undefined): number {
  * whole, its id inside, as Analyze's does, so a link to the comparison opens anywhere: an id opens
  * only where the layout is saved.
  */
-function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState) {
+function useCarriedInLink(
+  key: 'layout' | 'b',
+  ref: string,
+  loaded: LayoutState,
+  pendingPortable: { current: PendingPortableLayouts | null },
+) {
   const navigate = useNavigate();
   const { layout, storedId } = loaded;
   const opened = loaded.ref === ref;
@@ -88,6 +99,35 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
     let cancelled = false;
     void carriedRef(ref, { layout, storedId }).then((carried) => {
       if (cancelled || carried === ref) return;
+      const pending = pendingPortable.current;
+      if (pending?.waiting[key] === ref) {
+        const waiting = { ...pending.waiting };
+        delete waiting[key];
+        const complete = Object.keys(waiting).length === 0;
+        pendingPortable.current = { ...pending, waiting };
+        navigate({
+          to: '/compare',
+          search: ((prev: RawSearch) => {
+            const keepPortable = complete && prev.rules === pending.rules;
+            if (complete && !keepPortable) pendingPortable.current = null;
+            return {
+              ...prev,
+              [key]: carried,
+              ...(keepPortable
+                ? {
+                    share: '1',
+                    ...(pending.rulesSnapshot !== undefined
+                      ? { rulesSnapshot: pending.rulesSnapshot }
+                      : {}),
+                  }
+                : {}),
+            };
+          }) as never,
+          replace: true,
+          resetScroll: false,
+        });
+        return;
+      }
       navigate({
         to: '/compare',
         search: ((prev: RawSearch) => ({ ...prev, [key]: carried })) as never,
@@ -98,7 +138,7 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
     return () => {
       cancelled = true;
     };
-  }, [key, ref, opened, layout, storedId, navigate]);
+  }, [key, ref, opened, layout, storedId, navigate, pendingPortable]);
 }
 
 /**
@@ -118,16 +158,23 @@ function heatSource(
 
 export function CompareView() {
   const search = useSearch({ strict: false }) as RawSearch;
+  const pendingPortable = useRef<PendingPortableLayouts | null>(null);
   const portable = parsePortableSearch('compare', search, window.location.href);
   if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
   return portable?.ok ? (
-    <PortableCompareGate search={portable.search} />
+    <PortableCompareGate search={portable.search} pendingPortable={pendingPortable} />
   ) : (
-    <ComparePage search={search} />
+    <ComparePage search={search} pendingPortable={pendingPortable} />
   );
 }
 
-function PortableCompareGate({ search }: { search: RawSearch }) {
+function PortableCompareGate({
+  search,
+  pendingPortable,
+}: {
+  search: RawSearch;
+  pendingPortable: { current: PendingPortableLayouts | null };
+}) {
   const { corpora, loaded } = useCorporaState();
   const params = useMemo(() => parseParams(search), [search]);
   if (!loaded)
@@ -141,16 +188,18 @@ function PortableCompareGate({ search }: { search: RawSearch }) {
   return error ? (
     <ErrorAlert message={error} />
   ) : (
-    <ComparePage search={search} sharedCorpora={corpora} />
+    <ComparePage search={search} sharedCorpora={corpora} pendingPortable={pendingPortable} />
   );
 }
 
 function ComparePage({
   search,
   sharedCorpora,
+  pendingPortable,
 }: {
   search: RawSearch;
   sharedCorpora?: CorpusManifest[];
+  pendingPortable: { current: PendingPortableLayouts | null };
 }) {
   const navigate = useNavigate();
   const router = useRouter();
@@ -181,8 +230,8 @@ function ComparePage({
   const custom = useCollection('layouts');
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
-  useCarriedInLink('layout', params.layoutRef, a);
-  useCarriedInLink('b', refB, b);
+  useCarriedInLink('layout', params.layoutRef, a, pendingPortable);
+  useCarriedInLink('b', refB, b, pendingPortable);
   // Both sides are typed without the same features, as the Library ranks them. Each board draws
   // the keys as written and the combos as typed, as Analyze's does; the heat lands on the keys it
   // was measured on either way.
@@ -193,7 +242,7 @@ function ComparePage({
   const languagesB = useMemo(() => (b.compiled ? layoutLanguages(b.compiled) : []), [b.compiled]);
   const settings = useAnalysisSettings(
     settingsOf(params),
-    search.share === '1' ? search.rulesSnapshot : undefined,
+    search.share === '1' ? search.rulesSnapshot : pendingPortable.current?.rulesSnapshot,
   );
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
@@ -251,18 +300,46 @@ function ComparePage({
       if (selectedA > 0) next.layerA = String(selectedA);
       if (selectedB > 0) next.layerB = String(selectedB);
       const portableRulesUnchanged = rest.preset === undefined || rest.preset === params.preset;
+      const portableSource =
+        search.share === '1'
+          ? {
+              rules: params.preset,
+              ...(search.rulesSnapshot !== undefined && {
+                rulesSnapshot: search.rulesSnapshot,
+              }),
+            }
+          : pendingPortable.current && Object.keys(pendingPortable.current.waiting).length > 0
+            ? pendingPortable.current
+            : null;
       const canStayPortable =
-        customId(next.layout ?? '') === null &&
-        customId(next.b ?? '') === null &&
         customId(next.corpus ?? '') === null &&
         customId(next.corpus2 ?? '') === null &&
         (!corporaLoaded ||
           portableCorpusError(next.corpus ?? params.corpus, next.corpus2 ?? null, corpora) ===
             null);
-      if (search.share === '1' && portableRulesUnchanged && canStayPortable) {
-        next.share = '1';
-        if (search.rulesSnapshot && customId(next.rules ?? '') !== null)
-          next.rulesSnapshot = search.rulesSnapshot;
+      if (portableSource && portableRulesUnchanged && canStayPortable) {
+        const waiting = {
+          ...(customId(next.layout ?? '') !== null && { layout: next.layout }),
+          ...(customId(next.b ?? '') !== null && { b: next.b }),
+        };
+        if (Object.keys(waiting).length > 0) {
+          pendingPortable.current = {
+            rules: portableSource.rules,
+            ...(portableSource.rulesSnapshot !== undefined && {
+              rulesSnapshot: portableSource.rulesSnapshot,
+            }),
+            waiting,
+          };
+          if (portableSource.rulesSnapshot !== undefined)
+            next.rulesSnapshot = portableSource.rulesSnapshot;
+        } else {
+          pendingPortable.current = null;
+          next.share = '1';
+          if (portableSource.rulesSnapshot !== undefined && customId(next.rules ?? '') !== null)
+            next.rulesSnapshot = portableSource.rulesSnapshot;
+        }
+      } else {
+        pendingPortable.current = null;
       }
       navigate({
         to: '/compare',
@@ -277,6 +354,7 @@ function ComparePage({
       corporaLoaded,
       navigate,
       params,
+      pendingPortable,
       refB,
       search.layerA,
       search.layerB,

@@ -1,5 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { customId } from '../custom/ref.js';
 import { DEFAULT_PARAMS, parseParams, type RawSearch, toSearch } from '../url/params.js';
 import { isPortableLayoutRef } from '../url/share-target.js';
 import type { LinkPort } from './session.js';
@@ -13,6 +14,7 @@ type Navigate = ReturnType<typeof useNavigate>;
  */
 export class RouterLink implements LinkPort {
   private readonly listeners = new Set<(ref: string) => void>();
+  private pendingPortableOpen: { rulesSnapshot?: string } | null = null;
 
   constructor(
     private ref: string,
@@ -30,11 +32,35 @@ export class RouterLink implements LinkPort {
       // Written onto whatever the link holds by then, so settings changed meanwhile stay. A layout
       // picked starts on its first layer.
       search: ((prev: RawSearch) => {
+        if (how === 'edit' && this.pendingPortableOpen && ref.startsWith('inline:')) {
+          const pending = this.pendingPortableOpen;
+          this.pendingPortableOpen = null;
+          const next = toSearch(parseParams(prev), {
+            layoutRef: ref,
+            layer: DEFAULT_PARAMS.layer,
+          });
+          return {
+            ...next,
+            share: '1',
+            ...(pending.rulesSnapshot !== undefined
+              ? { rulesSnapshot: pending.rulesSnapshot }
+              : {}),
+          };
+        }
         if (how === 'edit') return { ...prev, layout: ref };
+        if (prev.share === '1' && customId(ref) !== null) {
+          // A portable target cannot name a local id. Let the session open the selected layout and
+          // write its inline reference before changing the URL, keeping its rules snapshot intact.
+          this.pendingPortableOpen = {
+            ...(prev.rulesSnapshot !== undefined && { rulesSnapshot: prev.rulesSnapshot }),
+          };
+          return prev;
+        }
         const next = toSearch(parseParams(prev), {
           layoutRef: ref,
           layer: DEFAULT_PARAMS.layer,
         });
+        this.pendingPortableOpen = null;
         return String(prev.share) === '1' && isPortableLayoutRef(ref)
           ? {
               ...next,

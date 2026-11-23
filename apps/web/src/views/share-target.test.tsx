@@ -6,8 +6,10 @@ import { dragKey } from '../test/analyze-editing.js';
 import { showLayer, shownLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
-import { openSettings, renderRoute, testClient } from '../test/render.js';
+import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
 import { decodeInline } from '../url/inline.js';
+import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
+import { buildPortableTarget } from '../url/share-target.js';
 
 afterEach(() => {
   cleanup();
@@ -191,6 +193,135 @@ describe('portable Analyze links', () => {
     expect(reloaded.currentPath()).toBe('/compare');
     expect(new URLSearchParams(reloaded.currentSearch()).get('share')).toBe('1');
     expect(new URLSearchParams(reloaded.currentSearch()).get('rulesSnapshot')).toMatch(/^v1\./);
+  }, 60_000);
+
+  it('keeps shared custom rules when a custom Analyze layout is selected', async () => {
+    const user = userEvent.setup();
+    const sharedRules = {
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    };
+    const snapshot = encodeRuleSnapshot(sharedRules);
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    await storage.put('rulesets', 'strict', {
+      ...getPreset('layouts_doc'),
+      id: 'strict',
+      name: 'Different Local Strict',
+    });
+    await storage.put('layouts', 'mine', {
+      ...toCanonicalJson(bundledLayout('colemak')!),
+      id: 'mine',
+      name: 'My Layout',
+    });
+    const get = vi.spyOn(storage, 'get');
+    const client = new RecordingClient();
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    const picker = screen.getByRole('combobox', { name: 'Layout' });
+    await user.selectOptions(picker, 'custom:mine');
+
+    await waitFor(async () => {
+      expect(await customInLink(source.currentSearch())).toBe('mine');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('share')).toBe('1');
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    await waitFor(() => expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict'));
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+  }, 60_000);
+
+  it('keeps shared custom rules when a custom Compare layout is selected', async () => {
+    const user = userEvent.setup();
+    const sharedRules = {
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    };
+    const snapshot = encodeRuleSnapshot(sharedRules);
+    const href = await buildPortableTarget({
+      baseHref: '/compare',
+      origin: window.location.origin,
+      route: 'compare',
+      search: {
+        layout: 'qwerty',
+        b: 'colemak',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    await storage.put('rulesets', 'strict', {
+      ...getPreset('layouts_doc'),
+      id: 'strict',
+      name: 'Different Local Strict',
+    });
+    await storage.put('layouts', 'mine', {
+      ...toCanonicalJson(bundledLayout('dvorak')!),
+      id: 'mine',
+      name: 'My Layout',
+    });
+    await storage.put('layouts', 'theirs', {
+      ...toCanonicalJson(bundledLayout('colemak')!),
+      id: 'theirs',
+      name: 'Their Layout',
+    });
+    const get = vi.spyOn(storage, 'get');
+    const client = new RecordingClient();
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+    await screen.findByRole('group', { name: 'Layers of B' });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout A' }), 'custom:mine');
+
+    await waitFor(async () => {
+      expect(await customInLink(source.currentSearch())).toBe('mine');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('share')).toBe('1');
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    await waitFor(() => {
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout B' }), 'custom:theirs');
+    await waitFor(async () => {
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('share')).toBe('1');
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+      const refB = search.get('b') ?? '';
+      expect(refB).toMatch(/^inline:/);
+      const decodedB = await decodeInline(refB.slice('inline:'.length));
+      expect(decodedB).toMatchObject({ ok: true, layout: { id: 'theirs' } });
+    });
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
   }, 60_000);
 
   it('shows an error instead of loading a local custom set when a portable snapshot is missing', async () => {
