@@ -1,0 +1,107 @@
+---
+name: sandman-back-merge
+description: Safely merges a base branch into the current branch and resolves merge conflicts with a disciplined 3-way workflow that avoids history rewrites. Use when user says sandman back-merge, when preparing a branch to catch up with its base branch, when the user asks to merge the base branch (main, master, develop, or another) into the current branch, or when avoiding force-push is a hard rule.
+---
+
+# Merge
+
+## Quick start
+
+Use this workflow to merge `<base-branch>` into the current branch without rebasing:
+
+```bash
+git status --short
+git fetch origin
+git merge-base --is-ancestor "origin/<base-branch>" HEAD
+git merge "origin/<base-branch>"
+```
+
+If `git merge-base --is-ancestor` succeeds, the current branch already contains the base branch and no merge is needed.
+
+## Base branch
+
+`<base-branch>` is the branch this workflow merges into the current branch.
+This skill is shared by every repository on the machine, so it carries no
+repository value. Use the first source that provides it:
+
+1. The caller. In a Sandman-managed run, the Task's `Base branch` is that value and always wins.
+2. The base of the open pull request for the current branch.
+3. `git.base_branch` in the repository's `.sandman/config.yaml`.
+4. The repository's default branch.
+
+Never assume `main`.
+
+```bash
+gh pr view --json baseRefName --jq .baseRefName                   # open pull request base, if any
+gh repo view --json defaultBranchRef --jq .defaultBranchRef.name  # repository default branch
+```
+
+## Guardrails
+
+- Never rebase as part of this skill.
+- Never force-push.
+- Never merge with uncommitted or unstaged changes. Preserve the changes, inspect the concrete state, and record a structured blocker with the next executable action instead.
+- Never use `git merge -X ours`, `git merge -X theirs`, or file-wide `--ours` / `--theirs` unless the user explicitly asks for that tradeoff.
+- Never resolve conflicts from markers alone when the behavior is non-trivial.
+- **Never run `git stash` or `git checkout` while in a merge state.** If `git status` shows "All conflicts fixed but you are still merging", running `git stash` drops `MERGE_HEAD` and aborts the merge — the subsequent `stash pop` will restore your changes as ordinary edits, producing a single-parent commit that does NOT contain the base branch. Either commit the merge or resolve it properly before switching context.
+
+## Workflow
+
+1. Confirm you are on the intended feature branch, not the base branch.
+2. Check `git status --short`. If the worktree is dirty, preserve it, inspect the status and diff, record the exact blocker and next executable action in `.sandman/task.md` and the run log, and return without merging.
+3. Run `git fetch origin`.
+4. Check whether the merge is already present:
+   `git merge-base --is-ancestor "origin/<base-branch>" HEAD`
+5. If not already merged, run:
+   `git merge "origin/<base-branch>"`
+6. If the merge succeeds cleanly, run relevant tests and formatters, then push with a normal `git push`.
+7. **Verify the merge actually took — REQUIRED even on a clean-looking merge:**
+   ```bash
+   git merge-base --is-ancestor "origin/<base-branch>" HEAD && echo "MERGE_OK" || {
+     echo "ERROR: base branch is NOT an ancestor of HEAD — merge did not take."
+     echo "This can happen if 'git stash' was run during a merge state."
+     echo "Do NOT proceed. Abort and retry the merge from scratch."
+     exit 1
+   }
+   ```
+   If this check fails, the commit is a single-parent phantom merge. Run `git reset --hard <previous-commit>` and retry from step 3.
+8. If conflicts occur, follow the conflict workflow below before committing the merge.
+
+## Conflict workflow
+
+1. Find the common ancestor:
+   `MERGE_BASE=$(git merge-base HEAD "origin/<base-branch>")`
+2. List unresolved files:
+   `git diff --name-only --diff-filter=U`
+3. For each conflicted path, inspect all 3 versions:
+   - ancestor: `git show "$MERGE_BASE:<path>"`
+   - current branch: `git show "HEAD:<path>"`
+   - incoming base branch: `git show "origin/<base-branch>:<path>"`
+4. Read surrounding code in the working tree, including conflict markers, to place the hunk in context.
+5. If intent is still unclear, inspect nearby history:
+   - `git log --oneline --left-right HEAD..."origin/<base-branch>" -- <path>`
+   - `git blame -- <path>`
+6. Resolve semantically:
+   - keep both changes when they are independent
+   - preserve behavior intentionally added on each side
+   - prefer the version that matches surrounding code and current APIs
+   - rewrite the hunk cleanly when neither side can be copied as-is
+7. After editing, stage the file and verify no conflicts remain:
+   - `git add <path>`
+   - `git diff --name-only --diff-filter=U`
+8. Run targeted tests for affected code first, then broader tests if the conflict was structural.
+
+## Conflict heuristics
+
+- Use the merge base as the baseline for intent. Ask: what changed on our branch, what changed on the incoming base, and how should both changes coexist now?
+- Prefer manual reconciliation over choosing one whole side.
+- If one side only reformats or renames while the other changes behavior, carry over both.
+- For deleted vs modified files, verify whether the delete is still valid before keeping it.
+- For renamed files, inspect history with `git log --follow -- <path>` if needed.
+- Add or update tests when the merge changes behavior or fixes a regression exposed by the conflict.
+
+## Stop conditions
+
+- A dirty worktree is a terminal condition for this merge attempt only after its state, exact blocker, and next executable action have been recorded without discarding changes.
+- If the correct behavior cannot be determined from code, tests, and history, record the ambiguity and the evidence inspected as a structured blocker with a next executable action.
+- If tests fail and the correct post-merge behavior is ambiguous, preserve the merge state, record the failure and next executable action, and leave the branch unpushed until the ambiguity is resolved autonomously.

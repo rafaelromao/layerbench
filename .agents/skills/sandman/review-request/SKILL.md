@@ -1,0 +1,73 @@
+---
+name: sandman-review-request
+description: Deliver one stateless delegated review request for a change request without owning review state, polling, or lifecycle decisions.
+---
+
+# Review Request
+
+An explicitly empty or whitespace-only review command selects
+`sandman-blind-review`, not a trigger. Return `REVIEW_COMMAND_EMPTY` without
+posting; the caller loads that capability instead.
+
+Use this capability when a caller needs one review trigger delivered and
+confirmed. The caller supplies the repository, pull-request number, current
+head, configured review command, and any request-scoped context.
+
+The review command is the trigger the repository's reviewer answers. Use the
+command the caller supplies; in a Sandman-managed run, the Task's
+`Review command` is that value and always wins. Post it verbatim and pass it
+to the helpers as one quoted argument. Never substitute another command.
+
+1. Verify that the current pull request is open, the branch is published, and
+   its live head matches the supplied head.
+2. Run the shared `review-trigger-guard-v1.sh` read-only trigger-delivery guard
+   immediately before posting. Consume its `review-trigger/v1` decision;
+   do not copy or reinterpret the guard in this capability.
+   A refusal caused by an unanswered trigger, malformed evidence, ambiguous
+   ordering, stale head, or failed lookup is a delivery refusal.
+3. Post exactly one trigger that begins with the caller-supplied review
+   command. Never silently retry by posting a replacement trigger. Any text
+   after the command asks for a code review of the current head only.
+   It never asks the reviewer for a formal
+   approval, a review decision, publication work, or a statement about
+   publication limits: an eligible informal approval already satisfies the
+   approval gate.
+4. Re-read the pull request and confirm the returned comment against the live
+   head, command prefix, comment identity, and valid server timestamp.
+5. Return one `review-request/v1` structured confirmed-request envelope containing the repository,
+   pull-request number, head, comment URL or identity, command prefix, server
+   timestamp, and confirmation time to the caller.
+6. Do not poll for feedback, classify approval or requested changes, or invoke
+   the standalone review cycle. Do not create, edit, or delete review state
+   files. Do not write lifecycle, await, dependency, terminal, or event state.
+
+If validation, guarded delivery, or confirmation fails, return the concrete
+delivery refusal and do not post a replacement request. `REVIEW_TIMEOUT` is
+run context supplied by the caller; it is not shared skill state and this
+capability does not start its deadline or observation loop.
+
+## Delivery helper
+
+Use the bundled `review-request-v1.sh`: it performs the read-only guard,
+posts at most once, confirms the comment against the live head, and returns
+the envelope described above. Resolve `skill_root` from `SANDMAN_SKILL_ROOT`,
+then the repository's `.agents/skills/sandman`, then
+`~/.agents/skills/sandman`. Confirm that it contains the helper before running.
+The helper finds its matching guard relative to its own installation.
+
+Set `repo`, `pr_number`, `head_sha` and `review_command` from the caller's
+verified context. Use single-quoted literal assignments, escaping each
+apostrophe as `'\''`; these values are data, not executable shell text.
+
+```bash
+: "${skill_root:?locate the installed skills first}" "${repo:?caller repository required}"
+: "${pr_number:?caller pull request required}" "${head_sha:?caller head required}"
+: "${review_command:?caller review command required}"
+sh "$skill_root/review-request/review-request-v1.sh" \
+  --repository "$repo" --pull-request "$pr_number" \
+  --head-sha "$head_sha" --trigger-prefix "$review_command"
+```
+
+For a standalone cycle with a trusted prior request envelope, also pass
+`--request-file "$request_file"`. That file is caller-owned input; this
+capability never writes it.
