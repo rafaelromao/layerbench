@@ -5,6 +5,7 @@ import {
   type CardBoard,
   type CardLayer,
   canCopyImage,
+  cardWidth,
   composeCard,
   copyImage,
   ellipsize,
@@ -503,6 +504,176 @@ describe('several layers of a layout', () => {
     const doc = parse(svg);
     expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
     expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
+  });
+});
+
+describe('two layouts side by side', () => {
+  const names = ['Alpha 1', 'Alpha 2', 'Numbers'];
+  const layers = (height = 300) =>
+    names.map((name, i) =>
+      cardLayer({ name, share: `${90 - 40 * i}.0% of presses`, svg: board(`0 0 800 ${height}`) }),
+    );
+  const credit = (name: string, unsaved = false) =>
+    creditOf({ name, author: 'Ana' }, { unsaved, editor: '' });
+  const spec = (boards: CardBoard[], over: { sideBySide?: boolean } = {}) => ({
+    boards,
+    heat: 'Usage',
+    heatNote: 'one scale for both layouts',
+    settings: 'English · letters only',
+    palette,
+    ...over,
+  });
+  const two = (a: Partial<CardBoard> = {}, b: Partial<CardBoard> = {}) => [
+    cardBoard({ tag: 'A', credit: credit('Romak'), layers: layers(), ...a }),
+    cardBoard({ tag: 'B', credit: credit('QWERTY'), layers: layers(), ...b }),
+  ];
+  const compose = (boards: CardBoard[] = two()) => composeCard(spec(boards, { sideBySide: true }));
+  const boardsOf = (svg: string) =>
+    [...parse(svg).documentElement.getElementsByTagName('svg')].filter(
+      (el) => el.hasAttribute('viewBox') && el.hasAttribute('x'),
+    );
+  const textOf = (svg: string, content: string) =>
+    [...parse(svg).getElementsByTagName('text')].find((t) => t.textContent === content);
+
+  it('is as wide as two columns, each as wide as a layout is alone, and says so', () => {
+    expect(cardWidth(1)).toBe(CARD_WIDTH);
+    expect(cardWidth(2)).toBe(48 * 2 + 2 * (CARD_WIDTH - 96) + 56);
+    const card = compose();
+    expect(card.width).toBe(cardWidth(2));
+    const root = parse(card.svg).documentElement;
+    expect(root.getAttribute('width')).toBe(String(cardWidth(2)));
+    expect(root.getAttribute('viewBox')).toBe(`0 0 ${cardWidth(2)} ${card.height}`);
+  });
+
+  it('draws each board at the width it has alone, in a column of its layout', () => {
+    const boards = boardsOf(compose().svg);
+    expect(boards).toHaveLength(6);
+    const xs = new Set(boards.map((b) => b.getAttribute('x')));
+    expect([...xs].sort()).toEqual(['1208', '48']);
+    for (const b of boards) expect(b.getAttribute('width')).toBe(String(CARD_WIDTH - 96));
+  });
+
+  it('puts each layout’s name and credit at the head of its own column', () => {
+    const { svg } = compose([...two({}, { credit: credit('QWERTY', true) })]);
+    expect(textOf(svg, 'A · Romak')?.getAttribute('x')).toBe('48');
+    expect(textOf(svg, 'B · QWERTY')?.getAttribute('x')).toBe('1208');
+    // The pill of an unsaved version is at the right edge of its own column, not of the card.
+    const pill = [...parse(svg).getElementsByTagName('rect')].find(
+      (r) => r.getAttribute('rx') === '19',
+    );
+    const right = Number(pill?.getAttribute('x')) + Number(pill?.getAttribute('width'));
+    expect(right).toBe(1208 + CARD_WIDTH - 96);
+    expect(parse(svg).documentElement.textContent).toContain('Unsaved edits');
+  });
+
+  it('puts the same layer of each layout in a row, one beside the other', () => {
+    const boards = boardsOf(compose().svg);
+    const left = boards.filter((b) => b.getAttribute('x') === '48').map((b) => b.getAttribute('y'));
+    const right = boards
+      .filter((b) => b.getAttribute('x') === '1208')
+      .map((b) => b.getAttribute('y'));
+    expect(left).toHaveLength(3);
+    expect(right).toEqual(left);
+    expect(new Set(left).size).toBe(3);
+  });
+
+  it('heads every board with its place and share, and gives the rows the height of the taller board', () => {
+    const tall = compose(two({}, { layers: layers(600) }));
+    const text = parse(tall.svg).documentElement.textContent ?? '';
+    for (const [i, n] of names.entries()) expect(text).toContain(`${i + 1} / 3 · ${n}`);
+    const boards = boardsOf(tall.svg);
+    const rows = [0, 1, 2].map((row) => ({
+      a: boards.filter((b) => b.getAttribute('x') === '48')[row],
+      b: boards.filter((b) => b.getAttribute('x') === '1208')[row],
+    }));
+    for (const { a, b } of rows) expect(a?.getAttribute('y')).toBe(b?.getAttribute('y'));
+    // B's boards are the taller (1104 x 600/800 = 828 against 414): the next row starts below them.
+    const step = Number(rows[1]?.a?.getAttribute('y')) - Number(rows[0]?.a?.getAttribute('y'));
+    expect(step).toBeCloseTo(42 + (1104 * 600) / 800 + 20, 1);
+  });
+
+  it('is a card as tall as one layout’s, not two: that is what side by side is for', () => {
+    const stacked = composeCard(spec(two()));
+    const side = compose();
+    const alone = composeCard(spec([two()[0] as CardBoard]));
+    // The two layouts' three layers each, in the height of one layout's three.
+    expect(side.height).toBeLessThan(stacked.height - 3 * 300);
+    expect(Math.abs(side.height - alone.height)).toBeLessThanOrEqual(60);
+  });
+
+  it('leaves the column of a layout with fewer layers empty where it has none, and heads its one', () => {
+    const one = cardLayer({ name: 'Base', share: '100.0% of presses' });
+    const card = compose(two({}, { layers: [one] }));
+    const boards = boardsOf(card.svg);
+    expect(boards.filter((b) => b.getAttribute('x') === '48')).toHaveLength(3);
+    expect(boards.filter((b) => b.getAttribute('x') === '1208')).toHaveLength(1);
+    const text = parse(card.svg).documentElement.textContent ?? '';
+    // As headed as its neighbour, not a caption under a board in a card of headings.
+    expect(text).toContain('1 / 1 · Base');
+    expect(text).not.toContain('Base · 100.0% of presses');
+  });
+
+  it('puts each layout’s Summary under its column, once, after the last row', () => {
+    const summary: SummaryCell[] = [
+      { id: 'effort', label: 'Effort', value: '6.55', band: 'good', quality: 'good' },
+    ];
+    const card = compose(two({ summary }, { summary }));
+    const frames = [...parse(card.svg).getElementsByTagName('rect')].filter(
+      (r) => r.getAttribute('rx') === '14',
+    );
+    expect(frames.map((f) => f.getAttribute('x')).sort()).toEqual(['1208', '48']);
+    expect(frames[0]?.getAttribute('y')).toBe(frames[1]?.getAttribute('y'));
+    const lastBoard = Math.max(...boardsOf(card.svg).map((b) => Number(b.getAttribute('y'))));
+    expect(Number(frames[0]?.getAttribute('y'))).toBeGreaterThan(lastBoard);
+    expect(frames[0]?.getAttribute('width')).toBe(String(CARD_WIDTH - 96));
+  });
+
+  it('says what each layout left out, in its own column', () => {
+    const { svg } = compose(two({ omitted: 4 }, { omitted: 1 }));
+    expect(textOf(svg, '4 more layers not drawn')?.getAttribute('x')).toBe('48');
+    expect(textOf(svg, '1 more layer not drawn')?.getAttribute('x')).toBe('1208');
+  });
+
+  it('keeps the scale, the settings and the credit to LayerBench to the width of the whole card', () => {
+    const { svg } = compose();
+    expect(textOf(svg, 'Made with LayerBench')?.getAttribute('x')).toBe('48');
+    expect(textOf(svg, 'layerbench.github.io')?.getAttribute('x')).toBe(String(cardWidth(2) - 48));
+    const gradient = [...parse(svg).getElementsByTagName('rect')].find(
+      (r) => r.getAttribute('fill') === 'url(#lb-heat-scale)',
+    );
+    expect(
+      Number(gradient?.getAttribute('x')) + Number(gradient?.getAttribute('width')),
+    ).toBeLessThanOrEqual(cardWidth(2) - 48);
+    // The panel is as wide as the card, with its corners rounded.
+    const panel = parse(svg).documentElement.getElementsByTagName('rect')[0];
+    expect(panel?.getAttribute('width')).toBe(String(cardWidth(2) - 3));
+  });
+
+  it('is the card it was without the option, for one layout, which has nothing beside it', () => {
+    const alone = [two()[0] as CardBoard];
+    const asked = composeCard(spec(alone, { sideBySide: true }));
+    const plain = composeCard(spec(alone));
+    expect(asked.width).toBe(CARD_WIDTH);
+    expect(asked.svg).toBe(plain.svg);
+  });
+
+  it('is well formed and cut to its column, whatever the layers and layouts are called', () => {
+    const long = 'N'.repeat(500);
+    const { svg } = compose(
+      two(
+        { credit: credit(long), layers: [cardLayer({ name: long, share: long }), cardLayer()] },
+        { credit: credit('A & <B>'), layers: [cardLayer({ name: '"x"', share: long })] },
+      ),
+    );
+    const doc = parse(svg);
+    expect(doc.getElementsByTagName('parsererror')).toHaveLength(0);
+    expect(doc.documentElement.textContent).not.toContain('N'.repeat(100));
+  });
+
+  it('is drawn at the size of the screen or more, for two layouts of five layers each', () => {
+    const five = Array.from({ length: 5 }, (_, i) => cardLayer({ name: `Layer ${i + 1}` }));
+    const card = compose(two({ layers: five }, { layers: five }));
+    expect(pngScale(card.width, card.height)).toBeGreaterThanOrEqual(1);
   });
 });
 

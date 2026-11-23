@@ -433,7 +433,10 @@ layer, **All layers**, in the dialog, draws every layer instead, one under anoth
 its place and name and the share of the typing it does, with the Summary once, after the last (a
 card holds the first 32 layers, which is as many as ZMK has, and says how many it left out). The
 file is then named `layerbench-<layout>-all-layers.png`. Under **Compare** the two layouts
-are one over the other, on the one scale both boards are coloured on. It also holds:
+are one over the other, on the one scale both boards are coloured on, but with **All layers** they
+are **side by side** instead: a wider image, a column for each layout, each board as large as it
+is alone and the same layer of each beside the other, so that every layer of two layouts is a
+picture about as high as one layout's. It also holds:
 
 - **Credits.** The layout's name, `by` its author, and the address of its link, as **Settings** in
   **Analyze** gives them. A layout that names no author has no line for one.

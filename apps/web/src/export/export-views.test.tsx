@@ -252,6 +252,36 @@ describe('Export image in Compare', () => {
     expect(within(dialog()).queryByLabelText('Unsaved edits by')).toBeNull();
   }, 60_000);
 
+  it('draws both layouts side by side, every layer, once All layers is ticked', async () => {
+    const user = userEvent.setup();
+    renderRoute('/compare?layout=qwerty&b=magic-romak&corpus=en-general&sample=1000', {
+      storage: freshStorage(),
+    });
+    await waitFor(() => expect(exportButton()).toBeEnabled(), { timeout: 25_000 });
+    await user.click(exportButton());
+    // One over the other until asked: a card one column wide.
+    expect(await previewSvg()).toContain('width="1200"');
+
+    await user.click(within(dialog()).getByRole('checkbox', { name: 'All layers' }));
+    await waitFor(async () => expect(await previewSvg()).toContain('5 / 5 · '));
+    const svg = await previewSvg();
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    expect(doc.documentElement.getAttribute('width')).toBe('2360');
+    // Qwerty's board at the left of its column, Magic Romak's five at the left of theirs.
+    const boards = [...doc.getElementsByTagName('svg')].filter(
+      (el) => el.hasAttribute('viewBox') && el.hasAttribute('x'),
+    );
+    expect(boards.filter((b) => b.getAttribute('x') === '48')).toHaveLength(1);
+    expect(boards.filter((b) => b.getAttribute('x') === '1208')).toHaveLength(5);
+    // The title of each is at the head of its own column, and each has its Summary.
+    const title = (content: string) =>
+      [...doc.getElementsByTagName('text')].find((t) => t.textContent === content);
+    expect(title('A · Qwerty')?.getAttribute('x')).toBe('48');
+    expect(title('B · Magic Romak')?.getAttribute('x')).toBe('1208');
+    expect(svg.match(/>Effort</g)).toHaveLength(2);
+    expect(svg).toContain('one scale for both layouts');
+  }, 60_000);
+
   it('asks who made the edits of a layout carried with changes saved nowhere, and only for that one', async () => {
     const user = userEvent.setup();
     const qwerty = bundledLayout('qwerty') as Layout;

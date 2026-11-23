@@ -23,7 +23,10 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
 /** The card is this wide, in CSS pixels; it is as tall as what it holds. */
 export const CARD_WIDTH = 1200;
 const PAD = 48;
+/** The width of a column of boards: what one layout's boards, credits and Summary are drawn in. */
 const INNER = CARD_WIDTH - 2 * PAD;
+/** The space between two layouts' columns, where they are side by side. */
+const GAP = 56;
 /** The panel's border and the roundness of its corners, in the card's own pixels. */
 const PANEL_BORDER = 3;
 const PANEL_RADIUS = 24;
@@ -158,6 +161,12 @@ export interface CardBoard {
 
 export interface CardSpec {
   boards: CardBoard[];
+  /**
+   * Draw the layouts in columns, side by side, each at the width it has when alone, instead of one
+   * under another: for every layer of two layouts, which one under another makes a tall strip. The
+   * card is then wider, and the layers are in rows, the same layer of each layout beside the other.
+   */
+  sideBySide?: boolean;
   /** What the colours measure, as the page names it: `Usage`. */
   heat: string;
   /** What else is true of the colours, as `one scale for both layouts`. */
@@ -165,6 +174,18 @@ export interface CardSpec {
   /** The text, the rules and the switches the numbers are made on. */
   settings: string;
   palette: Palette;
+}
+
+/** The width of a card with `columns` layouts side by side: each column the width it has alone. */
+export function cardWidth(columns: number): number {
+  const n = Math.max(1, columns);
+  return 2 * PAD + n * INNER + (n - 1) * GAP;
+}
+
+/** Where a layout's boards are drawn: the left of its column, and its width. */
+interface Column {
+  x: number;
+  width: number;
 }
 
 export interface Composed {
@@ -284,15 +305,21 @@ const SUMMARY_PAD = 10;
  * how the band rates it. The word says it too, so colour is never the only way to read it. Returns
  * the height it took, from `y`.
  */
-function summaryTable(body: SVGGElement, cells: SummaryCell[], y: number, p: Palette): number {
+function summaryTable(
+  body: SVGGElement,
+  cells: SummaryCell[],
+  col: Column,
+  y: number,
+  p: Palette,
+): number {
   const rows = Math.ceil(cells.length / SUMMARY_COLUMNS);
-  const cellWidth = INNER / SUMMARY_COLUMNS;
+  const cellWidth = col.width / SUMMARY_COLUMNS;
   const height = rows * SUMMARY_ROW + 2 * SUMMARY_PAD;
   body.append(
     node('rect', {
-      x: PAD,
+      x: col.x,
       y,
-      width: INNER,
+      width: col.width,
       height,
       rx: 14,
       fill: 'none',
@@ -304,8 +331,8 @@ function summaryTable(body: SVGGElement, cells: SummaryCell[], y: number, p: Pal
     const at = y + SUMMARY_PAD + row * SUMMARY_ROW;
     body.append(
       node('line', {
-        x1: PAD + 14,
-        x2: PAD + INNER - 14,
+        x1: col.x + 14,
+        x2: col.x + col.width - 14,
         y1: at,
         y2: at,
         stroke: p.border,
@@ -315,7 +342,7 @@ function summaryTable(body: SVGGElement, cells: SummaryCell[], y: number, p: Pal
   }
   const dot = { good: p.good, ok: p.ok, bad: p.bad, neutral: p.text } as const;
   cells.forEach((cell, i) => {
-    const x = PAD + (i % SUMMARY_COLUMNS) * cellWidth + 16;
+    const x = col.x + (i % SUMMARY_COLUMNS) * cellWidth + 16;
     const top = y + SUMMARY_PAD + Math.floor(i / SUMMARY_COLUMNS) * SUMMARY_ROW;
     const room = cellWidth - 24;
     body.append(
@@ -352,152 +379,225 @@ function summaryTable(body: SVGGElement, cells: SummaryCell[], y: number, p: Pal
 }
 
 /**
- * Lay the card out: each layout's name, credits and board one under another, then the heat's scale,
- * then the settings and the credit to LayerBench. Nothing is measured from the page's layout, so
- * the same inputs give the same card.
+ * A layout's name, credits and, where its version is unsaved, who made the edits, drawn from `y`
+ * in `col`. Returns the height it took.
  */
-export function composeCard({ boards, heat, heatNote, settings, palette: p }: CardSpec): Composed {
+function boardHeader(
+  body: SVGGElement,
+  board: CardBoard,
+  col: Column,
+  y: number,
+  p: Palette,
+): number {
+  const start = y;
+  const { credit } = board;
+  const unsaved = credit.edits !== null;
+  const pillText = 'unsaved';
+  const pillWidth = unsaved ? approx(pillText, 20) + 40 : 0;
+
+  const name = board.tag ? `${board.tag} · ${credit.name}` : credit.name;
+  body.append(
+    label(ellipsize(name, col.width - pillWidth - (unsaved ? 20 : 0), TITLE), col.x, y + 38, {
+      size: TITLE,
+      weight: 700,
+      fill: p.text,
+    }),
+  );
+  if (unsaved) {
+    // Tinted and outlined, the words in the text colour: white on this orange is 3:1, and the
+    // text colour on the tint is above 6:1 in both themes.
+    const x = col.x + col.width - pillWidth;
+    body.append(
+      node('rect', {
+        x,
+        y: y + 6,
+        width: pillWidth,
+        height: 38,
+        rx: 19,
+        fill: p.warning,
+        'fill-opacity': 0.22,
+        stroke: p.warning,
+        'stroke-width': 2,
+      }),
+      label(pillText, x + pillWidth / 2, y + 32, {
+        size: 20,
+        weight: 700,
+        anchor: 'middle',
+        fill: p.text,
+      }),
+    );
+  }
+  y += 58;
+
+  // The author is held to a share of the line, so a long name cannot push the source off it.
+  const byline = credit.byline ? ellipsize(credit.byline, col.width * 0.55, CREDIT) : null;
+  const meta = [byline, credit.source].filter(Boolean).join(' · ');
+  if (meta) {
+    body.append(
+      label(ellipsize(meta, col.width, CREDIT), col.x, y + 22, {
+        size: CREDIT,
+        fill: p.text,
+        opacity: MUTED,
+      }),
+    );
+    y += 38;
+  }
+  if (credit.edits) {
+    body.append(
+      label(ellipsize(credit.edits, col.width, CREDIT), col.x, y + 22, {
+        size: CREDIT,
+        weight: 600,
+        fill: p.text,
+      }),
+    );
+    y += 38;
+  }
+  return y + 12 - start;
+}
+
+/**
+ * One layer of a layout: its board at the width of `col`, with a heading over it that says which
+ * layer it is and how much of the typing it does (`several`), or its name and share as a caption
+ * under it, as a card of one layer has always had. Returns where the next thing goes.
+ */
+function boardLayer(
+  body: SVGGElement,
+  layer: CardLayer,
+  place: { index: number; total: number; several: boolean },
+  col: Column,
+  y: number,
+  p: Palette,
+): number {
+  if (place.several) {
+    body.append(
+      label(
+        ellipsize(`${place.index + 1} / ${place.total} · ${layer.name}`, col.width * 0.6, CREDIT),
+        col.x,
+        y + 24,
+        { size: CREDIT, weight: 600, fill: p.text },
+      ),
+    );
+    if (layer.share) {
+      body.append(
+        label(ellipsize(layer.share, col.width * 0.35, SMALL), col.x + col.width, y + 24, {
+          size: SMALL,
+          anchor: 'end',
+          fill: p.text,
+          opacity: MUTED,
+        }),
+      );
+    }
+    y += 42;
+  }
+
+  // A copy, so the card can be made again from the same boards, as a name is typed.
+  const drawing = layer.svg.cloneNode(true) as SVGSVGElement;
+  const size = drawingSize(drawing);
+  const height = (col.width * size.height) / size.width;
+  drawing.setAttribute('x', String(col.x));
+  drawing.setAttribute('y', String(round(y)));
+  drawing.setAttribute('width', String(col.width));
+  drawing.setAttribute('height', String(round(height)));
+  body.append(drawing);
+  y += height;
+
+  if (place.several) return y + 20;
+  const caption = [layer.name, layer.share].filter(Boolean).join(' · ');
+  if (caption) {
+    body.append(
+      label(ellipsize(caption, col.width, SMALL), col.x, y + 28, {
+        size: SMALL,
+        fill: p.text,
+        opacity: MUTED,
+      }),
+    );
+    y += 38;
+  }
+  return y;
+}
+
+/** What a layout has that the card could not hold, said after its last layer. Returns the next y. */
+function omittedNote(body: SVGGElement, omitted: number, col: Column, y: number, p: Palette) {
+  if (omitted <= 0) return y;
+  body.append(
+    label(`${omitted} more layer${omitted === 1 ? '' : 's'} not drawn`, col.x, y + 24, {
+      size: SMALL,
+      fill: p.text,
+      opacity: MUTED,
+    }),
+  );
+  return y + 38;
+}
+
+/** A layout's Summary, under what comes before it. Returns the next y. */
+function summaryBlock(body: SVGGElement, cells: SummaryCell[], col: Column, y: number, p: Palette) {
+  if (cells.length === 0) return y;
+  return y + 6 + summaryTable(body, cells, col, y + 6, p);
+}
+
+/**
+ * Lay the card out: each layout's name, credits and boards, one under another, or in columns side
+ * by side (`sideBySide`), then the heat's scale, then the settings and the credit to LayerBench.
+ * Nothing is measured from the page's layout, so the same inputs give the same card.
+ */
+export function composeCard({
+  boards,
+  sideBySide,
+  heat,
+  heatNote,
+  settings,
+  palette: p,
+}: CardSpec): Composed {
   // The serializer writes the namespace itself: one written by hand would be declared twice.
   const root = node('svg');
   const body = node('g');
   let y = PAD;
 
-  boards.forEach((board, i) => {
-    const { credit } = board;
-    if (i > 0) y += 36;
-    const unsaved = credit.edits !== null;
-    const pillText = 'unsaved';
-    const pillWidth = unsaved ? approx(pillText, 20) + 40 : 0;
+  const side = sideBySide === true && boards.length > 1;
+  const width = side ? cardWidth(boards.length) : CARD_WIDTH;
+  const inner = width - 2 * PAD;
+  const column = (i: number): Column => ({ x: PAD + (side ? i * (INNER + GAP) : 0), width: INNER });
 
-    const name = board.tag ? `${board.tag} · ${credit.name}` : credit.name;
-    body.append(
-      label(ellipsize(name, INNER - pillWidth - (unsaved ? 20 : 0), TITLE), PAD, y + 38, {
-        size: TITLE,
-        weight: 700,
-        fill: p.text,
-      }),
-    );
-    if (unsaved) {
-      // Tinted and outlined, the words in the text colour: white on this orange is 3:1, and the
-      // text colour on the tint is above 6:1 in both themes.
-      const x = CARD_WIDTH - PAD - pillWidth;
-      body.append(
-        node('rect', {
-          x,
-          y: y + 6,
-          width: pillWidth,
-          height: 38,
-          rx: 19,
-          fill: p.warning,
-          'fill-opacity': 0.22,
-          stroke: p.warning,
-          'stroke-width': 2,
-        }),
-        label(pillText, x + pillWidth / 2, y + 32, {
-          size: 20,
-          weight: 700,
-          anchor: 'middle',
-          fill: p.text,
-        }),
-      );
-    }
-    y += 58;
-
-    // The author is held to a share of the line, so a long name cannot push the source off it.
-    const byline = credit.byline ? ellipsize(credit.byline, INNER * 0.55, CREDIT) : null;
-    const meta = [byline, credit.source].filter(Boolean).join(' · ');
-    if (meta) {
-      body.append(
-        label(ellipsize(meta, INNER, CREDIT), PAD, y + 22, {
-          size: CREDIT,
-          fill: p.text,
-          opacity: MUTED,
-        }),
-      );
-      y += 38;
-    }
-    if (credit.edits) {
-      body.append(
-        label(ellipsize(credit.edits, INNER, CREDIT), PAD, y + 22, {
-          size: CREDIT,
-          weight: 600,
-          fill: p.text,
-        }),
-      );
-      y += 38;
-    }
-    y += 12;
-
-    const several = board.layers.length > 1;
-    board.layers.forEach((layer, l) => {
-      if (several) {
-        // A heading over each board: which layer it is, and how much of the typing it does.
-        body.append(
-          label(
-            ellipsize(`${l + 1} / ${board.layers.length} · ${layer.name}`, INNER * 0.6, CREDIT),
-            PAD,
-            y + 24,
-            { size: CREDIT, weight: 600, fill: p.text },
-          ),
-        );
-        if (layer.share) {
-          body.append(
-            label(ellipsize(layer.share, INNER * 0.35, SMALL), CARD_WIDTH - PAD, y + 24, {
-              size: SMALL,
-              anchor: 'end',
-              fill: p.text,
-              opacity: MUTED,
-            }),
+  if (side) {
+    // Columns, one for each layout, in rows: what has a height of its own is as tall as the tallest
+    // beside it, so the same layer of each layout starts at the same height.
+    const lowest = (ys: number[]) => Math.max(...ys);
+    y += lowest(boards.map((b, i) => boardHeader(body, b, column(i), y, p)));
+    // Layers are headed with their place in every column once any layout has several, so a column
+    // with a layer of its own does not read as a different kind of picture.
+    const several = boards.some((b) => b.layers.length > 1);
+    const rows = Math.max(...boards.map((b) => b.layers.length));
+    for (let row = 0; row < rows; row++) {
+      y = lowest(
+        boards.map((b, i) => {
+          const layer = b.layers[row];
+          if (!layer) return y;
+          return boardLayer(
+            body,
+            layer,
+            { index: row, total: b.layers.length, several },
+            column(i),
+            y,
+            p,
           );
-        }
-        y += 42;
-      }
-
-      // A copy, so the card can be made again from the same boards, as a name is typed.
-      const drawing = layer.svg.cloneNode(true) as SVGSVGElement;
-      const size = drawingSize(drawing);
-      const height = (INNER * size.height) / size.width;
-      drawing.setAttribute('x', String(PAD));
-      drawing.setAttribute('y', String(round(y)));
-      drawing.setAttribute('width', String(INNER));
-      drawing.setAttribute('height', String(round(height)));
-      body.append(drawing);
-      y += height;
-
-      if (several) {
-        y += 20;
-        return;
-      }
-      const caption = [layer.name, layer.share].filter(Boolean).join(' · ');
-      if (caption) {
-        body.append(
-          label(ellipsize(caption, INNER, SMALL), PAD, y + 28, {
-            size: SMALL,
-            fill: p.text,
-            opacity: MUTED,
-          }),
-        );
-        y += 38;
-      }
-    });
-
-    if (board.omitted > 0) {
-      body.append(
-        label(
-          `${board.omitted} more layer${board.omitted === 1 ? '' : 's'} not drawn`,
-          PAD,
-          y + 24,
-          { size: SMALL, fill: p.text, opacity: MUTED },
-        ),
+        }),
       );
-      y += 38;
     }
-
-    if (board.summary.length > 0) {
-      y += 6;
-      y += summaryTable(body, board.summary, y, p);
-    }
-  });
+    y = lowest(boards.map((b, i) => omittedNote(body, b.omitted, column(i), y, p)));
+    y = lowest(boards.map((b, i) => summaryBlock(body, b.summary, column(i), y, p)));
+  } else {
+    boards.forEach((board, i) => {
+      const col = column(i);
+      if (i > 0) y += 36;
+      y += boardHeader(body, board, col, y, p);
+      const several = board.layers.length > 1;
+      for (const [l, layer] of board.layers.entries()) {
+        y = boardLayer(body, layer, { index: l, total: board.layers.length, several }, col, y, p);
+      }
+      y = omittedNote(body, board.omitted, col, y, p);
+      y = summaryBlock(body, board.summary, col, y, p);
+    });
+  }
 
   // The scale of the colours: what they measure, from none to the busiest key.
   y += 28;
@@ -511,7 +611,7 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
   // The name at the left, the scale at the right, each hung from its own edge: nothing is placed
   // by the width of a word that sits beside it, which the page's font decides, not this code.
   const barWidth = 240;
-  const right = CARD_WIDTH - PAD;
+  const right = width - PAD;
   const wordsEnd = approx('busiest key', SMALL);
   const barX = right - wordsEnd - 12 - barWidth;
   body.append(
@@ -541,7 +641,7 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
   if (heatNote) {
     y += 34;
     body.append(
-      label(ellipsize(heatNote, INNER, SMALL), PAD, y + 19, {
+      label(ellipsize(heatNote, inner, SMALL), PAD, y + 19, {
         size: SMALL,
         fill: p.text,
         opacity: SOFT,
@@ -555,7 +655,7 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
   body.append(
     node('line', {
       x1: PAD,
-      x2: CARD_WIDTH - PAD,
+      x2: width - PAD,
       y1: y,
       y2: y,
       stroke: p.border,
@@ -563,14 +663,14 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
     }),
   );
   y += 22;
-  for (const line of wrapLines(plain(settings), INNER, SMALL, 2)) {
+  for (const line of wrapLines(plain(settings), inner, SMALL, 2)) {
     body.append(label(line, PAD, y + 22, { size: SMALL, fill: p.text, opacity: SOFT }));
     y += 31;
   }
   y += 10;
   body.append(
     label('Made with LayerBench', PAD, y + 22, { size: FOOT, weight: 600, fill: p.text }),
-    label('layerbench.github.io', CARD_WIDTH - PAD, y + 22, {
+    label('layerbench.github.io', width - PAD, y + 22, {
       size: FOOT,
       anchor: 'end',
       fill: p.text,
@@ -580,9 +680,9 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
   y += 32 + PAD;
 
   const height = Math.ceil(y);
-  root.setAttribute('width', String(CARD_WIDTH));
+  root.setAttribute('width', String(width));
   root.setAttribute('height', String(height));
-  root.setAttribute('viewBox', `0 0 ${CARD_WIDTH} ${height}`);
+  root.setAttribute('viewBox', `0 0 ${width} ${height}`);
   // The card is a panel, as the page's own are: a rounded border round it, the corners outside it
   // left clear. The border is drawn inside the card's edge, so none of it is cut off.
   const half = PANEL_BORDER / 2;
@@ -591,7 +691,7 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
     node('rect', {
       x: half,
       y: half,
-      width: CARD_WIDTH - PANEL_BORDER,
+      width: width - PANEL_BORDER,
       height: height - PANEL_BORDER,
       rx: PANEL_RADIUS,
       fill: p.background,
@@ -600,7 +700,7 @@ export function composeCard({ boards, heat, heatNote, settings, palette: p }: Ca
     }),
     body,
   );
-  return { svg: new XMLSerializer().serializeToString(root), width: CARD_WIDTH, height };
+  return { svg: new XMLSerializer().serializeToString(root), width, height };
 }
 
 /** The card as an address an `<img>` can show, which the page's policy allows (`data:`). */

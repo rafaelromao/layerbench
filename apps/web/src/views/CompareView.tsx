@@ -363,7 +363,7 @@ export function CompareView() {
               className="ml-auto"
               blocked={exportBlocked}
               onClick={exportImage}
-              what="both layouts’ first layer"
+              what="both layouts’ boards"
             />
           </div>
           {/* The scale is of both only while neither side has failed. */}

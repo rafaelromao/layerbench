@@ -411,19 +411,78 @@ describe('all layers', () => {
     expect(svg).not.toContain('33 / ');
   }, 30_000);
 
-  it('draws each layout’s layers when two are compared, one layer stays one', async () => {
+  it('draws each layout’s layers side by side when two are compared, the same layer in a row', async () => {
+    const user = userEvent.setup();
+    const two = image([
+      several({ tag: 'A' }),
+      several({ tag: 'B', layout: { name: 'Magic Romak 2', author: 'Rafael' } }),
+    ]);
+    render(<ShareImageDialog image={two} onClose={() => {}} />);
+    expect(
+      screen.getByText(/each layout's layers, side by side \(A has 5 layers, B has 5 layers\)/),
+    ).toBeInTheDocument();
+    // Stacked, as it was, until the option is ticked: the card is one column wide.
+    const stacked = await screen.findByRole('img', { name: /Preview of the image/ });
+    expect(stacked).toHaveAttribute('width', String(card.CARD_WIDTH));
+    expect(stacked.getAttribute('alt')).not.toContain('side by side');
+
+    await user.click(option());
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: /Preview of the image/ })).toHaveAttribute(
+        'width',
+        String(card.cardWidth(2)),
+      ),
+    );
+    const svg = await previewSvg();
+    expect(svg).toContain('5 / 5');
+    expect(screen.getByText(/^Every layer of each layout, side by side/)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Preview of the image/ }).getAttribute('alt')).toContain(
+      'The layouts are side by side.',
+    );
+    // The columns are in the card: both layouts' boards at the left of their own column.
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const xs = new Set(
+      [...doc.getElementsByTagName('svg')]
+        .filter((el) => el.hasAttribute('viewBox') && el.hasAttribute('x'))
+        .map((el) => el.getAttribute('x')),
+    );
+    expect([...xs].sort()).toEqual(['1208', '48']);
+
+    // Unticked, it is stacked again.
+    await user.click(option());
+    await waitFor(() =>
+      expect(screen.getByRole('img', { name: /Preview of the image/ })).toHaveAttribute(
+        'width',
+        String(card.CARD_WIDTH),
+      ),
+    );
+  }, 30_000);
+
+  it('heads a layout’s one layer as its neighbour’s, beside it, where the other has several', async () => {
     const user = userEvent.setup();
     const two = image([several({ tag: 'A' }), board({ tag: 'B', layout: { name: 'Qwerty' } })]);
     render(<ShareImageDialog image={two} onClose={() => {}} />);
     expect(
-      screen.getByText(/each layout's layers, one under another \(A has 5 layers, B has 1 layer\)/),
+      screen.getByText(/each layout's layers, side by side \(A has 5 layers, B has 1 layer\)/),
     ).toBeInTheDocument();
     await user.click(option());
     await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));
     const svg = await previewSvg();
-    // B has one layer: no heading over it, its name and share under it as ever.
-    expect(svg).not.toContain('1 / 1');
-    expect(svg).toContain('Base · 90% of presses');
+    // In a card of headings, B's one layer has its heading too, not a caption under its board.
+    expect(svg).toContain('1 / 1 · Base');
+    expect(svg).not.toContain('Base · 90% of presses');
+  });
+
+  it('draws one layout’s layers one under another: there is nothing beside it', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await user.click(option());
+    await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));
+    expect(screen.getByRole('img', { name: /Preview of the image/ })).toHaveAttribute(
+      'width',
+      String(card.CARD_WIDTH),
+    );
+    expect(screen.getByText(/^Every layer, with its heat/)).toBeInTheDocument();
   });
 
   it('scrolls the preview when every layer is drawn, and shows one layer whole', async () => {
