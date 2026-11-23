@@ -12,7 +12,7 @@ function settingsTaps(page: Page): Promise<(string | null)[]> {
   return page.evaluate(() => {
     const button = document.querySelector('button[aria-label="Settings"]');
     if (!button) return ['no Settings button'];
-    // Opening the Legend scrolls a phone's page past the bar: a tap reaches only what is on screen.
+    // A phone's page may have scrolled past the bar: a tap reaches only what is on screen.
     button.scrollIntoView({ block: 'center' });
     const box = button.getBoundingClientRect();
     return [0.2, 0.5, 0.8].map((f) => {
@@ -41,13 +41,30 @@ test('heats both boards, and no width draws Settings under the Analyze links', a
   expect(await heated('B')).toBeGreaterThan(0);
   await expect(page.locator('.lb-heat-legend')).toBeVisible();
 
-  // The Legend starts folded; opened, on both sides (one heading opens the other's), its list is
-  // checked at every width below, as it was when it was always open.
-  await page.getByRole('button', { name: 'Legend', exact: true }).first().click();
-  await expect(page.getByRole('button', { name: 'Legend', exact: true }).nth(1)).toHaveAttribute(
-    'aria-expanded',
-    'true',
+  // The Legend is one button, at the right of the Layouts heading, where its row has room, not a
+  // heading under each board: it takes no row, and opens one popup of both sides' lists.
+  const legend = page.getByRole('button', { name: 'Legend', exact: true });
+  await expect(legend).toHaveCount(1);
+  const [hb, lb] = await Promise.all(
+    [page.getByRole('button', { name: 'Layouts', exact: true }), legend].map((it) =>
+      it.boundingBox(),
+    ),
   );
+  expect(hb && lb).toBeTruthy();
+  if (hb && lb) {
+    expect(Math.abs(lb.y + lb.height / 2 - (hb.y + hb.height / 2))).toBeLessThan(hb.height);
+    expect(lb.x).toBeGreaterThan(hb.x + hb.width);
+  }
+  await legend.click();
+  const popup = page.getByRole('dialog', { name: 'Legend' });
+  await expect(popup).toBeVisible();
+  await expect(popup.getByRole('region', { name: /^Legend of / })).toHaveCount(2);
+  const box = await popup.locator('.modal-box').boundingBox();
+  const size = page.viewportSize();
+  expect(box && size && box.x >= 0 && box.x + box.width <= size.width + 1).toBe(true);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  await popup.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(popup).toHaveCount(0);
 
   // A phone, and at a desk every width from where the bar stops being a grid, through those where
   // it wraps, to a wide screen: Settings is tapped where it is drawn, and nothing spills out.

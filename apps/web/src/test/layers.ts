@@ -88,12 +88,17 @@ export function layerShareIn(scope: HTMLElement): number | null {
 }
 
 /**
- * The Legend of a board's card, opened, and its list of numbered keys. It starts folded, in Analyze
- * and in Compare; `scope` is the card where a page has more than one, as Compare has.
+ * The Legend, opened, and its list of numbered keys. It is a popup, opened by its button in the row
+ * of the Heat choice; in Compare one popup lists both sides' keys, and `side` picks the list of
+ * `A` or of `B` in it.
  */
-export async function openLegend(user: UserEvent, scope?: HTMLElement): Promise<HTMLElement> {
-  const q = within(scope ?? document.body);
-  const toggle = q.getByRole('button', { name: 'Legend' });
-  if (toggle.getAttribute('aria-expanded') === 'false') await user.click(toggle);
-  return q.findByRole('list', { name: 'Key legend' });
+export async function openLegend(user: UserEvent, side?: 'A' | 'B'): Promise<HTMLElement> {
+  if (!screen.queryByRole('dialog', { name: 'Legend' })) {
+    await user.click(screen.getByRole('button', { name: 'Legend' }));
+  }
+  const popup = await screen.findByRole('dialog', { name: 'Legend' });
+  const scope = side
+    ? within(popup).getByRole('region', { name: new RegExp(`^Legend of ${side}:`) })
+    : popup;
+  return within(scope).findByRole('list', { name: 'Key legend' });
 }

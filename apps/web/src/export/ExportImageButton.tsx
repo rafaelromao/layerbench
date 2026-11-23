@@ -1,7 +1,9 @@
 /**
  * The button that opens the image of what a page shows (`ShareImageDialog`), in the row of the
- * Heat choice, where the colours it carries are chosen. Not "Export": that is the editor's panel for
- * the layout as text. Disabled, with the reason as its title, until the numbers it draws are made.
+ * Heat choice, where the colours it carries are chosen. It reads "Export", short enough to stay in
+ * that row on a phone; its name for a screen reader is "Export image", so it is not taken for the
+ * editor's Export tab, which exports the layout as text. Disabled, with the reason as its title,
+ * until the numbers it draws are made.
  */
 export function ExportImageButton({
   blocked,
@@ -27,7 +29,7 @@ export function ExportImageButton({
       disabled={blocked !== null}
       onClick={onClick}
     >
-      Export image
+      Export
     </button>
   );
 }

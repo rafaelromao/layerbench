@@ -21,8 +21,8 @@ afterEach(() => {
 // Nor its messages: a toast stays six seconds, long enough for the next test to find it instead of
 // its own, and to see it vanish.
 afterEach(() => useToasts.setState({ toasts: [] }));
-// Nor which groups of a page it folded or opened: the Legend starts folded, and a test that opened it
-// must not leave it open for the next, which asserts it starts folded.
+// Nor which groups of a page it folded or opened: a group that starts folded, and a test that opened
+// it must not leave it open for the next, which asserts it starts folded.
 afterEach(() => useSession.setState({ collapsedGroups: [], openedGroups: [] }));
 
 /**

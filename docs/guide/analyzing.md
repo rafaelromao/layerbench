@@ -3,12 +3,16 @@
 **Analyze** types a sample of text on the layout, key by key, and shows what that took: a heat map
 of the keys, the numbers under it, and how any word you give it is typed.
 
-Each group of the page, **Board**, **A word, typed**, **Summary**, **Legend** and **Numbers**, folds
-away under its heading, and so do **Layouts**, **Metric comparison** and, under each layout's board,
-**Legend** and **Summary** in **Compare**, where folding one layout's folds the other's, as the two
-are read against each other. **Legend** starts folded, in both, and opens under its heading. This
-browser remembers which you folded and which you opened. In **Analyze** the **Legend** and the
-**Summary** are in the board's card, as in each layout's card in **Compare**.
+Each group of the page, **Board**, **A word, typed**, **Summary** and **Numbers**, folds away under
+its heading, and so do **Layouts**, **Metric comparison** and, under each layout's board, **Summary**
+in **Compare**, where folding one layout's folds the other's, as the two are read against each
+other. This browser remembers which you folded and which you opened. The **Legend**, the list of
+what the numbers in the corners of the keys stand for, does not take room on the page, folded or
+not: it is a button at the right of the **Board** heading in **Analyze**, and of the **Layouts**
+heading in **Compare**, and opens a popup. In **Compare** the popup lists both layouts' keys, each
+under its layout and the layer its board shows, so one is read against the other. It lists the keys
+of the layer the board is showing when you open it; **Close**, **Escape** or a tap beside it closes
+it. The **Summary** is in the board's card in **Analyze**, as in each layout's card in **Compare**.
 
 Two numbers lead: **Effort**, an estimate of how hard the keys are to reach, and **SFB**, how often
 one finger presses two keys in a row. Lower is better for both. Both, and some other numbers, also

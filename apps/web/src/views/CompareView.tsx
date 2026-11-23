@@ -10,8 +10,8 @@ import { HeatLegend } from '../components/HeatLegend.js';
 import { HeatNote } from '../components/HeatNote.js';
 import { HeatSelect } from '../components/HeatSelect.js';
 import { HelpLink } from '../components/HelpLink.js';
-import { KeyLegend } from '../components/Keyboard.js';
 import { LanguageChips } from '../components/LanguageChips.js';
+import { LegendButton, type LegendEntry } from '../components/LegendDialog.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
 import { customRef } from '../custom/ref.js';
@@ -254,6 +254,23 @@ export function CompareView() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: the layout is the trigger, not an input.
   useEffect(() => setLayerB(0), [refB]);
 
+  // The Legend's lists, for each side that is open, on the layer it shows: a layer past the end,
+  // for a moment after the layout changes, is its base.
+  const legends: LegendEntry[] = [
+    { side: 'A', name: nameA, compiled: a.compiled, chosen: layerA },
+    { side: 'B', name: nameB, compiled: b.compiled, chosen: layerB },
+  ].flatMap(({ side, name, compiled, chosen }) =>
+    compiled
+      ? [
+          {
+            title: `${side}: ${name}`,
+            compiled,
+            layer: chosen < compiled.layers.length ? chosen : 0,
+          },
+        ]
+      : [],
+  );
+
   return (
     <div className="space-y-4">
       <h1 className="sr-only">Compare</h1>
@@ -349,7 +366,13 @@ export function CompareView() {
 
       {error && <ErrorAlert message={error} />}
 
-      <Collapsible id="compare.layouts" title="Layouts">
+      <Collapsible
+        id="compare.layouts"
+        title="Layouts"
+        // The Legend is a popup of both sides' lists, read one against the other, its button at the
+        // right of the heading, where the row has room: no row of its own under each board.
+        extra={<LegendButton className="ml-auto" legends={legends} />}
+      >
         {/* What both boards' colours measure, and what they mean, above the two of them. */}
         <div className="space-y-1 mb-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -396,7 +419,7 @@ export function CompareView() {
                     <div className="min-w-0">
                       <PreviewBoard
                         id={`kb-${side}`}
-                        // The list of numbered keys is the Legend below, which folds away.
+                        // The list of numbered keys is the Legend, a popup over the page.
                         legend={false}
                         // The keys as written and the combos as typed, as Analyze draws them.
                         compiled={compiled}
@@ -409,7 +432,7 @@ export function CompareView() {
                         heatName={colours ? drawn : undefined}
                         // Room for it from the start: the arrows stay put when the score comes in.
                         layerShare={scored ? layerShare(scored, layer) : null}
-                        // Why the board is plain, right under it, above the Legend.
+                        // Why the board is plain, right under it.
                         note={
                           <HeatNote
                             pending={!heatSettled && heat !== null}
@@ -422,12 +445,6 @@ export function CompareView() {
                         }
                       />
                     </div>
-                  )}
-                  {/* Both sides fold and open together: one is read against the other. */}
-                  {compiled && (
-                    <Collapsible id="compare.legend" title="Legend" defaultCollapsed>
-                      <KeyLegend compiled={compiled} layer={layer} />
-                    </Collapsible>
                   )}
                   <Collapsible id="compare.summary" title="Summary">
                     <div className="flex flex-col gap-3">

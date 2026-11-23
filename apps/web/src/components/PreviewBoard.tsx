@@ -36,8 +36,8 @@ export interface PreviewBoardProps {
 /**
  * A layer drawn to be looked at, not edited: Analyze's board (`Board`), with heat only where the
  * page gives it, nothing selected and nothing to edit. Under it, unless `legend` is false, the list
- * of the keys whose legend cannot say everything, numbered on the board, which Analyze keeps in its
- * Legend panel.
+ * of the keys whose legend cannot say everything, numbered on the board, which Analyze and Compare
+ * list in the Legend's popup.
  */
 export function PreviewBoard({
   id,

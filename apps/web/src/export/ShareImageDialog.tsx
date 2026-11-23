@@ -334,6 +334,17 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
             Export image
           </h2>
           <HelpLink help={HELP.shareImage} />
+          {/* In the title's row, which has room at the right, not in the buttons' row, which has none
+              on a phone: the status is temporary and makes no row of its own. */}
+          {preparing && (
+            <span
+              className="ml-auto flex min-w-0 items-center gap-2 text-xs opacity-70"
+              role="status"
+            >
+              <span className="loading loading-dots loading-xs" />
+              Preparing…
+            </span>
+          )}
         </div>
         <p className="text-xs opacity-70">
           {drawAll
@@ -405,18 +416,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
           />
         )}
 
-        {/* Wraps: on a phone the status takes a line of its own above the buttons, instead of
-            pushing them all past the dialog's left edge, where a row that does not fit ends. */}
-        <div className="modal-action flex-wrap items-center">
-          {preparing && (
-            <span
-              className="flex w-full min-w-0 items-center gap-2 text-xs opacity-70 sm:mr-auto sm:w-auto"
-              role="status"
-            >
-              <span className="loading loading-dots loading-xs" />
-              Preparing the image…
-            </span>
-          )}
+        <div className="modal-action items-center">
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -437,7 +437,9 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
                 );
               }}
             >
-              Copy image
+              {/* The words past the first are for the name and a wide screen: on a phone the three
+                  buttons do not fit one row with them, and they stay in the row they are in. */}
+              Copy <span className="sr-only sm:not-sr-only">image</span>
             </button>
           )}
           <button
@@ -448,7 +450,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
               if (png) downloadBlob(png, fileName);
             }}
           >
-            Download PNG
+            Download <span className="sr-only sm:not-sr-only">PNG</span>
           </button>
         </div>
       </div>

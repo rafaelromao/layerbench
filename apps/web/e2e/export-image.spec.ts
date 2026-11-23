@@ -40,6 +40,8 @@ async function previewSvg(page: Page): Promise<string> {
 async function exportImage(page: Page): Promise<{ png: Buffer; name: string }> {
   const open = page.getByRole('button', { name: 'Export image' });
   await expect(open).toBeEnabled({ timeout: 60_000 });
+  // The word that is seen is "Export"; the name is "Export image".
+  await expect(open).toHaveText('Export');
   await open.click();
   const dialog = page.getByRole('dialog', { name: 'Export image' });
   const download = dialog.getByRole('button', { name: 'Download PNG' });
@@ -301,7 +303,7 @@ test('the dialog fits the screen, at a phone’s width as at a desk’s', async 
   await expect(download).toBeInViewport();
 });
 
-test('the dialog keeps its status and its buttons inside it while the image is made', async ({
+test('the dialog shows its status in the title’s row and keeps its buttons in one row, inside it', async ({
   page,
 }) => {
   test.slow();
@@ -318,21 +320,35 @@ test('the dialog keeps its status and its buttons inside it while the image is m
   await expect(open).toBeEnabled({ timeout: 60_000 });
   await open.click();
   const dialog = page.getByRole('dialog', { name: 'Export image' });
-  const status = dialog.getByText('Preparing the image…');
+  const status = dialog.getByText('Preparing…');
   await expect(status).toBeVisible();
 
   const box = await dialog.locator('.modal-box').boundingBox();
-  const inside = async (what: string, el: ReturnType<typeof dialog.getByText>) => {
+  const rect = async (what: string, el: ReturnType<typeof dialog.getByText>) => {
     const b = await el.boundingBox();
     expect(b, `${what} is drawn`).not.toBeNull();
-    const ok = !!b && !!box && b.x >= box.x - 1 && b.x + b.width <= box.x + box.width + 1;
+    const at = b as NonNullable<typeof b>;
+    const ok = !!box && at.x >= box.x - 1 && at.x + at.width <= box.x + box.width + 1;
     expect(ok, `${what} is inside the dialog`).toBe(true);
+    return at;
   };
-  await inside('the status', status);
+  const shown = await rect('the status', status);
+  // In the title's row, which is not the buttons': the status makes no row of its own.
+  const title = await rect('the title', dialog.getByRole('heading', { name: 'Export image' }));
+  expect(Math.abs(shown.y + shown.height / 2 - (title.y + title.height / 2))).toBeLessThan(12);
+
+  // The buttons are in the one row they have always been in, in the order they have always had.
+  const rows: number[] = [];
+  const lefts: number[] = [];
   for (const name of ['Close', 'Copy image', 'Download PNG']) {
     const button = dialog.getByRole('button', { name, exact: true });
-    if ((await button.count()) > 0) await inside(`the ${name} button`, button);
+    if ((await button.count()) === 0) continue;
+    const at = await rect(`the ${name} button`, button);
+    rows.push(at.y);
+    lefts.push(at.x);
   }
+  expect(Math.max(...rows) - Math.min(...rows)).toBeLessThan(4);
+  expect([...lefts].sort((a, b) => a - b)).toEqual(lefts);
   // Nothing in it is pushed out of its own box, to be scrolled to sideways.
   const overflow = await dialog
     .locator('.modal-box')

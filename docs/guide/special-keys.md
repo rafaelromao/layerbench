@@ -19,7 +19,7 @@ ZMK module, which the editor names and links, as [In ZMK](#in-zmk) lists.
 | a ring inside the key, `held` or `tapped` along the bottom | on a layer above the base: the key held or tapped to get to this layer |
 | `▽` in a dashed outline | transparent: the key of the layer below shows through |
 | a small box on the gap between keys | a combo that types: press those keys together. It shows what it types, and what it does held under that; select it to edit it as any kind of key but transparent. Combos on three or more keys, on keys apart, or with no room on their gap, are under the button beside **Heat** |
-| a number in the corner | more than fits on the key; the **Legend** under the board says it all |
+| a number in the corner | more than fits on the key; the **Legend**, a button at the right of the **Board** heading, says it all in a popup |
 
 `⇧` `⌃` `⌥` `⌘` are Shift, Control, Alt and Command, `⟳` is repeat and `⇪` is caps word.
 
