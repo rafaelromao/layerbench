@@ -84,6 +84,29 @@ const READERS: Record<string, (text: string) => unknown> = {
       settings: t,
       palette,
     }),
+  'composeCard side by side, every text': (t) => {
+    const hostile = (tag: string) => ({
+      tag,
+      credit: creditOf(
+        { name: t, author: t, link: `https://example.com/${t}` },
+        { unsaved: true, editor: t },
+      ),
+      layers: [
+        { svg: board(), name: t, share: t },
+        { svg: board(), name: t, share: t },
+      ],
+      omitted: 3,
+      summary: [{ id: 'x', label: t, value: t, band: t, quality: 'good' as const }],
+    });
+    return composeCard({
+      boards: [hostile('A'), hostile('B')],
+      sideBySide: true,
+      heat: t,
+      heatNote: t,
+      settings: t,
+      palette,
+    });
+  },
 };
 
 describe('text of every shape a link can carry', () => {
@@ -101,6 +124,11 @@ describe('text of every shape a link can carry', () => {
     for (const text of Object.values(SHAPES)) {
       const { svg } = (READERS['composeCard, every text'] as (t: string) => { svg: string })(text);
       expect(svg.length).toBeLessThan(120_000);
+      // Two columns of the same, side by side: twice the text, and no more.
+      const side = (
+        READERS['composeCard side by side, every text'] as (t: string) => { svg: string }
+      )(text);
+      expect(side.svg.length).toBeLessThan(240_000);
     }
   });
 });

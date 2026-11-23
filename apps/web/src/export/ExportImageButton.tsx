@@ -6,7 +6,7 @@
 export function ExportImageButton({
   blocked,
   onClick,
-  what = 'the first layer',
+  what = 'the board',
   className = '',
 }: {
   /** Why there is no image yet; null once the numbers it shows are made. */
@@ -21,7 +21,9 @@ export function ExportImageButton({
       type="button"
       className={`btn btn-xs btn-outline shrink-0 ${className}`}
       aria-label="Export image"
-      title={blocked ?? `Make an image of ${what}, with its heat and credits, to post or share`}
+      title={
+        blocked ?? `Make an image of ${what}, with its heat, Summary and credits, to post or share`
+      }
       disabled={blocked !== null}
       onClick={onClick}
     >

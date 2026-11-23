@@ -146,6 +146,41 @@ test('Analyze: All layers draws every layer of the layout, one under another', a
   expect(found).toEqual([]);
 });
 
+test('Compare: All layers draws the two layouts side by side, not one over the other', async ({
+  page,
+}) => {
+  test.slow();
+  const found = problems(page);
+  await page.goto('/compare?layout=magic-romak&b=romak&corpus=en-general&sample=10000&heat=usage');
+  const first = await exportImage(page);
+  expect(first.name).toBe('layerbench-magic-romak-vs-romak.png');
+  const dialog = page.getByRole('dialog', { name: 'Export image' });
+
+  await dialog.getByLabel('All layers').check();
+  const download = dialog.getByRole('button', { name: 'Download PNG' });
+  await expect(download).toBeEnabled({ timeout: 30_000 });
+  const svg = await previewSvg(page);
+  // Two columns: the card is as wide as both, and every layer of each is in its column.
+  expect(svg).toMatch(/<svg[^>]* width="2360"/);
+  const columns = new Set(
+    [...svg.matchAll(/<svg[^>]*viewBox="[^"]*"[^>]* x="(\d+)"/g)].map((m) => m[1]),
+  );
+  expect([...columns].sort()).toEqual(['1208', '48']);
+  expect(svg.match(/>Effort</g)).toHaveLength(2);
+  expect(svg).not.toContain('var(');
+
+  const [saved] = await Promise.all([page.waitForEvent('download'), download.click()]);
+  expect(saved.suggestedFilename()).toBe('layerbench-magic-romak-vs-romak-all-layers.png');
+  const png = await readFile(await saved.path());
+  expect([...png.subarray(0, 8)]).toEqual(PNG_SIGNATURE);
+  // Side by side the card is nearly as wide as it is tall: one over the other it would be a strip
+  // of a fifth of its height.
+  const { width, height } = sizeOf(png);
+  expect(width / height).toBeGreaterThan(0.4);
+  expect(width).toBeGreaterThan(sizeOf(first.png).width);
+  expect(found).toEqual([]);
+});
+
 test('Analyze: the image is a rounded panel, its corners clear and its border drawn', async ({
   page,
 }) => {

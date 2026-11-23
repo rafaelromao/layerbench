@@ -106,7 +106,9 @@ function previewAlt(image: ShareImage, editor: string, all: boolean): string {
       .filter(Boolean)
       .join(', ');
   });
-  return `Preview of the image. ${layouts.join('. ')}. Keys are coloured by ${image.heat}, from none to the busiest key.`;
+  // Two layouts with every layer are in columns, the same layer of each in a row.
+  const arrangement = all && image.boards.length > 1 ? ' The layouts are side by side.' : '';
+  return `Preview of the image. ${layouts.join('. ')}.${arrangement} Keys are coloured by ${image.heat}, from none to the busiest key.`;
 }
 
 /**
@@ -157,7 +159,7 @@ function allLayersHint(boards: ShareBoard[]): string {
   const cap = boards.find((b) => b.layerTotal > b.layers.length);
   const which =
     boards.length > 1
-      ? `each layout's layers, one under another (${boards.map((b, i) => `${b.tag ?? i + 1} has ${counts[i]}`).join(', ')})`
+      ? `each layout's layers, side by side (${boards.map((b, i) => `${b.tag ?? i + 1} has ${counts[i]}`).join(', ')})`
       : `every layer of the layout, one under another (${counts[0]})`;
   return `Draws ${which}, instead of the first layer alone.${capped ? ` A card holds the first ${cap?.layers.length} of each.` : ''}`;
 }
@@ -260,6 +262,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
           omitted: prepared.all ? b.layerTotal - b.layers.length : 0,
           summary: b.summary,
         })),
+        sideBySide: prepared.all && image.boards.length > 1,
         heat: image.heat,
         heatNote: image.heatNote,
         settings: image.settings,
@@ -329,12 +332,12 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
         <p className="text-xs opacity-70">
           {drawAll
             ? image.boards.length > 1
-              ? 'Every layer of each layout'
+              ? 'Every layer of each layout, side by side'
               : 'Every layer'
             : image.boards.length > 1
               ? 'Each layout’s first layer'
               : 'The first layer'}
-          , with its heat and its credits, as an image to post in a thread or a chat.
+          , with its heat, its Summary and its credits, as an image to post in a thread or a chat.
         </p>
 
         {multiple && (
