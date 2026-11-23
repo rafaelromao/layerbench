@@ -422,8 +422,9 @@ the way.
 ## Sharing an image
 
 A link opens LayerBench; where a link will not do, such as a post on Reddit or a message in Discord,
-**Export image** makes a picture instead. It is in **Analyze**, beside **Heat** under the board, and
-in **Compare**, beside **Heat** above the two boards. It is off until the numbers the colours are
+the **Export** button makes a picture instead (its dialog is **Export image**, and the editor's
+**Export** tab, which exports the layout as text, is another thing). The button is in **Analyze**,
+beside **Heat** under the board, and in **Compare**, beside **Heat** above the two boards. It is off until the numbers the colours are
 made from are of the layout in hand: while **Analyze** is still working out an edit, and until both
 layouts of **Compare** are scored, its title says which.
 

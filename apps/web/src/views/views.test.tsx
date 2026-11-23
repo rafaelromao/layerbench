@@ -157,14 +157,15 @@ describe('Compare', () => {
     const boardB = await board('B');
     expect(boardB.querySelectorAll('.lb-key-number').length).toBeGreaterThan(0);
     const side = boardB.closest('section') as HTMLElement;
-    // The Legend starts folded: opened, it lists them.
-    const list = await openLegend(userEvent.setup(), side);
+    // The Legend is a popup, not a list under the board: opened, it lists them.
+    expect(within(side).queryByRole('list', { name: 'Key legend' })).toBeNull();
+    const list = await openLegend(userEvent.setup(), 'B');
     expect(within(list).getAllByRole('listitem').length).toBeGreaterThan(0);
-    // The navigator stays right under the board, the list after it, as on Analyze.
+    // The navigator stays right under the board, as on Analyze.
     const nav = within(side).getByRole('group', { name: 'Layers of B' });
     const follows = (a: Node, b: Node) =>
       !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([follows(boardB, nav), follows(nav, list)]).toEqual([true, true]);
+    expect(follows(boardB, nav)).toBe(true);
   });
 
   it('shows Settings as Analyze does: the Library’s gear on a phone, words wider', async () => {
@@ -526,10 +527,12 @@ describe('Compare, heat', () => {
     const side = sideOf('A');
     const note = await within(side).findByText('Heat appears once both layouts are scored.');
     const nav = within(side).getByRole('group', { name: 'Layers of A' });
-    const list = await openLegend(userEvent.setup(), side);
     const follows = (a: Node, b: Node) =>
       !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect([follows(nav, note), follows(note, list)]).toEqual([true, true]);
+    // The note is right under the navigator; the Legend is not under the board at all.
+    expect(follows(nav, note)).toBe(true);
+    expect(within(side).queryByRole('list', { name: 'Key legend' })).toBeNull();
+    expect(await openLegend(userEvent.setup(), 'A')).toBeInTheDocument();
   }, 60_000);
 
   it('colours the layout that was scored where the other could not be', async () => {

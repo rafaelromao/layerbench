@@ -324,8 +324,11 @@ describe('all layers', () => {
     const svg = await previewSvg();
     expect(svg).toContain(`${romak.layers[0]?.name} · 90% of presses`);
     expect(svg).not.toContain('2 / ');
+    // Off, the hint says what is drawn and what ticking would draw, not that it is drawn already.
     expect(
-      screen.getByText(/Draws every layer of the layout, one under another \(5 layers\)/),
+      screen.getByText(
+        /^Only the first layer is drawn\. Tick to draw every layer, one under another \(5 layers\)/,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(/^The first layer/)).toBeInTheDocument();
   });
@@ -340,7 +343,24 @@ describe('all layers', () => {
     romak.layers.forEach((layer, i) => {
       expect(svg).toContain(`${i + 1} / ${romak.layers.length} · ${layer.name}`);
     });
-    expect(screen.getByText(/^Every layer/)).toBeInTheDocument();
+    expect(screen.getByText(/^Every layer, with its heat/)).toBeInTheDocument();
+    // On, the hint says what is drawn; the sentence that says what ticking would do is gone.
+    expect(
+      screen.getByText(/^Every layer is drawn, one under another \(5 layers\)/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Only the first layer is drawn/)).toBeNull();
+    expect(screen.queryByText(/Tick to draw/)).toBeNull();
+  });
+
+  it('says again what is drawn, and what ticking would draw, once it is unticked', async () => {
+    const user = userEvent.setup();
+    render(<ShareImageDialog image={image([several()])} onClose={() => {}} />);
+    await previewSvg();
+    await user.click(option());
+    expect(screen.getByText(/^Every layer is drawn/)).toBeInTheDocument();
+    await user.click(option());
+    expect(screen.getByText(/^Only the first layer is drawn\. Tick to draw/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Every layer is drawn/)).toBeNull();
   });
 
   it('says every layer to a screen reader, by name', async () => {
@@ -419,7 +439,9 @@ describe('all layers', () => {
     ]);
     render(<ShareImageDialog image={two} onClose={() => {}} />);
     expect(
-      screen.getByText(/each layout's layers, side by side \(A has 5 layers, B has 5 layers\)/),
+      screen.getByText(
+        /^Only the first layer of each layout is drawn\. Tick to draw each layout’s layers, side by side \(A has 5 layers, B has 5 layers\)/,
+      ),
     ).toBeInTheDocument();
     // Stacked, as it was, until the option is ticked: the card is one column wide.
     const stacked = await screen.findByRole('img', { name: /Preview of the image/ });
@@ -436,6 +458,12 @@ describe('all layers', () => {
     const svg = await previewSvg();
     expect(svg).toContain('5 / 5');
     expect(screen.getByText(/^Every layer of each layout, side by side/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /^Each layout’s layers are drawn, side by side \(A has 5 layers, B has 5 layers\)/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tick to draw/)).toBeNull();
     expect(screen.getByRole('img', { name: /Preview of the image/ }).getAttribute('alt')).toContain(
       'The layouts are side by side.',
     );
@@ -463,7 +491,9 @@ describe('all layers', () => {
     const two = image([several({ tag: 'A' }), board({ tag: 'B', layout: { name: 'Qwerty' } })]);
     render(<ShareImageDialog image={two} onClose={() => {}} />);
     expect(
-      screen.getByText(/each layout's layers, side by side \(A has 5 layers, B has 1 layer\)/),
+      screen.getByText(
+        /Tick to draw each layout’s layers, side by side \(A has 5 layers, B has 1 layer\)/,
+      ),
     ).toBeInTheDocument();
     await user.click(option());
     await waitFor(async () => expect(await previewSvg()).toContain('5 / 5'));

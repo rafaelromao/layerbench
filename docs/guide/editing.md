@@ -4,9 +4,10 @@ A layout is edited where it is analyzed, in **Analyze**: the board shows one lay
 the layer navigator under it. The tabs above it, **Board**, **Layers**, **Combos**, **Special Behaviors**,
 **Typing paths**, **Configuration** and **Export**, hold everything there is to edit:
 **Board** is the first, and holds **Key**, which says how a key is picked and moved, and **A word,
-typed**, side by side. The board is under the tabs in a card of its own, with its **Legend**, folded until you open
-it, the selected key's numbers and the **Summary**; **Combos** and **Special Behaviors** draw that
-card too, with the **Legend** and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
+typed**, side by side. The board is under the tabs in a card of its own, with the selected key's numbers and the
+**Summary**, and a **Legend** button at the right of its **Board** heading, which opens the list of
+numbered keys in a popup; **Combos** and **Special Behaviors** draw that card too, with the
+**Legend** button and the **Summary**, and the other tabs the **Summary** alone. The numbers sit under all of them. Tap or click a
 key to select it. The editor beside the board (under its card, on a phone) says what the key does
 and lets you change it; what the key adds to the numbers is in the board's card, above the
 **Summary**. Tap or click the
@@ -219,7 +220,7 @@ colour, and `held` or `tapped` along the bottom: the thumb held for Symbols, the
 tapped for Alpha 2, the `ç` macro that turns on Ç extension, an alt repeat branch that arms a
 layer, the thumb or both keys of the combo tapped for Accents. They are found from the layout itself, so they change as you edit: give a key something else
 to do and it stops being marked, even where the layout names it as a way in. Select one, or read
-the **Legend** under the board, to see where it is pressed and when.
+the **Legend**, from the button at the right of the **Board** heading, to see where it is pressed and when.
 
 A thumb holding a layer on can press nothing else, so on that layer the other thumb keys of its hand
 are out of reach: where every way onto a layer holds a thumb of one hand down, that hand's thumb keys
@@ -543,7 +544,7 @@ keeps the page where it is, at either end too:
 ## On a phone
 
 Everything works by tapping. Selecting a key opens the editor under the board's card, past its
-**Legend**, key numbers and **Summary**, and the page scrolls down to it; fold the **Summary** to
+key numbers and **Summary**, and the page scrolls down to it; fold the **Summary** to
 bring it closer. The board scrolls away with the page as you work through the editor, leaving it the
 screen; scroll back up for the next key. A move brings the board back by itself, with nothing left selected. Tiles
 and chips are sized for a finger.

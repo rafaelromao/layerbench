@@ -152,16 +152,22 @@ function PreviewPicture({
   );
 }
 
-/** What the All layers option does, for the layouts on the image, as far as a card holds them. */
-function allLayersHint(boards: ShareBoard[]): string {
+/**
+ * What the All layers option does, as far as a card holds them, said of what the image is now: with
+ * the option off it says what is drawn and what ticking it would draw, and with it on, what is drawn.
+ */
+function allLayersHint(boards: ShareBoard[], on: boolean): string {
   const counts = boards.map((b) => `${b.layerTotal} layer${b.layerTotal === 1 ? '' : 's'}`);
-  const capped = boards.some((b) => b.layerTotal > b.layers.length);
   const cap = boards.find((b) => b.layerTotal > b.layers.length);
-  const which =
-    boards.length > 1
-      ? `each layout's layers, side by side (${boards.map((b, i) => `${b.tag ?? i + 1} has ${counts[i]}`).join(', ')})`
-      : `every layer of the layout, one under another (${counts[0]})`;
-  return `Draws ${which}, instead of the first layer alone.${capped ? ` A card holds the first ${cap?.layers.length} of each.` : ''}`;
+  const several = boards.length > 1;
+  const which = several
+    ? boards.map((b, i) => `${b.tag ?? i + 1} has ${counts[i]}`).join(', ')
+    : counts[0];
+  const note = cap ? ` A card holds the first ${cap.layers.length} of each.` : '';
+  if (on) {
+    return `${several ? 'Each layout’s layers are drawn, side by side' : 'Every layer is drawn, one under another'} (${which}).${note}`;
+  }
+  return `${several ? 'Only the first layer of each layout is drawn' : 'Only the first layer is drawn'}. Tick to draw ${several ? 'each layout’s layers, side by side' : 'every layer, one under another'} (${which}).${note}`;
 }
 
 /**
@@ -328,6 +334,17 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
             Export image
           </h2>
           <HelpLink help={HELP.shareImage} />
+          {/* In the title's row, which has room at the right, not in the buttons' row, which has none
+              on a phone: the status is temporary and makes no row of its own. */}
+          {preparing && (
+            <span
+              className="ml-auto flex min-w-0 items-center gap-2 text-xs opacity-70"
+              role="status"
+            >
+              <span className="loading loading-dots loading-xs" />
+              Preparing…
+            </span>
+          )}
         </div>
         <p className="text-xs opacity-70">
           {drawAll
@@ -353,7 +370,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
               <span className="label-text text-sm">All layers</span>
             </label>
             <p id={layersHint} className="mt-1 text-xs opacity-70">
-              {allLayersHint(image.boards)}
+              {allLayersHint(image.boards, all)}
             </p>
           </div>
         )}
@@ -400,12 +417,6 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
         )}
 
         <div className="modal-action items-center">
-          {preparing && (
-            <span className="mr-auto flex items-center gap-2 text-xs opacity-70" role="status">
-              <span className="loading loading-dots loading-xs" />
-              Preparing the image…
-            </span>
-          )}
           <button
             type="button"
             className="btn btn-ghost btn-sm"
@@ -426,7 +437,9 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
                 );
               }}
             >
-              Copy image
+              {/* The words past the first are for the name and a wide screen: on a phone the three
+                  buttons do not fit one row with them, and they stay in the row they are in. */}
+              Copy <span className="sr-only sm:not-sr-only">image</span>
             </button>
           )}
           <button
@@ -437,7 +450,7 @@ export function ShareImageDialog({ image, onClose }: { image: ShareImage; onClos
               if (png) downloadBlob(png, fileName);
             }}
           >
-            Download PNG
+            Download <span className="sr-only sm:not-sr-only">PNG</span>
           </button>
         </div>
       </div>

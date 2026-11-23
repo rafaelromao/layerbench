@@ -38,14 +38,10 @@ import { featureList } from '../../components/FeatureSwitches.js';
 import { describeKeys } from '../../components/format.js';
 import { HeatSelect } from '../../components/HeatSelect.js';
 import { HelpLink } from '../../components/HelpLink.js';
-import {
-  comboPlace,
-  type KeyboardHandle,
-  KeyLegend,
-  typingCombos,
-} from '../../components/Keyboard.js';
+import { comboPlace, type KeyboardHandle, typingCombos } from '../../components/Keyboard.js';
 import { type KeyItemSelection, KeyStats } from '../../components/KeyStats.js';
 import { LanguageChips } from '../../components/LanguageChips.js';
+import { LegendButton } from '../../components/LegendDialog.js';
 import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
@@ -1367,7 +1363,18 @@ export function Workbench({
                   aria-label="Board"
                 >
                   <div className="card-body gap-2 p-3 max-sm:pt-2 sm:p-4 min-w-0">
-                    <Collapsible id="analyze.board" title="Board">
+                    <Collapsible
+                      id="analyze.board"
+                      title="Board"
+                      // The Legend is a popup, its button at the right of the heading, where the row
+                      // has room: no row of its own, folded or not, and the Heat's row as it was.
+                      extra={
+                        <LegendButton
+                          className="ml-auto"
+                          legends={[{ compiled: state.compiled, layer: boardLayer }]}
+                        />
+                      }
+                    >
                       {/* The board first, with nothing above it; the layers centred under it, as on a
                     Library card; then Heat and Undo and Redo, in a row of their own. */}
                       <div ref={boardArea} className="lb-board-area flex flex-col gap-2 min-w-0">
@@ -1536,12 +1543,6 @@ export function Workbench({
                         )}
                       </div>
                     </Collapsible>
-
-                    <section className="min-w-0" aria-label="Legend">
-                      <Collapsible id="analyze.legend" title="Legend" defaultCollapsed>
-                        <KeyLegend compiled={state.compiled} layer={boardLayer} />
-                      </Collapsible>
-                    </section>
 
                     {/* The selected key's numbers, right above the layout's: what the key adds to them. */}
                     {onBoard && keyStatsView && (

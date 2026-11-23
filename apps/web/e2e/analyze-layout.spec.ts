@@ -122,7 +122,7 @@ test('every panel but the Board is a carousel as tall as the Combos one, its sli
   if (phone) expect(heights.Combos).toBeLessThan(heights[tall[0]]);
 });
 
-test('the Board tab holds the Key hint and A word, typed over the board, whose card holds the Legend, folded, and the Summary', async ({
+test('the Board tab holds the Key hint and A word, typed over the board, whose card holds the Legend’s button and the Summary', async ({
   page,
 }) => {
   await openEdit(page);
@@ -145,15 +145,32 @@ test('the Board tab holds the Key hint and A word, typed over the board, whose c
   expect(Math.abs(h.height - w.height)).toBeLessThanOrEqual(1);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 
-  // The legend and the summary are in the board's card, the legend folded until it is opened.
+  // The summary is in the board's card. The legend is a button in the row of the heat choice, not
+  // a section that takes a row of the card, folded or not: it opens a popup.
   await expect(card.getByRole('region', { name: 'Summary', exact: true })).toBeVisible();
+  await expect(card.getByRole('region', { name: 'Legend', exact: true })).toHaveCount(0);
   const legend = card.getByRole('button', { name: 'Legend', exact: true });
-  await expect(legend).toHaveAttribute('aria-expanded', 'false');
+  const heading = card.getByRole('button', { name: 'Board', exact: true });
+  // In the row of the Board heading, at every width, where there is room: it adds no row, and the
+  // Heat choice's row has nothing more in it.
+  const [hb, lb] = await Promise.all([heading, legend].map((it) => it.boundingBox()));
+  expect(hb && lb).toBeTruthy();
+  if (hb && lb) {
+    expect(Math.abs(lb.y + lb.height / 2 - (hb.y + hb.height / 2))).toBeLessThan(hb.height);
+    // At the right of the heading, not beside it.
+    expect(lb.x).toBeGreaterThan(hb.x + hb.width);
+  }
   await legend.click();
-  await expect(legend).toHaveAttribute('aria-expanded', 'true');
-  await expect(card.getByRole('list', { name: 'Key legend' })).toBeVisible();
-  // Folded by default, the legend is no longer open where every width is checked for a sideways
-  // scroll: opened, its list is as wide as it is, and the page still does not scroll.
+  const popup = page.getByRole('dialog', { name: 'Legend' });
+  await expect(popup).toBeVisible();
+  // The popup is inside the screen, and the page behind it does not scroll sideways, opened as it
+  // is.
+  const box = await popup.locator('.modal-box').boundingBox();
+  const viewport = page.viewportSize();
+  expect(box && viewport && box.x >= 0 && box.x + box.width <= viewport.width + 1).toBe(true);
+  expect(await overflow(page)).toBeLessThanOrEqual(0);
+  await popup.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(popup).toHaveCount(0);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
 });
 
@@ -206,7 +223,7 @@ test.describe('on a phone', () => {
     await page.getByRole('button', { name: /^Key LHI:/ }).tap();
     const inspector = page.getByRole('group', { name: 'Edit LHI' });
     await expect(inspector).toBeInViewport();
-    // Under the Board card, whose Legend, key numbers and Summary are between it and the board. Both
+    // Under the Board card, whose key numbers and Summary are between it and the board. Both
     // boxes are read in one frame: the page is still scrolling to the editor, smoothly, and two
     // reads apart would each catch it at another point.
     const gap = await inspector.evaluate(

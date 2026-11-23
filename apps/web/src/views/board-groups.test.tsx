@@ -9,7 +9,7 @@ const follows = (a: Node, b: Node) =>
   !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
 describe('Analyze: the Board tab and the board’s card', () => {
-  it('holds the Key hint and A word, typed under the tabs, and the Legend and Summary in the board’s card', async () => {
+  it('holds the Key hint and A word, typed under the tabs, and the Legend’s button and Summary in the board’s card', async () => {
     await openEdit();
     const panel = screen.getByRole('tabpanel', { name: 'Board' });
     const card = screen.getByRole('region', { name: 'Board' });
@@ -26,10 +26,11 @@ describe('Analyze: the Board tab and the board’s card', () => {
     expect(within(card).queryByRole('region', { name: 'Key' })).toBeNull();
     expect(within(card).queryByRole('region', { name: 'A word, typed' })).toBeNull();
 
-    // The legend and the summary are in it, each once.
-    expect(within(card).getByRole('region', { name: 'Legend' })).toBeInTheDocument();
+    // The summary is in it, once; the legend is a button in its row of tools, once, not a section.
+    expect(within(card).getByRole('button', { name: 'Legend' })).toBeInTheDocument();
     expect(within(card).getByRole('region', { name: 'Summary' })).toBeInTheDocument();
-    expect(screen.getAllByRole('region', { name: 'Legend' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Legend' })).toHaveLength(1);
+    expect(screen.queryByRole('region', { name: 'Legend' })).toBeNull();
     expect(screen.getAllByRole('region', { name: 'Summary' })).toHaveLength(1);
   }, 60_000);
 
@@ -47,19 +48,32 @@ describe('Analyze: the Board tab and the board’s card', () => {
     expect(examples.some((word) => /\P{L}/u.test(word))).toBe(true);
   }, 60_000);
 
-  it('starts the Legend folded, opens it by its heading, and starts the Summary open', async () => {
+  it('opens the Legend as a popup by its button, closed until then, and starts the Summary open', async () => {
     const user = userEvent.setup();
     await openEdit();
     const card = screen.getByRole('region', { name: 'Board' });
 
+    // A button that opens a dialog, not a heading that folds: nothing of it is on the page, folded
+    // or not, until it is opened.
     const legend = within(card).getByRole('button', { name: 'Legend' });
-    expect(legend).toHaveAttribute('aria-expanded', 'false');
-    // Qwerty's keys all fit their labels, which is what the legend says.
-    const body = within(card).getByText(/fits its label/);
-    expect(body).not.toBeVisible();
+    expect(legend).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(legend).not.toHaveAttribute('aria-expanded');
+    // In the row of the Board heading, which has room, not in the row of the Heat choice.
+    expect(legend.closest('div.flex-wrap')).toContainElement(
+      within(card).getByRole('button', { name: 'Board' }),
+    );
+    expect(legend.closest('div.flex-wrap')).not.toContainElement(
+      within(card).getByLabelText('Heat'),
+    );
+    expect(screen.queryByRole('dialog', { name: 'Legend' })).toBeNull();
+    expect(screen.queryByText(/fits its label/)).toBeNull();
+
     await user.click(legend);
-    expect(legend).toHaveAttribute('aria-expanded', 'true');
-    expect(body).toBeVisible();
+    const popup = await screen.findByRole('dialog', { name: 'Legend' });
+    // Qwerty's keys all fit their labels, which is what the legend says.
+    expect(within(popup).getByText(/fits its label/)).toBeInTheDocument();
+    await user.click(within(popup).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Legend' })).toBeNull();
 
     expect(within(card).getByRole('button', { name: 'Summary' })).toHaveAttribute(
       'aria-expanded',
@@ -92,14 +106,14 @@ describe('Analyze: the Board tab and the board’s card', () => {
     expect(follows(numbers, within(card).getByRole('region', { name: 'Summary' }))).toBe(true);
   }, 60_000);
 
-  it('draws the Legend and Summary in the card of every tab that draws the board, and the Summary alone elsewhere', async () => {
+  it('puts the Legend’s button and the Summary in the card of every tab that draws the board, and the Summary alone elsewhere', async () => {
     const user = userEvent.setup();
     await openEdit();
 
     for (const tab of ['Combos', 'Special Behaviors']) {
       await user.click(screen.getByRole('tab', { name: tab }));
       const card = screen.getByRole('region', { name: 'Board' });
-      expect(within(card).getByRole('region', { name: 'Legend' })).toBeInTheDocument();
+      expect(within(card).getByRole('button', { name: 'Legend' })).toBeInTheDocument();
       expect(within(card).getByRole('region', { name: 'Summary' })).toBeInTheDocument();
       // The Key hint and the word are the Board tab's.
       expect(screen.queryByRole('region', { name: 'Key' })).toBeNull();
@@ -109,7 +123,7 @@ describe('Analyze: the Board tab and the board’s card', () => {
     // A tab with no board keeps the Summary, in a card of its own.
     await user.click(screen.getByRole('tab', { name: 'Layers' }));
     expect(screen.queryByRole('region', { name: 'Board' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Legend' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Legend' })).toBeNull();
     const summary = screen.getByRole('region', { name: 'Summary' });
     // A card of its own: not the Editor card, which holds the tabs.
     const own = summary.closest('.card');
@@ -118,7 +132,7 @@ describe('Analyze: the Board tab and the board’s card', () => {
   }, 60_000);
 });
 
-describe('Compare: Legend and Summary under each board', () => {
+describe('Compare: the Legend’s popup and the Summary under each board', () => {
   const sideOf = (side: string) =>
     screen.getByRole('group', { name: `Layers of ${side}` }).closest('section') as HTMLElement;
 
@@ -131,12 +145,18 @@ describe('Compare: Legend and Summary under each board', () => {
     await screen.findByRole('group', { name: 'Layers of B' });
     // Side A on its Symbols layer, side B on its base: each Legend follows its own board.
     await showLayer(user, 'Symbols', 'Layers of A');
-    const list = await openLegend(user, sideOf('A'));
+    const list = await openLegend(user, 'A');
     expect(list.textContent).toContain('to reach Symbols');
-    expect(within(sideOf('B')).queryByText(/to reach Symbols/)).toBeNull();
+    // Side B has all its keys fit their labels: its part of the popup says there is nothing to list.
+    const popup = screen.getByRole('dialog', { name: 'Legend' });
+    const sideB = within(popup).getByRole('region', { name: /^Legend of B:/ });
+    expect(sideB.textContent).not.toContain('to reach Symbols');
+    expect(within(sideB).getByText(/fits its label/)).toBeInTheDocument();
+    // Each list is headed with its layout and the layer it is of.
+    expect(within(popup).getByRole('heading', { name: /^A: .*Symbols$/ })).toBeInTheDocument();
   }, 60_000);
 
-  it('starts the Legend folded and the Summary open, and folds and opens each on both sides together', async () => {
+  it('opens one Legend for both sides from a button in the heat row, and starts the Summary open on both', async () => {
     const user = userEvent.setup();
     renderRoute('/compare?layout=qwerty&b=magic-romak&corpus=en-general&sample=20000', {
       storage: freshStorage(),
@@ -144,27 +164,39 @@ describe('Compare: Legend and Summary under each board', () => {
     await screen.findByRole('group', { name: 'Layers of A' });
     await screen.findByRole('group', { name: 'Layers of B' });
     const [a, b] = [sideOf('A'), sideOf('B')];
-    const legend = (side: HTMLElement) => within(side).getByRole('button', { name: 'Legend' });
     const summary = (side: HTMLElement) => within(side).getByRole('button', { name: 'Summary' });
 
+    // One button, in the row of the Heat choice, not one under each board; nothing of the list is
+    // on the page until it is opened.
+    const legend = screen.getByRole('button', { name: 'Legend' });
+    expect(screen.getAllByRole('button', { name: 'Legend' })).toHaveLength(1);
+    expect(a).not.toContainElement(legend);
+    expect(b).not.toContainElement(legend);
+    // At the right of the Layouts heading, in its row, which has room: the Heat's row is as it was.
+    expect(legend.closest('div.flex-wrap')).toContainElement(
+      screen.getByRole('button', { name: 'Layouts' }),
+    );
+    expect(legend.closest('div.flex-wrap')).not.toContainElement(screen.getByLabelText('Heat'));
+    expect(screen.queryByRole('list', { name: 'Key legend' })).toBeNull();
     for (const side of [a, b]) {
-      expect(legend(side)).toHaveAttribute('aria-expanded', 'false');
       expect(summary(side)).toHaveAttribute('aria-expanded', 'true');
     }
-    // Under the board, and its note, as the list was.
-    expect(follows(within(a).getByRole('group', { name: 'Layers of A' }), legend(a))).toBe(true);
 
-    // One side's heading opens the other's: they are read against each other.
-    await user.click(legend(a));
-    expect(legend(a)).toHaveAttribute('aria-expanded', 'true');
-    expect(legend(b)).toHaveAttribute('aria-expanded', 'true');
+    // Both sides' lists are in the one popup: they are read against each other.
+    await user.click(legend);
+    const popup = await screen.findByRole('dialog', { name: 'Legend' });
+    expect(within(popup).getAllByRole('region', { name: /^Legend of / })).toHaveLength(2);
     // Magic Romak's keys that do not fit their caps are listed.
-    expect(await within(b).findByRole('list', { name: 'Key legend' })).toBeVisible();
+    expect(
+      await within(within(popup).getByRole('region', { name: /^Legend of B:/ })).findByRole(
+        'list',
+        { name: 'Key legend' },
+      ),
+    ).toBeVisible();
+    await user.click(within(popup).getByRole('button', { name: 'Close' }));
 
     await user.click(summary(b));
     expect(summary(a)).toHaveAttribute('aria-expanded', 'false');
     expect(summary(b)).toHaveAttribute('aria-expanded', 'false');
-    // The legend stays as it was: each group is its own.
-    expect(legend(a)).toHaveAttribute('aria-expanded', 'true');
   }, 60_000);
 });
