@@ -10,7 +10,7 @@ export function portableCorpusError(
   const known = new Map(manifests.map((manifest) => [manifest.id, manifest]));
   for (const id of [corpus, corpus2]) {
     if (id === null) continue;
-    if (customId(id) !== null)
+    if (customId(id) !== null || /^(?:custom|mix)-/.test(id))
       return 'Custom corpus text stays on this device and cannot be shared. Choose a shipped corpus instead.';
     const manifest = known.get(id);
     if (!manifest)

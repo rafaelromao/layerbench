@@ -10,6 +10,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MemoryLink } from '../test/memory-link.js';
 import type { RawSearch } from '../url/params.js';
+import { isPortableLayoutRef } from '../url/share-target.js';
 import { useRouterLink } from './router-link.js';
 import type { LinkPort } from './session.js';
 
@@ -42,7 +43,10 @@ function memoryHarness(start: string): Harness {
 }
 
 /** The router's link, on Analyze in a router of its own with a memory history. */
-async function routerHarness(start: string): Promise<Harness & { search(): RawSearch }> {
+async function routerHarness(
+  start: string,
+  extraQuery = '',
+): Promise<Harness & { search(): RawSearch }> {
   let link: LinkPort | null = null;
   function Probe() {
     link = useRouterLink();
@@ -57,7 +61,9 @@ async function routerHarness(start: string): Promise<Harness & { search(): RawSe
   });
   const router = createRouter({
     routeTree: root.addChildren([analyze]),
-    history: createMemoryHistory({ initialEntries: [`/analyze?layout=${start}&layer=2`] }),
+    history: createMemoryHistory({
+      initialEntries: [`/analyze?layout=${start}&layer=2${extraQuery ? `&${extraQuery}` : ''}`],
+    }),
   });
   render(<RouterProvider router={router} />);
   await waitFor(() => expect(link).not.toBeNull());
@@ -123,5 +129,25 @@ describe('The link through the router', () => {
     h.link.write('dvorak', 'open');
     await h.settled();
     expect(h.search().layer).toBeUndefined();
+  });
+
+  it('keeps portable rule snapshots when a public layout is opened', async () => {
+    const h = await routerHarness(
+      'qwerty',
+      'share=1&rules=custom%3Astrict&rulesSnapshot=v1.encoded',
+    );
+    expect(String(h.search().share)).toBe('1');
+    expect(h.search().rulesSnapshot).toBe('v1.encoded');
+    expect(isPortableLayoutRef('qwerty')).toBe(true);
+
+    h.link.write('qwerty', 'open');
+    await h.settled();
+
+    expect(h.search()).toMatchObject({
+      layout: 'qwerty',
+      share: '1',
+      rules: 'custom:strict',
+      rulesSnapshot: 'v1.encoded',
+    });
   });
 });

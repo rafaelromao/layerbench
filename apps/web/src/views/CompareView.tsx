@@ -49,6 +49,21 @@ import { type LayoutState, useLayout, useTypedLayout } from './useLayout.js';
 
 const DEFAULT_B = 'qwerty';
 
+/** A loaded custom layout may stand in during its own local-ID-to-inline URL replacement. */
+async function capturedLayoutRef(ref: string, loaded: LayoutState): Promise<string | null> {
+  if (!loaded.layout || !loaded.compiled) return null;
+  if (loaded.ref !== ref) {
+    if (
+      !ref.startsWith('inline:') ||
+      loaded.storedId === null ||
+      (await snapshotRef(loaded.layout, loaded.storedId)) !== ref
+    )
+      return null;
+  }
+  if (loaded.storedId === null || ref.startsWith('inline:')) return ref;
+  return snapshotRef(loaded.layout, loaded.storedId);
+}
+
 function parsedLayer(value: string | undefined): number {
   if (value === undefined || !/^(0|[1-9]\d*)$/.test(value)) return 0;
   const layer = Number(value);
@@ -99,7 +114,7 @@ function heatSource(
 
 export function CompareView() {
   const search = useSearch({ strict: false }) as RawSearch;
-  const portable = parsePortableSearch('compare', search);
+  const portable = parsePortableSearch('compare', search, window.location.href);
   if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
   return portable?.ok ? (
     <PortableCompareGate search={portable.search} />
@@ -348,14 +363,11 @@ function ComparePage({
       throw new Error('Wait for the available texts to finish loading before sharing.');
     const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
     if (corpusError) throw new Error(corpusError);
-    if (
-      !a.layout ||
-      !a.compiled ||
-      a.ref !== params.layoutRef ||
-      !b.layout ||
-      !b.compiled ||
-      b.ref !== refB
-    )
+    const [layoutARef, layoutBRef] = await Promise.all([
+      capturedLayoutRef(params.layoutRef, a),
+      capturedLayoutRef(refB, b),
+    ]);
+    if (!layoutARef || !layoutBRef || !a.layout || !b.layout)
       throw new Error('Wait for both layouts to finish loading before sharing.');
 
     let rulesSnapshot: string | undefined;
@@ -371,10 +383,6 @@ function ComparePage({
 
     // The loaded documents are captured before any asynchronous encoding. A picker change cannot
     // replace either side midway through building this target.
-    const [layoutARef, layoutBRef] = await Promise.all([
-      a.storedId === null ? params.layoutRef : snapshotRef(a.layout, a.storedId),
-      b.storedId === null ? refB : snapshotRef(b.layout, b.storedId),
-    ]);
     const searchForTarget: RawSearch = {
       ...toSearch(params, { layoutRef: layoutARef, layer: 0 }),
       b: layoutBRef,

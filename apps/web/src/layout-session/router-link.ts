@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_PARAMS, parseParams, type RawSearch, toSearch } from '../url/params.js';
+import { isPortableLayoutRef } from '../url/share-target.js';
 import type { LinkPort } from './session.js';
 
 type Navigate = ReturnType<typeof useNavigate>;
@@ -28,10 +29,20 @@ export class RouterLink implements LinkPort {
       to: '/analyze',
       // Written onto whatever the link holds by then, so settings changed meanwhile stay. A layout
       // picked starts on its first layer.
-      search: ((prev: RawSearch) =>
-        how === 'open'
-          ? toSearch(parseParams(prev), { layoutRef: ref, layer: DEFAULT_PARAMS.layer })
-          : { ...prev, layout: ref }) as never,
+      search: ((prev: RawSearch) => {
+        if (how === 'edit') return { ...prev, layout: ref };
+        const next = toSearch(parseParams(prev), {
+          layoutRef: ref,
+          layer: DEFAULT_PARAMS.layer,
+        });
+        return String(prev.share) === '1' && isPortableLayoutRef(ref)
+          ? {
+              ...next,
+              share: '1',
+              ...(prev.rulesSnapshot !== undefined ? { rulesSnapshot: prev.rulesSnapshot } : {}),
+            }
+          : next;
+      }) as never,
       replace: true,
       resetScroll: false,
     });

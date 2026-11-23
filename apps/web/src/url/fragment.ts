@@ -1,4 +1,5 @@
 import type { LocationRewrite } from '@tanstack/react-router';
+import { PORTABLE_TARGET_ERROR_KEY, parsePortableTarget } from './share-target.js';
 
 /**
  * A layout that was never saved travels in its link as `inline:` and the whole compressed document,
@@ -12,7 +13,6 @@ import type { LocationRewrite } from '@tanstack/react-router';
  * `fromFragment` on every address it reads, a reload and Back included.
  */
 const INLINE = 'inline:';
-const PORTABLE_ERROR = '__portableTargetError';
 
 function isInline(value: string): boolean {
   return value.startsWith(INLINE);
@@ -23,10 +23,6 @@ function canonicalParams(entries: [string, string][]): string {
   for (const [key, value] of [...entries].sort(([a], [b]) => a.localeCompare(b)))
     params.append(key, value);
   return params.toString();
-}
-
-function hasDuplicateKeys(entries: [string, string][]): boolean {
-  return new Set(entries.map(([key]) => key)).size !== entries.length;
 }
 
 /** The router's address to the browser's: inline layouts leave the query for the fragment. */
@@ -60,24 +56,8 @@ export function fromFragment(url: URL): URL {
   if (!portable && (entries.length === 0 || !entries.every(([, value]) => isInline(value))))
     return url;
   if (portable) {
-    const queryEntries = [...url.searchParams] as [string, string][];
-    const queryKeys = new Set(queryEntries.map(([key]) => key));
-    const duplicatesAcrossParts = entries.some(([key]) => queryKeys.has(key));
-    const payloadInQuery = queryEntries.some(
-      ([key, value]) =>
-        key === 'rulesSnapshot' || (['layout', 'b'].includes(key) && isInline(value)),
-    );
-    const noncanonical =
-      url.search.slice(1) !== canonicalParams(queryEntries) ||
-      url.hash.slice(1) !== canonicalParams(entries);
-    if (
-      hasDuplicateKeys(queryEntries) ||
-      hasDuplicateKeys(entries) ||
-      duplicatesAcrossParts ||
-      payloadInQuery ||
-      noncanonical
-    )
-      url.searchParams.set(PORTABLE_ERROR, '1');
+    const target = parsePortableTarget(url.href, url.origin);
+    if (!target.ok) url.searchParams.set(PORTABLE_TARGET_ERROR_KEY, target.error);
   }
   if (entries.length === 0) return url;
   for (const [key, value] of entries) url.searchParams.set(key, value);

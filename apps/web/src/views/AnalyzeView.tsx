@@ -28,7 +28,7 @@ import { useCorporaState } from './useCorpora.js';
  */
 export function AnalyzeView() {
   const search = useSearch({ strict: false }) as RawSearch;
-  const portable = parsePortableSearch('analyze', search);
+  const portable = parsePortableSearch('analyze', search, window.location.href);
   if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
   return <AnalyzePage search={portable?.ok ? portable.search : search} />;
 }

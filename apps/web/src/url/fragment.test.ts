@@ -40,14 +40,16 @@ describe('layouts never saved, in the address', () => {
   });
 
   it('keeps portable layout and rule snapshots after the hash, not in the request', () => {
-    const path = '/analyze?corpus=en-general&layout=inline%3Aaaa&rulesSnapshot=v1.abc&share=1';
+    const path =
+      '/analyze?corpus=en-general&layout=inline%3Aaaa&rules=custom%3Astrict&rulesSnapshot=v1.abc&share=1';
     expect(outgoing(path)).toBe(
-      '/analyze?corpus=en-general&share=1#layout=inline%3Aaaa&rulesSnapshot=v1.abc',
+      '/analyze?corpus=en-general&rules=custom%3Astrict&share=1#layout=inline%3Aaaa&rulesSnapshot=v1.abc',
     );
     const restored = new URL(incoming(outgoing(path)), ORIGIN);
     expect(Object.fromEntries(restored.searchParams)).toEqual({
       corpus: 'en-general',
       layout: 'inline:aaa',
+      rules: 'custom:strict',
       rulesSnapshot: 'v1.abc',
       share: '1',
     });
@@ -63,13 +65,13 @@ describe('layouts never saved, in the address', () => {
       incoming('/analyze?corpus=en-general&layout=inline%3Aaaa&share=1'),
       ORIGIN,
     );
-    expect(queryLayout.searchParams.get('__portableTargetError')).toBe('1');
+    expect(queryLayout.searchParams.get('__portableTargetError')).toMatch(/fragment/i);
 
     const queryRules = new URL(
       incoming('/analyze?corpus=en-general&rulesSnapshot=v1.abc&share=1'),
       ORIGIN,
     );
-    expect(queryRules.searchParams.get('__portableTargetError')).toBe('1');
+    expect(queryRules.searchParams.get('__portableTargetError')).toMatch(/unknown state/i);
   });
 
   it('flags duplicate and noncanonical portable query or fragment state', () => {
@@ -77,7 +79,7 @@ describe('layouts never saved, in the address', () => {
       incoming('/analyze?corpus=en-general&corpus=pt-br-general&layout=qwerty&share=1'),
       ORIGIN,
     );
-    expect(duplicateQuery.searchParams.get('__portableTargetError')).toBe('1');
+    expect(duplicateQuery.searchParams.get('__portableTargetError')).toMatch(/repeats a state/i);
 
     const duplicateParts = new URL(
       incoming(
@@ -85,13 +87,13 @@ describe('layouts never saved, in the address', () => {
       ),
       ORIGIN,
     );
-    expect(duplicateParts.searchParams.get('__portableTargetError')).toBe('1');
+    expect(duplicateParts.searchParams.get('__portableTargetError')).toMatch(/repeats a layout/i);
 
     const noncanonical = new URL(
       incoming('/analyze?share=1&layout=qwerty&corpus=en-general'),
       ORIGIN,
     );
-    expect(noncanonical.searchParams.get('__portableTargetError')).toBe('1');
+    expect(noncanonical.searchParams.get('__portableTargetError')).toMatch(/canonical/i);
   });
 
   it('come back from the fragment into the search', () => {
@@ -162,5 +164,17 @@ describe('the router', () => {
       expect(new URLSearchParams(fragment).get('layout')).toBe(ref);
       expect(new URLSearchParams(fragment).get('b')).toBe(ref);
     }
+  });
+
+  it('marks portable state moved from a query-only fragment field as invalid', () => {
+    const url = new URL(
+      '/analyze?corpus=en-general&layout=qwerty&share=1#corpus2=pt-general',
+      ORIGIN,
+    );
+
+    const rewritten = fromFragment(url);
+
+    expect(rewritten.searchParams.get('__portableTargetError')).toMatch(/unsupported snapshot/i);
+    expect(rewritten.searchParams.get('corpus2')).toBe('pt-general');
   });
 });

@@ -33,12 +33,12 @@ async function collect(stream: ReadableStream<Uint8Array>, max = Infinity): Prom
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    chunks.push(value);
-    total += value.length;
-    if (total > max) {
+    if (total + value.length > max) {
       await reader.cancel().catch(() => {});
       throw new Error('inline layout too large');
     }
+    total += value.length;
+    chunks.push(value);
   }
   const out = new Uint8Array(total);
   let at = 0;

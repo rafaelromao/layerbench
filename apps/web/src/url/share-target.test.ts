@@ -6,7 +6,7 @@ const ORIGIN = 'https://layerbench.example';
 describe('portable share targets', () => {
   it('puts inline layout data in the fragment and round-trips canonical Analyze state', () => {
     const href = buildPortableTarget({
-      baseHref: '/app/analyze',
+      baseHref: '/analyze',
       origin: ORIGIN,
       route: 'analyze',
       search: {
@@ -25,7 +25,7 @@ describe('portable share targets', () => {
     });
 
     expect(href).toBe(
-      `${ORIGIN}/app/analyze?case=model&corpus=en-general&corpus2=pt-br-general&heat=effort&mix=65&off=adaptive%2Ccombos&rules=cyanophage&sample=10000&share=1&space=1&text=sym#layout=inline%3Alayout-blob`,
+      `${ORIGIN}/analyze?case=model&corpus=en-general&corpus2=pt-br-general&heat=effort&mix=65&off=adaptive%2Ccombos&rules=cyanophage&sample=10000&share=1&space=1&text=sym#layout=inline%3Alayout-blob`,
     );
     const parsed = parsePortableTarget(href, ORIGIN);
     expect(parsed).toMatchObject({
@@ -50,7 +50,7 @@ describe('portable share targets', () => {
 
   it('keeps two large Compare layout snapshots out of the request URL', () => {
     const href = buildPortableTarget({
-      baseHref: '/app/compare',
+      baseHref: '/compare',
       origin: ORIGIN,
       route: 'compare',
       search: {
@@ -76,14 +76,14 @@ describe('portable share targets', () => {
 
   it('rejects another origin, unsupported routes, unknown state and noncanonical values', () => {
     const href = buildPortableTarget({
-      baseHref: '/app/analyze',
+      baseHref: '/analyze',
       origin: ORIGIN,
       route: 'analyze',
       search: { layout: 'qwerty', corpus: 'en-general' },
     });
     const cases = [
       ['https://other.example/analyze?corpus=en-general&layout=qwerty&share=1', /LayerBench site/i],
-      [`${ORIGIN}/app/library?corpus=en-general&layout=qwerty&share=1`, /Analyze and Compare/i],
+      [`${ORIGIN}/library?corpus=en-general&layout=qwerty&share=1`, /Analyze and Compare/i],
       [href.replace('share=1', 'share=2'), /version/i],
       [`${href}&debug=1`, /unknown/i],
       [`${href}&layer=99`, /canonical/i],
@@ -95,10 +95,46 @@ describe('portable share targets', () => {
       });
   });
 
+  it('validates the original route and keeps query-only state out of the fragment', () => {
+    const misplaced = `${ORIGIN}/analyze?corpus=en-general&layout=qwerty&share=1#corpus2=pt-general`;
+    const effectiveSearch = {
+      corpus: 'en-general',
+      corpus2: 'pt-general',
+      layout: 'qwerty',
+      share: '1',
+    };
+
+    expect(parsePortableTarget(misplaced, ORIGIN)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/unsupported snapshot/i),
+    });
+    expect(parsePortableSearch('analyze', effectiveSearch, misplaced)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/unsupported snapshot/i),
+    });
+    expect(
+      parsePortableTarget(
+        `${ORIGIN}/elsewhere/analyze?corpus=en-general&layout=qwerty&share=1`,
+        ORIGIN,
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/Analyze and Compare/i),
+    });
+    expect(() =>
+      buildPortableTarget({
+        baseHref: '/elsewhere/analyze',
+        origin: ORIGIN,
+        route: 'analyze',
+        search: { layout: 'qwerty', corpus: 'en-general' },
+      }),
+    ).toThrow(/supported route/i);
+  });
+
   it('requires a custom rule-set snapshot and does not accept one for a preset', () => {
     expect(() =>
       buildPortableTarget({
-        baseHref: '/app/analyze',
+        baseHref: '/analyze',
         origin: ORIGIN,
         route: 'analyze',
         search: { layout: 'qwerty', corpus: 'en-general', rules: 'custom:strict' },
@@ -107,7 +143,7 @@ describe('portable share targets', () => {
 
     expect(() =>
       buildPortableTarget({
-        baseHref: '/app/analyze',
+        baseHref: '/analyze',
         origin: ORIGIN,
         route: 'analyze',
         search: { layout: 'qwerty', corpus: 'en-general', rules: 'cyanophage' },
@@ -119,12 +155,22 @@ describe('portable share targets', () => {
   it('does not let portable targets resolve custom layouts from sender storage', () => {
     expect(
       parsePortableTarget(
-        `${ORIGIN}/app/analyze?corpus=en-general&layout=custom%3Amine&share=1`,
+        `${ORIGIN}/analyze?corpus=en-general&layout=custom%3Amine&share=1`,
         ORIGIN,
       ),
     ).toMatchObject({
       ok: false,
       error: expect.stringMatching(/custom layouts must be included as snapshots/i),
+    });
+
+    expect(
+      parsePortableTarget(
+        `${ORIGIN}/analyze?corpus=en-general&layout=local-layout&share=1`,
+        ORIGIN,
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/bundled|community|snapshot/i),
     });
   });
 

@@ -230,11 +230,13 @@ describe('portable Analyze links', () => {
       ...toCanonicalJson(bundledLayout('qwerty')!),
       id: 'left-layout',
       name: 'Left custom',
+      description: `Left snapshot ${'a'.repeat(1_100_000)}`,
     };
     const right = {
       ...toCanonicalJson(bundledLayout('colemak')!),
       id: 'right-layout',
       name: 'Right custom',
+      description: `Right snapshot ${'b'.repeat(1_100_000)}`,
     };
     await storage.put('layouts', 'left-layout', left);
     await storage.put('layouts', 'right-layout', right);
@@ -263,8 +265,69 @@ describe('portable Analyze links', () => {
     ]);
     expect(decodedA).toMatchObject({ ok: true, layout: { name: 'Left custom' } });
     expect(decodedB).toMatchObject({ ok: true, layout: { name: 'Right custom' } });
+    if (decodedA.ok) expect(decodedA.layout.description).toHaveLength(1_100_014);
+    if (decodedB.ok) expect(decodedB.layout.description).toHaveLength(1_100_015);
     source.unmount();
 
+    renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      storage: new MemoryStorage(),
+    });
+    expect(await screen.findByText('A: Left custom')).toBeInTheDocument();
+    expect(await screen.findByText('B: Right custom')).toBeInTheDocument();
+  }, 60_000);
+
+  it('shares the loaded layouts while their local refs are being replaced by inline refs', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    const blockDecompression = vi.fn();
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const NativeDecompressionStream = globalThis.DecompressionStream;
+    vi.stubGlobal(
+      'DecompressionStream',
+      class {
+        constructor() {
+          blockDecompression();
+        }
+
+        readable = new ReadableStream<Uint8Array>({ start() {} });
+        writable = new WritableStream<Uint8Array>({
+          write: () => new Promise<void>(() => {}),
+        });
+      },
+    );
+
+    const storage = new MemoryStorage();
+    await storage.put('layouts', 'left-layout', {
+      ...toCanonicalJson(bundledLayout('qwerty')!),
+      id: 'left-layout',
+      name: 'Left custom',
+    });
+    await storage.put('layouts', 'right-layout', {
+      ...toCanonicalJson(bundledLayout('colemak')!),
+      id: 'right-layout',
+      name: 'Right custom',
+    });
+    const source = renderRoute(
+      '/compare?layout=custom%3Aleft-layout&b=custom%3Aright-layout&corpus=en-general&sample=10000',
+      { storage },
+    );
+    await screen.findByText('A: Left custom');
+    await screen.findByText('B: Right custom');
+    await waitFor(() => {
+      expect(new URLSearchParams(source.currentSearch()).get('layout')).toMatch(/^inline:/);
+      expect(new URLSearchParams(source.currentSearch()).get('b')).toMatch(/^inline:/);
+      expect(blockDecompression).toHaveBeenCalled();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const target = new URL(writeText.mock.calls[0]?.[0] ?? '');
+    expect(new URLSearchParams(target.hash.slice(1)).get('layout')).toMatch(/^inline:/);
+    expect(new URLSearchParams(target.hash.slice(1)).get('b')).toMatch(/^inline:/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/copied the link/i);
+
+    source.unmount();
+    vi.stubGlobal('DecompressionStream', NativeDecompressionStream);
     renderRoute(`${target.pathname}${target.search}${target.hash}`, {
       storage: new MemoryStorage(),
     });

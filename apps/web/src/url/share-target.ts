@@ -1,7 +1,10 @@
+import { bundledLayout } from '@layerbench/core';
+import { communityId } from '../community/ref.js';
 import { customId } from '../custom/ref.js';
 import { parseParams, type RawSearch, toSearch } from './params.js';
 
 export type PortableRoute = 'analyze' | 'compare';
+export const PORTABLE_TARGET_ERROR_KEY = '__portableTargetError';
 
 export interface PortableTarget {
   route: PortableRoute;
@@ -48,8 +51,15 @@ const COMPARE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'b', 'layerA', 'layerB
 const FRAGMENT_KEYS = new Set(['layout', 'b', 'rulesSnapshot']);
 
 function routeAt(pathname: string): PortableRoute | null {
-  const route = pathname.split('/').filter(Boolean).at(-1);
+  const basePath = new URL(import.meta.env.BASE_URL, 'https://portable.layerbench.invalid')
+    .pathname;
+  const prefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
+  const route = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
   return route === 'analyze' || route === 'compare' ? route : null;
+}
+
+export function isPortableLayoutRef(ref: string): boolean {
+  return ref.startsWith('inline:') || communityId(ref) !== null || bundledLayout(ref) !== undefined;
 }
 
 function entriesOf(params: URLSearchParams): [string, string][] {
@@ -143,6 +153,12 @@ function targetError(
     return {
       ok: false,
       error: 'Custom layouts must be included as snapshots in a share link. Create a new link.',
+    };
+  if ([effective.layout, effective.b].some((ref) => ref !== undefined && !isPortableLayoutRef(ref)))
+    return {
+      ok: false,
+      error:
+        'Share links can use bundled or community layouts; local layouts must be included as snapshots.',
     };
   if ([search.corpus, search.corpus2].some((id) => id !== undefined && customId(id) !== null))
     return {
@@ -245,8 +261,25 @@ export function buildPortableTarget(input: BuildPortableTarget): string {
 export function parsePortableSearch(
   route: PortableRoute,
   input: RawSearch,
+  originalHref?: string,
 ): PortableTargetResult | null {
   if (input.share === undefined) return null;
+  const ingressError = input[PORTABLE_TARGET_ERROR_KEY];
+  if (typeof ingressError === 'string') return { ok: false, error: ingressError };
+  if (originalHref) {
+    try {
+      const address = new URL(originalHref);
+      if (address.searchParams.has(VERSION_KEY)) {
+        const original = parsePortableTarget(address.href, address.origin);
+        if (!original.ok) return original;
+        if (original.route !== route)
+          return { ok: false, error: 'This share link route does not match its state.' };
+        return original;
+      }
+    } catch {
+      return { ok: false, error: 'This share link is not a valid URL.' };
+    }
+  }
   const search: RawSearch = { ...input };
   const fragment: Record<string, string> = {};
   for (const key of ['layout', 'b'] as const) {
