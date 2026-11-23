@@ -399,25 +399,25 @@ here until you sign in again. What you save while signed out is sent when you si
 
 ## Sharing a link
 
-A link carries the analysis as it stands: the layout, the text, the rules and every switch. The
-layout travels whole in it, saved or not, in **Analyze** and on both sides of **Compare**, so anyone
-can open it, without signing in. A link that names a custom layout by its id alone opens only where
-it is saved, and there it is that layout; Analyze and Compare put the layout itself in its place as
-soon as it opens. Opened by
-someone who has not got it, it is a layout of their own: they can analyze it, edit it and save a
-copy. Opened where it is saved, in this browser or your GitHub account, it is your custom layout,
-marked *unsaved* if it differs from what is saved, and **Save** saves over that one. A layout is
-known by its id, which comes from its name: someone else's link to a layout whose name makes the
-same id as one of yours opens as yours too, and **Save** there saves over it; **Save as copy**
-keeps yours. Edits to a layout that is not saved here, such as one that comes with the app, travel
-in a link with no id. A
-custom text and a custom rule set do not travel the same way: the link only names them, so they
-open only where they are saved. Anywhere else nothing
-opens in their place: the page says the text or rule set is not saved there, and shows no numbers.
+Use **Share link** in **Analyze** or **Compare** to copy a portable link to the analysis as it
+stands. It includes the layouts, their selected layers, and the analysis settings: the text, rules,
+heat, sample and switches. Bundled and community layouts keep their public references; custom,
+new and edited layouts travel as snapshots, whether saved or not. A recipient can open the link in
+a clean browser without signing in or having your layouts saved. A custom layout they receive is
+their own copy; saving it adds it to their Library.
 
-A link with a whole layout in it is long: the layout is after the `#`. Copy the whole address, and
-if a link opens on a different layout than it should, check that nothing after the `#` was lost on
-the way.
+Preset rules keep their reference. If the current custom rule set has finished loading, its contents
+travel as a snapshot too, so the recipient need not have that set saved. The snapshot is part of
+the link, not saved to their browser or GitHub account. Ordinary links that name a custom rule set
+still work locally as before: the set must be saved in that browser or account.
+
+Custom corpus text is different: it stays on this device and is never put in a link or uploaded by
+**Share link**. Sharing is refused if either text in a mix is custom or cannot be confirmed as one
+of the texts that comes with LayerBench; choose a shipped text instead.
+
+Snapshots are kept after the `#` in the address, not sent to the site as part of the request. Copy
+the whole address, including everything after the `#`, so the layouts and rule snapshot are not
+lost.
 
 ## Sharing an image
 

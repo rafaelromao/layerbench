@@ -1,5 +1,5 @@
 import { type CorpusManifest, layoutLanguages, toCanonicalJson } from '@layerbench/core';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
 import { ErrorAlert } from '../components/ErrorAlert.js';
@@ -14,7 +14,7 @@ import { LanguageChips } from '../components/LanguageChips.js';
 import { LegendButton, type LegendEntry } from '../components/LegendDialog.js';
 import { BandBadge, isHeadline, SummaryStrip } from '../components/Metrics.js';
 import { PreviewBoard } from '../components/PreviewBoard.js';
-import { customRef } from '../custom/ref.js';
+import { customId, customRef } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import {
   effectiveHeat,
@@ -31,18 +31,29 @@ import { type ShareImage, ShareImageDialog } from '../export/ShareImageDialog.js
 import { compareImage, unsavedVersion } from '../export/share-image.js';
 import { HELP, rulerShown } from '../guide/help.js';
 import { tabDrafts } from '../layout-session/drafts.js';
-import { carriedRef } from '../layout-session/open.js';
+import { carriedRef, snapshotRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { useCollection } from '../storage/use-storage.js';
+import { portableCorpusError } from '../url/corpus-share.js';
 import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
+import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
+import { buildPortableTarget, parsePortableSearch } from '../url/share-target.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
+import { ShareLinkButton } from './ShareLinkButton.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
+import { useCorporaState } from './useCorpora.js';
 import { type LayoutState, useLayout, useTypedLayout } from './useLayout.js';
 
 const DEFAULT_B = 'qwerty';
+
+function parsedLayer(value: string | undefined): number {
+  if (value === undefined || !/^(0|[1-9]\d*)$/.test(value)) return 0;
+  const layer = Number(value);
+  return layer <= 31 ? layer : 0;
+}
 
 /**
  * Once the layout `ref` names under `key` has opened, a custom one named by its id travels in the link
@@ -88,22 +99,65 @@ function heatSource(
 
 export function CompareView() {
   const search = useSearch({ strict: false }) as RawSearch;
+  const portable = parsePortableSearch('compare', search);
+  if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
+  return portable?.ok ? (
+    <PortableCompareGate search={portable.search} />
+  ) : (
+    <ComparePage search={search} />
+  );
+}
+
+function PortableCompareGate({ search }: { search: RawSearch }) {
+  const { corpora, loaded } = useCorporaState();
+  const params = useMemo(() => parseParams(search), [search]);
+  if (!loaded)
+    return (
+      <div role="status" className="flex items-center gap-2 py-4 text-sm">
+        <span className="loading loading-dots loading-xs" />
+        Checking the shared corpus…
+      </div>
+    );
+  const error = portableCorpusError(params.corpus, params.corpus2, corpora);
+  return error ? (
+    <ErrorAlert message={error} />
+  ) : (
+    <ComparePage search={search} sharedCorpora={corpora} />
+  );
+}
+
+function ComparePage({
+  search,
+  sharedCorpora,
+}: {
+  search: RawSearch;
+  sharedCorpora?: CorpusManifest[];
+}) {
   const navigate = useNavigate();
+  const router = useRouter();
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
   const shown = useFamilyShown();
   useRememberSelection(params);
   const refB = search.b ?? DEFAULT_B;
 
-  const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
+  const [corpora, setCorpora] = useState<CorpusManifest[]>(sharedCorpora ?? []);
+  const [corporaLoaded, setCorporaLoaded] = useState(sharedCorpora !== undefined);
   const [hovered, setHovered] = useState<string | null>(null);
 
   useEffect(() => {
+    if (sharedCorpora) return;
     client
       .listCorpora()
-      .then(setCorpora)
-      .catch(() => setCorpora([]));
-  }, [client]);
+      .then((list) => {
+        setCorpora(list);
+        setCorporaLoaded(true);
+      })
+      .catch(() => {
+        setCorpora([]);
+        setCorporaLoaded(true);
+      });
+  }, [client, sharedCorpora]);
 
   const custom = useCollection('layouts');
   const a = useLayout(params.layoutRef);
@@ -118,7 +172,10 @@ export function CompareView() {
   // What each side can write of the languages it is for, as its Library card shows them.
   const languagesA = useMemo(() => (a.compiled ? layoutLanguages(a.compiled) : []), [a.compiled]);
   const languagesB = useMemo(() => (b.compiled ? layoutLanguages(b.compiled) : []), [b.compiled]);
-  const settings = useAnalysisSettings(settingsOf(params));
+  const settings = useAnalysisSettings(
+    settingsOf(params),
+    search.share === '1' ? search.rulesSnapshot : undefined,
+  );
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
 
@@ -164,17 +221,49 @@ export function CompareView() {
   );
 
   const setParams = useCallback(
-    (overrides: Partial<Params> & { b?: string }) => {
-      const { b: nextB, ...rest } = overrides;
+    (overrides: Partial<Params> & { b?: string; layerA?: number; layerB?: number }) => {
+      const { b: nextB, layerA: nextLayerA, layerB: nextLayerB, ...rest } = overrides;
+      const next: RawSearch = {
+        ...toSearch(params, { ...rest, layer: 0 }),
+        b: nextB ?? refB,
+      };
+      const selectedA = nextLayerA ?? parsedLayer(search.layerA);
+      const selectedB = nextLayerB ?? parsedLayer(search.layerB);
+      if (selectedA > 0) next.layerA = String(selectedA);
+      if (selectedB > 0) next.layerB = String(selectedB);
+      const portableRulesUnchanged = rest.preset === undefined || rest.preset === params.preset;
+      const canStayPortable =
+        customId(next.layout ?? '') === null &&
+        customId(next.b ?? '') === null &&
+        customId(next.corpus ?? '') === null &&
+        customId(next.corpus2 ?? '') === null &&
+        (!corporaLoaded ||
+          portableCorpusError(next.corpus ?? params.corpus, next.corpus2 ?? null, corpora) ===
+            null);
+      if (search.share === '1' && portableRulesUnchanged && canStayPortable) {
+        next.share = '1';
+        if (search.rulesSnapshot && customId(next.rules ?? '') !== null)
+          next.rulesSnapshot = search.rulesSnapshot;
+      }
       navigate({
         to: '/compare',
-        search: { ...toSearch(params, rest), b: nextB ?? refB } as never,
+        search: next as never,
         replace: true,
         // The same view, written again: the page stays where it was scrolled to.
         resetScroll: false,
       });
     },
-    [navigate, params, refB],
+    [
+      corpora,
+      corporaLoaded,
+      navigate,
+      params,
+      refB,
+      search.layerA,
+      search.layerB,
+      search.rulesSnapshot,
+      search.share,
+    ],
   );
 
   const rows = useMemo(
@@ -246,13 +335,61 @@ export function CompareView() {
     );
   };
 
-  // Each board shows one layer at a time, chosen on its own; another layout starts on its base.
-  const [layerA, setLayerA] = useState(0);
-  const [layerB, setLayerB] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the layout is the trigger, not an input.
-  useEffect(() => setLayerA(0), [params.layoutRef]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the layout is the trigger, not an input.
-  useEffect(() => setLayerB(0), [refB]);
+  // Each board's chosen layer is in the URL, independently, so reload and sharing restore both.
+  const requestedLayerA = parsedLayer(search.layerA);
+  const requestedLayerB = parsedLayer(search.layerB);
+  const layerA = a.compiled && requestedLayerA >= a.compiled.layers.length ? 0 : requestedLayerA;
+  const layerB = b.compiled && requestedLayerB >= b.compiled.layers.length ? 0 : requestedLayerB;
+  const setLayerA = useCallback((layer: number) => setParams({ layerA: layer }), [setParams]);
+  const setLayerB = useCallback((layer: number) => setParams({ layerB: layer }), [setParams]);
+
+  const shareLink = async () => {
+    if (!corporaLoaded)
+      throw new Error('Wait for the available texts to finish loading before sharing.');
+    const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
+    if (corpusError) throw new Error(corpusError);
+    if (
+      !a.layout ||
+      !a.compiled ||
+      a.ref !== params.layoutRef ||
+      !b.layout ||
+      !b.compiled ||
+      b.ref !== refB
+    )
+      throw new Error('Wait for both layouts to finish loading before sharing.');
+
+    let rulesSnapshot: string | undefined;
+    if (customId(params.preset) !== null) {
+      if (settings.status !== 'read')
+        throw new Error(
+          settings.status === 'failed'
+            ? settings.error
+            : 'Wait for the custom rule set to finish loading before sharing.',
+        );
+      rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
+    }
+
+    // The loaded documents are captured before any asynchronous encoding. A picker change cannot
+    // replace either side midway through building this target.
+    const [layoutARef, layoutBRef] = await Promise.all([
+      a.storedId === null ? params.layoutRef : snapshotRef(a.layout, a.storedId),
+      b.storedId === null ? refB : snapshotRef(b.layout, b.storedId),
+    ]);
+    const searchForTarget: RawSearch = {
+      ...toSearch(params, { layoutRef: layoutARef, layer: 0 }),
+      b: layoutBRef,
+      ...(layerA > 0 && { layerA: String(layerA) }),
+      ...(layerB > 0 && { layerB: String(layerB) }),
+    };
+    const baseHref = router.buildLocation({ to: '/compare', search: {} as never }).publicHref;
+    return buildPortableTarget({
+      baseHref,
+      origin: window.location.origin,
+      route: 'compare',
+      search: searchForTarget,
+      ...(rulesSnapshot !== undefined && { rulesSnapshot }),
+    });
+  };
 
   // The Legend's lists, for each side that is open, on the layer it shows: a layer past the end,
   // for a moment after the layout changes, is its base.
@@ -285,7 +422,7 @@ export function CompareView() {
             aria-label="Layout A"
             className="select select-sm select-bordered min-w-44"
             value={pickedA}
-            onChange={(e) => setParams({ layoutRef: e.target.value })}
+            onChange={(e) => setParams({ layoutRef: e.target.value, layerA: 0 })}
           >
             <LayoutOptions custom={custom.entries} current={pickedA} currentName={nameA} />
           </select>
@@ -297,7 +434,7 @@ export function CompareView() {
             aria-label="Layout B"
             className="select select-sm select-bordered min-w-44"
             value={pickedB}
-            onChange={(e) => setParams({ b: e.target.value })}
+            onChange={(e) => setParams({ b: e.target.value, layerB: 0 })}
           >
             <LayoutOptions custom={custom.entries} current={pickedB} currentName={nameB} />
           </select>
@@ -345,6 +482,7 @@ export function CompareView() {
             >
               Analyze B
             </Link>
+            <ShareLinkButton createTarget={shareLink} />
           </div>
         </div>
       </div>

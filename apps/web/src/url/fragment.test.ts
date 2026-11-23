@@ -39,6 +39,61 @@ describe('layouts never saved, in the address', () => {
     expect(outgoing('/analyze?layout=inline%3Aaaa#main')).toBe('/analyze?layout=inline%3Aaaa#main');
   });
 
+  it('keeps portable layout and rule snapshots after the hash, not in the request', () => {
+    const path = '/analyze?corpus=en-general&layout=inline%3Aaaa&rulesSnapshot=v1.abc&share=1';
+    expect(outgoing(path)).toBe(
+      '/analyze?corpus=en-general&share=1#layout=inline%3Aaaa&rulesSnapshot=v1.abc',
+    );
+    const restored = new URL(incoming(outgoing(path)), ORIGIN);
+    expect(Object.fromEntries(restored.searchParams)).toEqual({
+      corpus: 'en-general',
+      layout: 'inline:aaa',
+      rulesSnapshot: 'v1.abc',
+      share: '1',
+    });
+    expect(restored.hash).toBe('');
+  });
+
+  it('canonicalizes portable router output and flags snapshot data in the request query', () => {
+    expect(outgoing('/analyze?share=1&layout=qwerty&corpus=en-general')).toBe(
+      '/analyze?corpus=en-general&layout=qwerty&share=1',
+    );
+
+    const queryLayout = new URL(
+      incoming('/analyze?corpus=en-general&layout=inline%3Aaaa&share=1'),
+      ORIGIN,
+    );
+    expect(queryLayout.searchParams.get('__portableTargetError')).toBe('1');
+
+    const queryRules = new URL(
+      incoming('/analyze?corpus=en-general&rulesSnapshot=v1.abc&share=1'),
+      ORIGIN,
+    );
+    expect(queryRules.searchParams.get('__portableTargetError')).toBe('1');
+  });
+
+  it('flags duplicate and noncanonical portable query or fragment state', () => {
+    const duplicateQuery = new URL(
+      incoming('/analyze?corpus=en-general&corpus=pt-br-general&layout=qwerty&share=1'),
+      ORIGIN,
+    );
+    expect(duplicateQuery.searchParams.get('__portableTargetError')).toBe('1');
+
+    const duplicateParts = new URL(
+      incoming(
+        '/compare?b=inline%3Abbb&corpus=en-general&layout=inline%3Aquery&share=1#layout=inline%3Afragment',
+      ),
+      ORIGIN,
+    );
+    expect(duplicateParts.searchParams.get('__portableTargetError')).toBe('1');
+
+    const noncanonical = new URL(
+      incoming('/analyze?share=1&layout=qwerty&corpus=en-general'),
+      ORIGIN,
+    );
+    expect(noncanonical.searchParams.get('__portableTargetError')).toBe('1');
+  });
+
   it('come back from the fragment into the search', () => {
     const url = fromFragment(
       new URL('/compare?corpus=en-general#b=inline%3Abbb&layout=inline%3Aaaa', ORIGIN),

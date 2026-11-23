@@ -1,9 +1,12 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
+import { ErrorAlert } from '../components/ErrorAlert.js';
 import { StillWorking } from '../components/StillWorking.js';
+import { customId } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
 import { useCarried, useRememberSelection } from '../state/selection.js';
+import { portableCorpusError } from '../url/corpus-share.js';
 import {
   DEFAULT_PARAMS,
   type Params,
@@ -12,9 +15,10 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
+import { parsePortableSearch } from '../url/share-target.js';
 import { Workbench } from './analyze/Workbench.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
-import { useCorpora } from './useCorpora.js';
+import { useCorporaState } from './useCorpora.js';
 
 /**
  * Analyze, where a layout is also edited. The link names the layout; the layout session opens it and
@@ -24,12 +28,45 @@ import { useCorpora } from './useCorpora.js';
  */
 export function AnalyzeView() {
   const search = useSearch({ strict: false }) as RawSearch;
+  const portable = parsePortableSearch('analyze', search);
+  if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
+  return <AnalyzePage search={portable?.ok ? portable.search : search} />;
+}
+
+function AnalyzePage({ search }: { search: RawSearch }) {
+  const { corpora, loaded } = useCorporaState();
+  const params = useMemo(() => parseParams(search), [search]);
+  if (search.share === '1') {
+    if (!loaded)
+      return (
+        <div role="status" className="flex items-center gap-2 py-4 text-sm">
+          <span className="loading loading-dots loading-xs" />
+          Checking the shared corpus…
+        </div>
+      );
+    const error = portableCorpusError(params.corpus, params.corpus2, corpora);
+    if (error) return <ErrorAlert message={error} />;
+  }
+  return <AnalyzeWorkbench search={search} corpora={corpora} corporaLoaded={loaded} />;
+}
+
+function AnalyzeWorkbench({
+  search,
+  corpora,
+  corporaLoaded,
+}: {
+  search: RawSearch;
+  corpora: ReturnType<typeof useCorporaState>['corpora'];
+  corporaLoaded: boolean;
+}) {
   const navigate = useNavigate();
   const client = useAnalysisClient();
-  const corpora = useCorpora();
   const params = useMemo(() => parseParams(search), [search]);
   useRememberSelection(params);
-  const settings = useAnalysisSettings(settingsOf(params));
+  const settings = useAnalysisSettings(
+    settingsOf(params),
+    search.share === '1' ? search.rulesSnapshot : undefined,
+  );
   const session = useLayoutSession();
   const carried = useCarried();
 
@@ -39,13 +76,36 @@ export function AnalyzeView() {
     (overrides: Partial<Params>) => {
       navigate({
         to: '/analyze',
-        search: ((prev: RawSearch) => toSearch(parseParams(prev), overrides)) as never,
+        search: ((prev: RawSearch) => {
+          const previous = parseParams(prev);
+          const next = toSearch(previous, overrides);
+          const canStayPortable =
+            customId(next.layout ?? '') === null &&
+            customId(next.corpus ?? '') === null &&
+            customId(next.corpus2 ?? '') === null &&
+            (!corporaLoaded ||
+              portableCorpusError(next.corpus ?? previous.corpus, next.corpus2 ?? null, corpora) ===
+                null);
+          if (
+            prev.share === '1' &&
+            canStayPortable &&
+            (overrides.preset === undefined || overrides.preset === previous.preset)
+          )
+            return {
+              ...next,
+              share: '1',
+              ...(prev.rulesSnapshot && customId(next.rules ?? '') !== null
+                ? { rulesSnapshot: prev.rulesSnapshot }
+                : {}),
+            };
+          return next;
+        }) as never,
         replace: true,
         // The same view, written again: the page stays where it was scrolled to.
         resetScroll: false,
       });
     },
-    [navigate],
+    [corpora, corporaLoaded, navigate],
   );
 
   return session.status === 'open' ? (
@@ -56,6 +116,7 @@ export function AnalyzeView() {
       setParams={setParams}
       settings={settings}
       corpora={corpora}
+      corporaLoaded={corporaLoaded}
       client={client}
       navigate={navigate}
     />

@@ -22,8 +22,11 @@ export type AnalysisSettingsState = {
  * The analysis settings a link names, with its rule set read. The same choices give the same object
  * from one render to the next, as a new one would ask the engine for the analysis again.
  */
-export function useAnalysisSettings(linked: AnalysisSettings<string>): AnalysisSettingsState {
-  const rules = useRuleSet(linked.rules);
+export function useAnalysisSettings(
+  linked: AnalysisSettings<string>,
+  ruleSnapshot?: string,
+): AnalysisSettingsState {
+  const rules = useRuleSet(linked.rules, ruleSnapshot);
   const same = stableStringify(linked);
   const ruleSet = rules.status === 'read' ? rules.ruleSet : null;
   const error = rules.status === 'failed' ? rules.error : null;

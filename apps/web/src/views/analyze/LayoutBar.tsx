@@ -18,6 +18,7 @@ import { SampleSelect, SettingsFields } from '../AnalysisSelects.js';
 import { TextAreaField, TextField } from '../edit/inspector/controls.js';
 import { LayoutOptions } from '../LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from '../SettingsDialog.js';
+import { ShareLinkButton } from '../ShareLinkButton.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
 
 /**
@@ -49,6 +50,7 @@ export function LayoutBar({
   settings,
   onParams,
   onCompare,
+  onShareLink,
   showCombos,
 }: {
   layout: Layout;
@@ -90,6 +92,7 @@ export function LayoutBar({
   settings: AnalysisSettingsState;
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
+  onShareLink: () => Promise<string>;
   /** Whether the board draws the combos that type; absent when the layout has none. */
   showCombos?: { on: boolean; onChange: (on: boolean) => void };
 }) {
@@ -191,7 +194,7 @@ export function LayoutBar({
             <LayoutOptions custom={custom} current={layoutRef} currentName={layout.name} />
           </select>
         </label>
-        <div className="flex shrink-0 items-center gap-2 max-sm:ml-auto sm:min-w-0 sm:flex-1">
+        <div className="flex shrink-0 items-center gap-2 max-sm:ml-auto max-sm:gap-1 sm:min-w-0 sm:flex-1">
           <div className="sm:min-w-0 sm:flex-1">
             <SettingsDialog summary={settingsSummary(settings, corpora)} compact>
               <fieldset className="grid gap-2">
@@ -259,9 +262,14 @@ export function LayoutBar({
               </div>
             </SettingsDialog>
           </div>
-          <button type="button" className="btn btn-sm btn-outline shrink-0" onClick={onCompare}>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline shrink-0 max-sm:px-2"
+            onClick={onCompare}
+          >
             Compare
           </button>
+          <ShareLinkButton createTarget={onShareLink} />
         </div>
       </div>
     </section>

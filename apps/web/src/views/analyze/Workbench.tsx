@@ -17,7 +17,7 @@ import {
   toCanonicalJson,
   withAddedLanguages,
 } from '@layerbench/core';
-import type { useNavigate } from '@tanstack/react-router';
+import { type useNavigate, useRouter } from '@tanstack/react-router';
 import {
   memo,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -46,6 +46,7 @@ import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
+import { customId } from '../../custom/ref.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, heatMap, layerShare } from '../../engine/heat.js';
@@ -70,7 +71,10 @@ import { libraryLayoutNamed } from '../../proposals/target.js';
 import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
+import { portableCorpusError } from '../../url/corpus-share.js';
 import { type Params, toSearch } from '../../url/params.js';
+import { encodeRuleSnapshot } from '../../url/rule-snapshot.js';
+import { buildPortableTarget } from '../../url/share-target.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyHint, KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
@@ -135,6 +139,7 @@ export interface WorkbenchProps {
   /** What the numbers are made on, as far as their rule set is read. */
   settings: AnalysisSettingsState;
   corpora: CorpusManifest[];
+  corporaLoaded: boolean;
   client: ReturnType<typeof useAnalysisClient>;
   navigate: ReturnType<typeof useNavigate>;
 }
@@ -151,9 +156,11 @@ export function Workbench({
   setParams,
   settings,
   corpora,
+  corporaLoaded,
   client,
   navigate,
 }: WorkbenchProps) {
+  const router = useRouter();
   const [state, send] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made, or a custom layout's link with edits not saved in it, is still
@@ -591,6 +598,32 @@ export function Workbench({
   const compare = async () => {
     const ref = await session.link();
     navigate({ to: '/compare', search: toSearch(params, { layoutRef: ref }) as never });
+  };
+
+  const shareLink = async () => {
+    if (!corporaLoaded)
+      throw new Error('Wait for the available texts to finish loading before sharing.');
+    const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
+    if (corpusError) throw new Error(corpusError);
+    let rulesSnapshot: string | undefined;
+    if (customId(params.preset) !== null) {
+      if (settings.status !== 'read')
+        throw new Error(
+          settings.status === 'failed'
+            ? settings.error
+            : 'Wait for the custom rule set to finish loading before sharing.',
+        );
+      rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
+    }
+    const ref = await session.link();
+    const baseHref = router.buildLocation({ to: '/analyze', search: {} as never }).publicHref;
+    return buildPortableTarget({
+      baseHref,
+      origin: window.location.origin,
+      route: 'analyze',
+      search: toSearch(params, { layoutRef: ref }),
+      ...(rulesSnapshot !== undefined && { rulesSnapshot }),
+    });
   };
 
   // ------------------------------------------------------------------ outlines and playback
@@ -1195,6 +1228,7 @@ export function Workbench({
         settings={settings}
         onParams={setParams}
         onCompare={compare}
+        onShareLink={shareLink}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}
       />
 

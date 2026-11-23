@@ -1,0 +1,286 @@
+import { customId } from '../custom/ref.js';
+import { parseParams, type RawSearch, toSearch } from './params.js';
+
+export type PortableRoute = 'analyze' | 'compare';
+
+export interface PortableTarget {
+  route: PortableRoute;
+  /** Search state with fragment payloads joined, as the router sees it after `fromFragment`. */
+  search: RawSearch;
+  fragment: Record<string, string>;
+}
+
+export type PortableTargetResult = ({ ok: true } & PortableTarget) | { ok: false; error: string };
+
+interface BuildPortableTarget {
+  /** A router-built route address, without application state. */
+  baseHref: string;
+  origin: string;
+  route: PortableRoute;
+  search: RawSearch;
+  rulesSnapshot?: string;
+}
+
+const VERSION_KEY = 'share';
+const VERSION = '1';
+const MAX_REQUEST_CHARS = 7_900;
+const MAX_FRAGMENT_CHARS = 6_000_000;
+const MAX_LAYOUT_BLOB_CHARS = 2_800_000;
+const MAX_RULE_SNAPSHOT_CHARS = 2_800_000;
+
+const COMMON_QUERY_KEYS = [
+  'case',
+  'corpus',
+  'corpus2',
+  'heat',
+  'layout',
+  'mix',
+  'off',
+  'rules',
+  'sample',
+  'share',
+  'space',
+  'text',
+] as const;
+
+const ANALYZE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'layer']);
+const COMPARE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'b', 'layerA', 'layerB']);
+const FRAGMENT_KEYS = new Set(['layout', 'b', 'rulesSnapshot']);
+
+function routeAt(pathname: string): PortableRoute | null {
+  const route = pathname.split('/').filter(Boolean).at(-1);
+  return route === 'analyze' || route === 'compare' ? route : null;
+}
+
+function entriesOf(params: URLSearchParams): [string, string][] {
+  return [...params.entries()];
+}
+
+function hasDuplicates(entries: [string, string][]): boolean {
+  return new Set(entries.map(([key]) => key)).size !== entries.length;
+}
+
+function canonicalParams(entries: [string, string][]): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of [...entries].sort(([a], [b]) => a.localeCompare(b))) {
+    params.append(key, value);
+  }
+  return params.toString();
+}
+
+function layerValue(value: string | undefined): number | null {
+  if (value === undefined) return 0;
+  if (!/^(0|[1-9]\d*)$/.test(value)) return null;
+  const number = Number(value);
+  return number <= 31 ? number : null;
+}
+
+function targetError(
+  url: URL,
+  origin: string,
+  queryEntries: [string, string][],
+  fragmentEntries: [string, string][],
+): PortableTargetResult {
+  const expectedOrigin = new URL(origin).origin;
+  if (url.origin !== expectedOrigin || url.username || url.password)
+    return { ok: false, error: 'Share links must stay on this LayerBench site.' };
+
+  const route = routeAt(url.pathname);
+  if (!route) return { ok: false, error: 'Share links only support Analyze and Compare.' };
+  const search = Object.fromEntries(queryEntries);
+  if (search[VERSION_KEY] !== VERSION)
+    return { ok: false, error: 'This share link uses an unsupported version.' };
+
+  const allowed = route === 'analyze' ? ANALYZE_QUERY_KEYS : COMPARE_QUERY_KEYS;
+  if (queryEntries.some(([key]) => !allowed.has(key)))
+    return { ok: false, error: 'This share link contains unknown state. Create a new link.' };
+  if (fragmentEntries.some(([key]) => !FRAGMENT_KEYS.has(key)))
+    return {
+      ok: false,
+      error: 'This share link contains an unsupported snapshot. Create a new link.',
+    };
+
+  if (hasDuplicates(queryEntries) || hasDuplicates(fragmentEntries))
+    return { ok: false, error: 'This share link repeats a state field. Create a new link.' };
+  if (url.search.slice(1) !== canonicalParams(queryEntries))
+    return { ok: false, error: 'This share link is not canonical. Create a new link.' };
+  if (url.hash.slice(1) !== canonicalParams(fragmentEntries))
+    return { ok: false, error: 'This share link is not canonical. Create a new link.' };
+  if ((url.pathname + url.search).length >= MAX_REQUEST_CHARS)
+    return {
+      ok: false,
+      error: 'The share link request is too large. Remove some state and retry.',
+    };
+  if (url.hash.length > MAX_FRAGMENT_CHARS)
+    return { ok: false, error: 'The share snapshots are too large. Remove some state and retry.' };
+
+  const fragment = Object.fromEntries(fragmentEntries);
+  const effective: RawSearch = { ...search };
+  for (const key of ['layout', 'b'] as const) {
+    const inQuery = search[key];
+    const inFragment = fragment[key];
+    if (inQuery !== undefined && inFragment !== undefined)
+      return { ok: false, error: 'This share link repeats a layout snapshot. Create a new link.' };
+    const ref = inFragment ?? inQuery;
+    if (ref === undefined || (key === 'b' && route !== 'compare')) continue;
+    if (inFragment !== undefined && !inFragment.startsWith('inline:'))
+      return { ok: false, error: 'A layout snapshot is malformed. Create a new share link.' };
+    if (ref.startsWith('inline:')) {
+      if (inFragment === undefined)
+        return { ok: false, error: 'Layout snapshots must be kept in the URL fragment.' };
+      if (ref.length > MAX_LAYOUT_BLOB_CHARS)
+        return { ok: false, error: 'A layout snapshot is too large to share.' };
+    }
+    effective[key] = ref;
+  }
+  if (search.layout === undefined && fragment.layout === undefined)
+    return { ok: false, error: 'This share link is missing Layout A. Create a new link.' };
+  if (route === 'compare' && search.b === undefined && fragment.b === undefined)
+    return { ok: false, error: 'This share link is missing Layout B. Create a new link.' };
+  if (route === 'analyze' && (search.b !== undefined || fragment.b !== undefined))
+    return { ok: false, error: 'An Analyze share link cannot include a second layout.' };
+  if ([effective.layout, effective.b].some((ref) => ref !== undefined && customId(ref) !== null))
+    return {
+      ok: false,
+      error: 'Custom layouts must be included as snapshots in a share link. Create a new link.',
+    };
+  if ([search.corpus, search.corpus2].some((id) => id !== undefined && customId(id) !== null))
+    return {
+      ok: false,
+      error:
+        'Custom corpus text stays on this device and cannot be shared. Choose a shipped corpus instead.',
+    };
+
+  const ruleSnapshot = fragment.rulesSnapshot;
+  const ruleRef = search.rules;
+  if (customId(ruleRef ?? '') !== null) {
+    if (!ruleSnapshot)
+      return {
+        ok: false,
+        error: 'This link is missing its custom rule-set snapshot. Create a new share link.',
+      };
+    if (!ruleSnapshot.startsWith('v1.'))
+      return {
+        ok: false,
+        error: 'The custom rule-set snapshot version is unsupported. Create a new share link.',
+      };
+    if (ruleSnapshot.length > MAX_RULE_SNAPSHOT_CHARS)
+      return { ok: false, error: 'The custom rule-set snapshot is too large to share.' };
+  } else if (ruleSnapshot !== undefined) {
+    return {
+      ok: false,
+      error: 'A custom rule-set snapshot cannot be used with a preset. Create a new share link.',
+    };
+  }
+
+  if (route === 'compare') {
+    for (const key of ['layerA', 'layerB'] as const) {
+      const value = layerValue(search[key]);
+      if (value === null)
+        return { ok: false, error: `Compare ${key === 'layerA' ? 'A' : 'B'} layer is invalid.` };
+      if (value > 0) effective[key] = String(value);
+    }
+  }
+
+  const rawForParams = { ...effective };
+  delete rawForParams.share;
+  delete rawForParams.rulesSnapshot;
+  delete rawForParams.b;
+  delete rawForParams.layerA;
+  delete rawForParams.layerB;
+  const normalized = toSearch(parseParams(rawForParams));
+  const expected: RawSearch = { ...normalized, share: VERSION };
+  if (fragment.layout !== undefined) delete expected.layout;
+  if (route === 'compare') {
+    if (fragment.b === undefined) expected.b = effective.b;
+    if (effective.layerA !== undefined) expected.layerA = effective.layerA;
+    if (effective.layerB !== undefined) expected.layerB = effective.layerB;
+  }
+  const expectedEntries = Object.entries(expected).filter(
+    (entry): entry is [string, string] => typeof entry[1] === 'string',
+  );
+  if (canonicalParams(expectedEntries) !== canonicalParams(queryEntries)) {
+    return {
+      ok: false,
+      error: 'This share link has invalid or noncanonical state. Create a new link.',
+    };
+  }
+
+  if (ruleSnapshot !== undefined) effective.rulesSnapshot = ruleSnapshot;
+  return { ok: true, route, search: effective, fragment };
+}
+
+/**
+ * Build the one versioned same-site target format used by Analyze and Compare. Inline layouts and a
+ * custom rule set live after `#`, which is not part of the request made to GitHub Pages.
+ */
+export function buildPortableTarget(input: BuildPortableTarget): string {
+  const expectedOrigin = new URL(input.origin).origin;
+  const base = new URL(input.baseHref, expectedOrigin);
+  if (base.origin !== expectedOrigin || routeAt(base.pathname) !== input.route)
+    throw new Error('Share links must use a supported route on this LayerBench site.');
+
+  const search: RawSearch = { ...input.search, [VERSION_KEY]: VERSION };
+  const fragment: Record<string, string> = {};
+  for (const key of ['layout', 'b'] as const) {
+    const value = search[key];
+    if (value?.startsWith('inline:')) {
+      fragment[key] = value;
+      delete search[key];
+    }
+  }
+  if (input.rulesSnapshot !== undefined) fragment.rulesSnapshot = input.rulesSnapshot;
+
+  const query = canonicalParams(
+    Object.entries(search).filter((entry): entry is [string, string] => entry[1] !== undefined),
+  );
+  const hash = canonicalParams(Object.entries(fragment));
+  const href = `${base.origin}${base.pathname}${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
+  const validated = parsePortableTarget(href, expectedOrigin);
+  if (!validated.ok) throw new Error(validated.error);
+  return href;
+}
+
+/** Validate a router search object, retaining the legacy path when no portable marker is present. */
+export function parsePortableSearch(
+  route: PortableRoute,
+  input: RawSearch,
+): PortableTargetResult | null {
+  if (input.share === undefined) return null;
+  const search: RawSearch = { ...input };
+  const fragment: Record<string, string> = {};
+  for (const key of ['layout', 'b'] as const) {
+    const value = search[key];
+    if (value?.startsWith('inline:')) {
+      fragment[key] = value;
+      delete search[key];
+    }
+  }
+  if (search.rulesSnapshot !== undefined) {
+    fragment.rulesSnapshot = search.rulesSnapshot;
+    delete search.rulesSnapshot;
+  }
+  const queryEntries = Object.entries(search).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined,
+  );
+  const fragmentEntries = Object.entries(fragment);
+  const url = new URL(`/${route}`, 'https://portable.layerbench.invalid');
+  const query = canonicalParams(queryEntries);
+  const hash = canonicalParams(fragmentEntries);
+  url.search = query;
+  url.hash = hash;
+  return targetError(url, url.origin, queryEntries, fragmentEntries);
+}
+
+/** Validate and read a versioned target. Ordinary, unmarked app URLs are not portable targets. */
+export function parsePortableTarget(href: string, origin: string): PortableTargetResult {
+  let url: URL;
+  try {
+    url = new URL(href, origin);
+  } catch {
+    return { ok: false, error: 'This share link is not a valid URL.' };
+  }
+  const queryEntries = entriesOf(url.searchParams);
+  const fragmentEntries = entriesOf(new URLSearchParams(url.hash.slice(1)));
+  return targetError(url, origin, queryEntries, fragmentEntries);
+}

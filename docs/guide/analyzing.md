@@ -539,7 +539,10 @@ text has characters the layout cannot type, as they count among the keystrokes i
 A custom rule set carries the rulers it was saved with, and its badge for Effort or SFB leads to
 [The rulers](#the-rulers). The bounds belong to the set, so one saved with other bounds keeps
 them, and its badges name bands by them, until they are changed in **Rules**, under **Bands (upper
-bounds)**. A set made from one of the presets above starts with that preset's rulers.
+bounds)**. A set made from one of the presets above starts with that preset's rulers. **Share link**
+includes the contents of a loaded custom set in the portable link, so it can be used in a clean
+browser without that set being saved there. Ordinary links that name a custom set still require it
+to be saved in the browser or account that opens them; see [Sharing a link](saving.md#sharing-a-link).
 
 Hand balance is read as the Doc reads it, from the share of the keystrokes each hand's fingers type:
 a thumb's presses, a letter, a tap or the space bar, are left out. The Doc prints whole percents and
@@ -559,9 +562,10 @@ Every number is a rule: plain data that says which key sequences count, and how.
 them. Each can be turned off, given other bands and a score weight, or removed, and new ones can
 be composed; anything else, such as a key's cost, is changed in the set's **JSON**. Whether the space
 key counts is not the set's to say: **Space**, where layouts are analyzed, decides it. A custom rule set is
-saved like a layout, and offered by its name beside the presets wherever layouts are analyzed, but
-its link only names it, so it opens only where it is saved; anywhere else the page says so, and
-nothing is measured with other rules in its place.
+saved like a layout, and offered by its name beside the presets wherever layouts are analyzed.
+**Share link** includes the contents of a loaded custom set in its portable link; ordinary links that
+name the set still require it to be saved where they are opened. Custom corpus text stays local and
+cannot be included in a share link.
 
 Every built-in rule names where its definition comes from: a section of the Keyboard Layouts Doc,
 a line of another analyzer's code, or the glossary where the rule is LayerBench's own. Open

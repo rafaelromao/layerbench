@@ -12,31 +12,74 @@ import type { LocationRewrite } from '@tanstack/react-router';
  * `fromFragment` on every address it reads, a reload and Back included.
  */
 const INLINE = 'inline:';
+const PORTABLE_ERROR = '__portableTargetError';
 
 function isInline(value: string): boolean {
   return value.startsWith(INLINE);
+}
+
+function canonicalParams(entries: [string, string][]): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of [...entries].sort(([a], [b]) => a.localeCompare(b)))
+    params.append(key, value);
+  return params.toString();
+}
+
+function hasDuplicateKeys(entries: [string, string][]): boolean {
+  return new Set(entries.map(([key]) => key)).size !== entries.length;
 }
 
 /** The router's address to the browser's: inline layouts leave the query for the fragment. */
 export function toFragment(url: URL): URL {
   // An address with an anchor of its own is the guide's, which carries no layouts.
   if (url.hash) return url;
-  const moved = [...url.searchParams].filter(([, value]) => isInline(value));
-  if (moved.length === 0) return url;
+  const portable = url.searchParams.get('share') === '1';
+  const moved = [...url.searchParams].filter(
+    ([key, value]) => isInline(value) || (portable && key === 'rulesSnapshot'),
+  );
   const fragment = new URLSearchParams();
   for (const [key, value] of moved) {
     url.searchParams.delete(key);
     fragment.set(key, value);
   }
-  url.hash = fragment.toString();
+  if (portable) {
+    const query = canonicalParams([...url.searchParams]);
+    url.search = query;
+    if (fragment.size > 0) url.hash = canonicalParams([...fragment]);
+  } else if (moved.length > 0) {
+    url.hash = fragment.toString();
+  }
   return url;
 }
 
 /** The browser's address to the router's: a fragment made only of inline layouts joins the search. */
 export function fromFragment(url: URL): URL {
-  const entries = [...new URLSearchParams(url.hash.slice(1))];
+  const entries = [...new URLSearchParams(url.hash.slice(1))] as [string, string][];
   // Anything else after the `#` is an anchor, such as a guide section's, and stays one.
-  if (entries.length === 0 || !entries.every(([, value]) => isInline(value))) return url;
+  const portable = url.searchParams.get('share') === '1';
+  if (!portable && (entries.length === 0 || !entries.every(([, value]) => isInline(value))))
+    return url;
+  if (portable) {
+    const queryEntries = [...url.searchParams] as [string, string][];
+    const queryKeys = new Set(queryEntries.map(([key]) => key));
+    const duplicatesAcrossParts = entries.some(([key]) => queryKeys.has(key));
+    const payloadInQuery = queryEntries.some(
+      ([key, value]) =>
+        key === 'rulesSnapshot' || (['layout', 'b'].includes(key) && isInline(value)),
+    );
+    const noncanonical =
+      url.search.slice(1) !== canonicalParams(queryEntries) ||
+      url.hash.slice(1) !== canonicalParams(entries);
+    if (
+      hasDuplicateKeys(queryEntries) ||
+      hasDuplicateKeys(entries) ||
+      duplicatesAcrossParts ||
+      payloadInQuery ||
+      noncanonical
+    )
+      url.searchParams.set(PORTABLE_ERROR, '1');
+  }
+  if (entries.length === 0) return url;
   for (const [key, value] of entries) url.searchParams.set(key, value);
   url.hash = '';
   return url;
