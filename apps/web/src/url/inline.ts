@@ -80,7 +80,13 @@ export async function decodeInline(
     const parsed = safeParseLayout(JSON.parse(new TextDecoder().decode(inflated)));
     if (!parsed.ok) return { ok: false, error: parsed.error };
     return { ok: true, layout: parsed.layout };
-  } catch {
-    return { ok: false, error: 'invalid inline layout' };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error && error.message === 'inline layout too large'
+          ? 'inline layout too large'
+          : 'invalid inline layout',
+    };
   }
 }

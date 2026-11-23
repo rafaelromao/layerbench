@@ -37,7 +37,11 @@ import { useCollection } from '../storage/use-storage.js';
 import { portableCorpusError } from '../url/corpus-share.js';
 import { type Params, parseParams, type RawSearch, settingsOf, toSearch } from '../url/params.js';
 import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
-import { buildPortableTarget, parsePortableSearch } from '../url/share-target.js';
+import {
+  buildPortableTarget,
+  parsePortableSearch,
+  retainPortableState,
+} from '../url/share-target.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
@@ -478,14 +482,30 @@ function ComparePage({
           <div className="flex gap-2 max-sm:flex-1">
             <Link
               to="/analyze"
-              search={toSearch(params) as never}
+              search={
+                retainPortableState(
+                  search,
+                  toSearch(params, {
+                    layoutRef: params.layoutRef,
+                    ...(search.share === '1' && { layer: layerA }),
+                  }),
+                ) as never
+              }
               className="btn btn-sm btn-outline max-sm:flex-1"
             >
               Analyze A
             </Link>
             <Link
               to="/analyze"
-              search={toSearch(params, { layoutRef: refB }) as never}
+              search={
+                retainPortableState(
+                  search,
+                  toSearch(params, {
+                    layoutRef: refB,
+                    ...(search.share === '1' && { layer: layerB }),
+                  }),
+                ) as never
+              }
               className="btn btn-sm btn-outline max-sm:flex-1"
             >
               Analyze B

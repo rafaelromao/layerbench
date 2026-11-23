@@ -113,6 +113,7 @@ function AnalyzeWorkbench({
       key={session.opening}
       session={session}
       params={params}
+      rawSearch={search}
       setParams={setParams}
       settings={settings}
       corpora={corpora}

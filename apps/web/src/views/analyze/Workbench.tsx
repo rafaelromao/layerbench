@@ -72,9 +72,9 @@ import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { portableCorpusError } from '../../url/corpus-share.js';
-import { type Params, toSearch } from '../../url/params.js';
+import { type Params, type RawSearch, toSearch } from '../../url/params.js';
 import { encodeRuleSnapshot } from '../../url/rule-snapshot.js';
-import { buildPortableTarget } from '../../url/share-target.js';
+import { buildPortableTarget, retainPortableState } from '../../url/share-target.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyHint, KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
@@ -134,6 +134,7 @@ export interface WorkbenchProps {
   /** The layout session, open: the layout as opened, and what is done with it. */
   session: OpenSession;
   params: Params;
+  rawSearch: RawSearch;
   setParams: (overrides: Partial<Params>) => void;
   /** What the layout is analyzed on, the rule set read. */
   /** What the numbers are made on, as far as their rule set is read. */
@@ -153,6 +154,7 @@ export interface WorkbenchProps {
 export function Workbench({
   session,
   params,
+  rawSearch,
   setParams,
   settings,
   corpora,
@@ -597,7 +599,20 @@ export function Workbench({
 
   const compare = async () => {
     const ref = await session.link();
-    navigate({ to: '/compare', search: toSearch(params, { layoutRef: ref }) as never });
+    const next = toSearch(params, { layoutRef: ref });
+    if (rawSearch.share === '1') {
+      const { layer: _layer, ...compareSearch } = next;
+      navigate({
+        to: '/compare',
+        search: retainPortableState(rawSearch, {
+          ...compareSearch,
+          b: 'qwerty',
+          ...(params.layer > 0 && { layerA: String(params.layer) }),
+        }) as never,
+      });
+      return;
+    }
+    navigate({ to: '/compare', search: next as never });
   };
 
   const shareLink = async () => {

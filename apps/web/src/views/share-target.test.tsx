@@ -108,6 +108,33 @@ describe('portable Analyze links', () => {
     }
   }, 60_000);
 
+  it('keeps an async generated link selectable when clipboard writing fails', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {
+      throw new Error('clipboard access denied');
+    });
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const source = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=10000', {
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    await dragKey('LTP', 'LTR');
+    await screen.findByText('unsaved');
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+
+    const link = (await screen.findByRole('textbox', {
+      name: 'Share link to copy manually',
+    })) as HTMLInputElement;
+    await waitFor(() => expect(link.value).toContain('#layout=inline%3A'));
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(link).toHaveFocus();
+    expect(link.selectionStart).toBe(0);
+    expect(link.selectionEnd).toBe(link.value.length);
+
+    source.unmount();
+  }, 60_000);
+
   it('shares a custom rule snapshot and prefers it over a same-named local set', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
@@ -142,7 +169,7 @@ describe('portable Analyze links', () => {
     });
     const get = vi.spyOn(targetStorage, 'get');
     const reloadClient = new RecordingClient();
-    renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+    const reloaded = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
       client: reloadClient,
       storage: targetStorage,
     });
@@ -151,6 +178,19 @@ describe('portable Analyze links', () => {
     expect(
       get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
     ).toHaveLength(0);
+
+    await user.click(screen.getByRole('button', { name: /^Compare$/ }));
+    await screen.findByRole('group', { name: 'Layers of A' });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    await waitFor(() => expect(reloadClient.analyses).toHaveLength(3));
+    expect(reloadClient.analyses.map((request) => request.settings.rules.name)).toEqual([
+      'Shared Strict',
+      'Shared Strict',
+      'Shared Strict',
+    ]);
+    expect(reloaded.currentPath()).toBe('/compare');
+    expect(new URLSearchParams(reloaded.currentSearch()).get('share')).toBe('1');
+    expect(new URLSearchParams(reloaded.currentSearch()).get('rulesSnapshot')).toMatch(/^v1\./);
   }, 60_000);
 
   it('shows an error instead of loading a local custom set when a portable snapshot is missing', async () => {
@@ -319,6 +359,7 @@ describe('portable Analyze links', () => {
       expect(blockDecompression).toHaveBeenCalled();
     });
 
+    vi.stubGlobal('DecompressionStream', NativeDecompressionStream);
     await user.click(screen.getByRole('button', { name: 'Share link' }));
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const target = new URL(writeText.mock.calls[0]?.[0] ?? '');
@@ -327,7 +368,6 @@ describe('portable Analyze links', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/copied the link/i);
 
     source.unmount();
-    vi.stubGlobal('DecompressionStream', NativeDecompressionStream);
     renderRoute(`${target.pathname}${target.search}${target.hash}`, {
       storage: new MemoryStorage(),
     });
@@ -365,7 +405,7 @@ describe('portable Analyze links', () => {
     source.unmount();
 
     const reloadClient = new RecordingClient();
-    renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+    const reloaded = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
       client: reloadClient,
       storage: new MemoryStorage(),
     });
@@ -374,6 +414,19 @@ describe('portable Analyze links', () => {
       'Shared Strict',
       'Shared Strict',
     ]);
+
+    for (const name of ['Analyze A', 'Analyze B']) {
+      const link = screen.getByRole('link', { name });
+      const href = new URL(link.getAttribute('href') ?? '', window.location.origin);
+      expect(href.searchParams.get('share')).toBe('1');
+      expect(new URLSearchParams(href.hash.slice(1)).get('rulesSnapshot')).toMatch(/^v1\./);
+    }
+
+    await user.click(screen.getByRole('link', { name: 'Analyze A' }));
+    await screen.findByRole('region', { name: 'Layout' });
+    await waitFor(() => expect(reloadClient.analyses).toHaveLength(3));
+    expect(reloadClient.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    expect(reloaded.currentPath()).toBe('/analyze');
   }, 60_000);
 
   it('refuses to copy a target when either corpus in a mix is custom', async () => {

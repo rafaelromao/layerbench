@@ -1,6 +1,7 @@
 import { bundledLayout } from '@layerbench/core';
 import { communityId } from '../community/ref.js';
 import { customId } from '../custom/ref.js';
+import { decodeInline } from './inline.js';
 import { parseParams, type RawSearch, toSearch } from './params.js';
 
 export type PortableRoute = 'analyze' | 'compare';
@@ -55,11 +56,21 @@ function routeAt(pathname: string): PortableRoute | null {
     .pathname;
   const prefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
   const route = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
-  return route === 'analyze' || route === 'compare' ? route : null;
+  const deployedRoute = route.endsWith('/') ? route.slice(0, -1) : route;
+  return deployedRoute === 'analyze' || deployedRoute === 'compare' ? deployedRoute : null;
 }
 
 export function isPortableLayoutRef(ref: string): boolean {
   return ref.startsWith('inline:') || communityId(ref) !== null || bundledLayout(ref) !== undefined;
+}
+
+/** Keep a portable rule snapshot when an in-app action moves the same analysis to another route. */
+export function retainPortableState(source: RawSearch, destination: RawSearch): RawSearch {
+  if (source.share !== VERSION) return destination;
+  const next: RawSearch = { ...destination, share: VERSION };
+  if (source.rulesSnapshot !== undefined && customId(next.rules ?? '') !== null)
+    next.rulesSnapshot = source.rulesSnapshot;
+  return next;
 }
 
 function entriesOf(params: URLSearchParams): [string, string][] {
@@ -230,7 +241,7 @@ function targetError(
  * Build the one versioned same-site target format used by Analyze and Compare. Inline layouts and a
  * custom rule set live after `#`, which is not part of the request made to GitHub Pages.
  */
-export function buildPortableTarget(input: BuildPortableTarget): string {
+export async function buildPortableTarget(input: BuildPortableTarget): Promise<string> {
   const expectedOrigin = new URL(input.origin).origin;
   const base = new URL(input.baseHref, expectedOrigin);
   if (base.origin !== expectedOrigin || routeAt(base.pathname) !== input.route)
@@ -241,6 +252,16 @@ export function buildPortableTarget(input: BuildPortableTarget): string {
   for (const key of ['layout', 'b'] as const) {
     const value = search[key];
     if (value?.startsWith('inline:')) {
+      if (value.length > MAX_LAYOUT_BLOB_CHARS)
+        throw new Error('A layout snapshot is too large to share.');
+      const decoded = await decodeInline(value.slice('inline:'.length));
+      if (!decoded.ok) {
+        if (decoded.error === 'inline layout too large')
+          throw new Error(
+            'A layout snapshot exceeds the 2 MB limit. Shorten its description or remove some content and retry.',
+          );
+        throw new Error('A layout snapshot cannot be opened. Create a new share link.');
+      }
       fragment[key] = value;
       delete search[key];
     }

@@ -1,16 +1,19 @@
+import { bundledLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
+import { encodeInline, MAX_INLINE_BYTES } from './inline.js';
 import { buildPortableTarget, parsePortableSearch, parsePortableTarget } from './share-target.js';
 
 const ORIGIN = 'https://layerbench.example';
 
 describe('portable share targets', () => {
-  it('puts inline layout data in the fragment and round-trips canonical Analyze state', () => {
-    const href = buildPortableTarget({
+  it('puts inline layout data in the fragment and round-trips canonical Analyze state', async () => {
+    const inline = `inline:${await encodeInline(bundledLayout('qwerty')!)}`;
+    const href = await buildPortableTarget({
       baseHref: '/analyze',
       origin: ORIGIN,
       route: 'analyze',
       search: {
-        layout: 'inline:layout-blob',
+        layout: inline,
         corpus: 'en-general',
         corpus2: 'pt-br-general',
         mix: '65',
@@ -25,14 +28,14 @@ describe('portable share targets', () => {
     });
 
     expect(href).toBe(
-      `${ORIGIN}/analyze?case=model&corpus=en-general&corpus2=pt-br-general&heat=effort&mix=65&off=adaptive%2Ccombos&rules=cyanophage&sample=10000&share=1&space=1&text=sym#layout=inline%3Alayout-blob`,
+      `${ORIGIN}/analyze?case=model&corpus=en-general&corpus2=pt-br-general&heat=effort&mix=65&off=adaptive%2Ccombos&rules=cyanophage&sample=10000&share=1&space=1&text=sym#layout=${encodeURIComponent(inline)}`,
     );
     const parsed = parsePortableTarget(href, ORIGIN);
     expect(parsed).toMatchObject({
       ok: true,
       route: 'analyze',
       search: {
-        layout: 'inline:layout-blob',
+        layout: inline,
         corpus: 'en-general',
         corpus2: 'pt-br-general',
         mix: '65',
@@ -48,14 +51,16 @@ describe('portable share targets', () => {
     });
   });
 
-  it('keeps two large Compare layout snapshots out of the request URL', () => {
-    const href = buildPortableTarget({
+  it('keeps two large Compare layout snapshots out of the request URL', async () => {
+    const inlineA = `inline:${await encodeInline(bundledLayout('qwerty')!)}`;
+    const inlineB = `inline:${await encodeInline(bundledLayout('colemak')!)}`;
+    const href = await buildPortableTarget({
       baseHref: '/compare',
       origin: ORIGIN,
       route: 'compare',
       search: {
-        layout: `inline:${'a'.repeat(20_000)}`,
-        b: `inline:${'b'.repeat(20_000)}`,
+        layout: inlineA,
+        b: inlineB,
         corpus: 'en-general',
         sample: '10000',
         layerA: '2',
@@ -74,8 +79,31 @@ describe('portable share targets', () => {
     });
   });
 
-  it('rejects another origin, unsupported routes, unknown state and noncanonical values', () => {
-    const href = buildPortableTarget({
+  it('refuses snapshots above the inflated inline-layout limit on either Compare side', async () => {
+    const oversized = `inline:${await encodeInline({
+      ...bundledLayout('qwerty')!,
+      description: 'x'.repeat(MAX_INLINE_BYTES + 1),
+    })}`;
+
+    for (const search of [
+      { layout: oversized, b: 'colemak', corpus: 'en-general' },
+      { layout: 'qwerty', b: oversized, corpus: 'en-general' },
+    ]) {
+      await expect(
+        Promise.resolve().then(() =>
+          buildPortableTarget({
+            baseHref: '/compare',
+            origin: ORIGIN,
+            route: 'compare',
+            search,
+          }),
+        ),
+      ).rejects.toThrow(/snapshot exceeds the 2 MB limit/i);
+    }
+  });
+
+  it('rejects another origin, unsupported routes, unknown state and noncanonical values', async () => {
+    const href = await buildPortableTarget({
       baseHref: '/analyze',
       origin: ORIGIN,
       route: 'analyze',
@@ -95,7 +123,31 @@ describe('portable share targets', () => {
       });
   });
 
-  it('validates the original route and keeps query-only state out of the fragment', () => {
+  it('accepts directory URLs for the two deployed share routes', async () => {
+    const analyze = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: ORIGIN,
+      route: 'analyze',
+      search: { layout: 'qwerty', corpus: 'en-general' },
+    });
+    const compare = await buildPortableTarget({
+      baseHref: '/compare',
+      origin: ORIGIN,
+      route: 'compare',
+      search: { layout: 'qwerty', b: 'colemak', corpus: 'en-general' },
+    });
+
+    expect(parsePortableTarget(analyze.replace('/analyze?', '/analyze/?'), ORIGIN)).toMatchObject({
+      ok: true,
+      route: 'analyze',
+    });
+    expect(parsePortableTarget(compare.replace('/compare?', '/compare/?'), ORIGIN)).toMatchObject({
+      ok: true,
+      route: 'compare',
+    });
+  });
+
+  it('validates the original route and keeps query-only state out of the fragment', async () => {
     const misplaced = `${ORIGIN}/analyze?corpus=en-general&layout=qwerty&share=1#corpus2=pt-general`;
     const effectiveSearch = {
       corpus: 'en-general',
@@ -121,27 +173,27 @@ describe('portable share targets', () => {
       ok: false,
       error: expect.stringMatching(/Analyze and Compare/i),
     });
-    expect(() =>
+    await expect(
       buildPortableTarget({
         baseHref: '/elsewhere/analyze',
         origin: ORIGIN,
         route: 'analyze',
         search: { layout: 'qwerty', corpus: 'en-general' },
       }),
-    ).toThrow(/supported route/i);
+    ).rejects.toThrow(/supported route/i);
   });
 
-  it('requires a custom rule-set snapshot and does not accept one for a preset', () => {
-    expect(() =>
+  it('requires a custom rule-set snapshot and does not accept one for a preset', async () => {
+    await expect(
       buildPortableTarget({
         baseHref: '/analyze',
         origin: ORIGIN,
         route: 'analyze',
         search: { layout: 'qwerty', corpus: 'en-general', rules: 'custom:strict' },
       }),
-    ).toThrow(/custom rule.*snapshot/i);
+    ).rejects.toThrow(/custom rule.*snapshot/i);
 
-    expect(() =>
+    await expect(
       buildPortableTarget({
         baseHref: '/analyze',
         origin: ORIGIN,
@@ -149,7 +201,7 @@ describe('portable share targets', () => {
         search: { layout: 'qwerty', corpus: 'en-general', rules: 'cyanophage' },
         rulesSnapshot: 'v1.encoded',
       }),
-    ).toThrow(/preset/i);
+    ).rejects.toThrow(/preset/i);
   });
 
   it('does not let portable targets resolve custom layouts from sender storage', () => {
