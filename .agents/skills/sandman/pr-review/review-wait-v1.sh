@@ -1,0 +1,958 @@
+#!/bin/sh
+
+# review-wait-v1 is the portable request-scoped review boundary. The caller
+# owns trigger posting and supplies the absolute deadline; this script owns
+# request association, polling, and structured result transport.
+
+set -u
+
+request_file=
+poll_once=false
+
+usage() {
+	cat >&2 <<'EOF'
+usage: review-wait-v1.sh --request-file PATH [--json] [--once]
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		--request-file)
+			[ "$#" -ge 2 ] || { usage; exit 2; }
+			request_file=$2
+			shift 2
+			;;
+		--json)
+			# Output is always JSON; retain the compatibility flag.
+			shift
+			;;
+		--once)
+			poll_once=true
+			shift
+			;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		*)
+			usage
+			exit 2
+			;;
+	esac
+done
+
+if [ -z "$request_file" ]; then
+	usage
+	exit 2
+fi
+
+emit_unavailable() {
+	reason=$1
+	if [ -n "${request_json:-}" ] && printf '%s\n' "$request_json" | jq -e '
+		type == "object" and
+		(.repository | type == "string" and length > 0) and
+		(.pull_request | type == "number" and floor == . and . > 0) and
+		(.head_sha | type == "string" and length > 0) and
+		(.trigger_id | type == "string" and length > 0) and
+		(.deadline_unix_seconds | type == "number" and floor == . and . > 0) and
+		(.effective_timeout_seconds | type == "number" and floor == . and . > 0) and
+		(if .started_unix_seconds == null then true else (.started_unix_seconds | type == "number" and floor == . and . >= 0) end)
+	' >/dev/null 2>&1
+	then
+		jq -cn \
+			--arg reason "$reason" \
+			--argjson request "$request_json" \
+			'{protocol:"review-wait/v1",state:"unavailable",lifecycle:"resumed",request:{repository:$request.repository,pull_request:$request.pull_request,head_sha:$request.head_sha,trigger_id:$request.trigger_id,started_unix_seconds:($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds)),deadline_unix_seconds:$request.deadline_unix_seconds,effective_timeout_seconds:$request.effective_timeout_seconds},observed_head_sha:"",started_at:$request.started_at,deadline_at:$request.deadline_at,elapsed_seconds:0,reason:$reason,snapshot_path:null,evidence:null}'
+	else
+		jq -cn --arg reason "$reason" \
+			'{protocol:"review-wait/v1",state:"unavailable",lifecycle:"started",request:null,observed_head_sha:"",started_at:"",deadline_at:"",elapsed_seconds:0,reason:$reason,snapshot_path:null,evidence:null}'
+	fi
+}
+
+if [ ! -f "$request_file" ]; then
+	emit_unavailable request-file-missing
+	exit 0
+fi
+
+request_json=$(jq -c . "$request_file" 2>/dev/null) || {
+	emit_unavailable request-file-invalid
+	exit 0
+}
+
+if ! printf '%s\n' "$request_json" | jq -e '
+	.protocol == "review-wait/v1" and
+	(.repository | type == "string" and length > 0) and
+	(.pull_request | type == "number" and floor == . and . > 0) and
+	(.head_sha | type == "string" and length > 0) and
+	(.trigger_id | type == "string" and length > 0) and
+	(.trigger_prefix | type == "string" and length > 0) and
+	(.trigger_created_at | type == "string" and length > 0) and
+	(.confirmed_at | type == "string" and length > 0) and
+	(.started_at | type == "string" and length > 0) and
+	(.deadline_at | type == "string" and length > 0) and
+	((.started_unix_seconds // (.deadline_unix_seconds - .effective_timeout_seconds)) | type == "number" and floor == . and . >= 0) and
+	(.deadline_unix_seconds | type == "number" and floor == . and . > 0) and
+	(.effective_timeout_seconds | type == "number" and floor == . and . > 0) and
+	(.poll_plan | type == "array" and length > 0 and all(.[]; type == "number" and floor == . and . >= 0))
+' >/dev/null 2>&1
+then
+	emit_unavailable request-envelope-invalid
+	exit 0
+fi
+
+request_started_unix=$(printf '%s\n' "$request_json" | jq -r '(.started_unix_seconds // (.deadline_unix_seconds - .effective_timeout_seconds))')
+request_deadline=$(printf '%s\n' "$request_json" | jq -r '.deadline_unix_seconds')
+request_timeout=$(printf '%s\n' "$request_json" | jq -r '.effective_timeout_seconds')
+if [ "$request_deadline" -ne $((request_started_unix + request_timeout)) ]; then
+	emit_unavailable request-envelope-invalid
+	exit 0
+fi
+
+request_repository=$(printf '%s\n' "$request_json" | jq -r '.repository')
+request_pr=$(printf '%s\n' "$request_json" | jq -r '.pull_request')
+request_head=$(printf '%s\n' "$request_json" | jq -r '.head_sha')
+request_trigger=$(printf '%s\n' "$request_json" | jq -r '.trigger_id')
+request_started_at=$(printf '%s\n' "$request_json" | jq -r '.started_at')
+request_deadline_at=$(printf '%s\n' "$request_json" | jq -r '.deadline_at')
+
+pinned_request_file=$(mktemp "${TMPDIR:-/tmp}/sandman-review-request.XXXXXX") || {
+	emit_unavailable request-pin-failed
+	exit 0
+}
+if ! printf '%s\n' "$request_json" >"$pinned_request_file" || ! chmod 600 "$pinned_request_file"; then
+	rm -f "$pinned_request_file"
+	emit_unavailable request-pin-failed
+	exit 0
+fi
+request_data_file=$pinned_request_file
+trap 'rm -f "$pinned_request_file"' EXIT
+
+state_file=$request_file.state
+lifecycle=started
+prior_state=pending
+prior_late_recheck_done=false
+late_approval_only=false
+
+if [ -e "$state_file" ]; then
+	jq -c . "$state_file" >/dev/null 2>&1 || {
+		emit_unavailable state-file-invalid
+		exit 0
+	}
+	if ! jq -e '
+		.protocol == "review-wait/v1" and
+		(.repository | type == "string" and length > 0) and
+		(.pull_request | type == "number" and floor == . and . > 0) and
+		(.head_sha | type == "string" and length > 0) and
+		(.trigger_id | type == "string" and length > 0) and
+		(.trigger_prefix | type == "string" and length > 0) and
+		(.trigger_created_at | type == "string" and length > 0) and
+		(.confirmed_at | type == "string" and length > 0) and
+		(.effective_timeout_seconds | type == "number" and floor == . and . > 0) and
+		(.deadline_unix_seconds | type == "number" and floor == . and . > 0) and
+		(.started_at | type == "string" and length > 0) and
+		(.deadline_at | type == "string" and length > 0) and
+		((.started_unix_seconds // (.deadline_unix_seconds - .effective_timeout_seconds)) | type == "number" and floor == . and . >= 0) and
+		((.elapsed_seconds // 0) | type == "number" and floor == . and . >= 0) and
+		(.late_approval_recheck_done == null or (.late_approval_recheck_done | type == "boolean")) and
+		(.late_approval_recheck_started_unix == null or (.late_approval_recheck_started_unix | type == "number" and floor == . and . >= 0)) and
+		(.late_approval_recheck_deadline_unix == null or (.late_approval_recheck_deadline_unix | type == "number" and floor == . and . > 0)) and
+		((.late_approval_recheck_started_unix == null and .late_approval_recheck_deadline_unix == null) or
+			(.late_approval_recheck_started_unix != null and .late_approval_recheck_deadline_unix == (.late_approval_recheck_started_unix + 60))) and
+		(.poll_plan == null or (.poll_plan | type == "array" and length > 0 and all(.[]; type == "number" and floor == . and . >= 0))) and
+		(.state | IN("pending", "responded", "timed_out", "unavailable"))
+	' "$state_file" >/dev/null 2>&1
+	then
+		emit_unavailable state-file-invalid
+		exit 0
+	fi
+
+	state_pr=$(jq -r '.pull_request' "$state_file")
+	state_repository=$(jq -r '.repository' "$state_file")
+	state_head=$(jq -r '.head_sha' "$state_file")
+	state_trigger=$(jq -r '.trigger_id' "$state_file")
+	state_timeout=$(jq -r '.effective_timeout_seconds' "$state_file")
+	state_deadline=$(jq -r '.deadline_unix_seconds' "$state_file")
+	if [ "$state_pr" != "$request_pr" ] || [ "$state_repository" != "$request_repository" ]; then
+		emit_unavailable state-request-mismatch
+		exit 0
+	fi
+	if [ "$state_trigger" = "$request_trigger" ]; then
+		if [ "$state_head" != "$request_head" ] || [ "$state_timeout" != "$request_timeout" ] || [ "$state_deadline" != "$request_deadline" ]; then
+			emit_unavailable same-trigger-request-changed
+			exit 0
+		fi
+		if ! jq -e --argjson request "$request_json" '
+			.repository == $request.repository and
+			.trigger_prefix == $request.trigger_prefix and
+			.trigger_created_at == $request.trigger_created_at and
+			.confirmed_at == $request.confirmed_at and
+			((.started_unix_seconds // (.deadline_unix_seconds - .effective_timeout_seconds)) == ($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds))) and
+			((.poll_plan // $request.poll_plan) == $request.poll_plan)
+		' "$state_file" >/dev/null 2>&1; then
+			emit_unavailable same-trigger-request-changed
+			exit 0
+		fi
+		if [ "$(jq -r '.started_at' "$state_file")" != "$request_started_at" ] || [ "$(jq -r '.deadline_at' "$state_file")" != "$request_deadline_at" ]; then
+			emit_unavailable same-trigger-timing-changed
+			exit 0
+		fi
+		lifecycle=resumed
+		prior_state=$(jq -r '.state' "$state_file")
+		prior_late_recheck_done=$(jq -r '.late_approval_recheck_done // false' "$state_file")
+	else
+		# A different confirmed trigger is the only reset boundary. The new
+		# request may target the same pull request and head.
+		lifecycle=started
+		prior_state=pending
+	fi
+fi
+
+if [ "$prior_state" = "responded" ] || [ "$prior_state" = "unavailable" ]; then
+	prior_observed_head=$(jq -r '.observed_head_sha // ""' "$state_file")
+	prior_elapsed=$(jq -r '.elapsed_seconds // 0' "$state_file")
+	jq -cn \
+		--argjson request "$request_json" \
+		--arg state "$prior_state" \
+		--arg lifecycle "$lifecycle" \
+		--arg observed_head_sha "$prior_observed_head" \
+		--arg reason "$(jq -r '.reason // .state' "$state_file")" \
+		--arg snapshot_path "$(jq -r '.snapshot_path // ""' "$state_file")" \
+		--argjson elapsed_seconds "$prior_elapsed" \
+		--argjson evidence "$(jq -c '.evidence // null' "$state_file")" \
+		'{protocol:"review-wait/v1",state:$state,lifecycle:$lifecycle,request:{repository:$request.repository,pull_request:$request.pull_request,head_sha:$request.head_sha,trigger_id:$request.trigger_id,started_unix_seconds:($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds)),deadline_unix_seconds:$request.deadline_unix_seconds,effective_timeout_seconds:$request.effective_timeout_seconds},observed_head_sha:$observed_head_sha,started_at:$request.started_at,deadline_at:$request.deadline_at,elapsed_seconds:$elapsed_seconds,reason:$reason,snapshot_path:(if $snapshot_path == "" then null else $snapshot_path end),counters:{top:($evidence.response_counts.top_level // 0),reviews:($evidence.response_counts.formal_reviews // 0),inline:($evidence.response_counts.inline_comments // 0)},evidence:$evidence}'
+	exit 0
+fi
+if [ "$prior_state" = "timed_out" ]; then
+	late_approval_only=true
+fi
+
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+observer=${SANDMAN_REVIEW_WAIT_OBSERVER:-$script_dir/review-observe-v1.sh}
+clock=${SANDMAN_REVIEW_WAIT_CLOCK:-}
+sleeper=${SANDMAN_REVIEW_WAIT_SLEEP:-}
+poll_index=0
+operation_deadline=$request_deadline
+
+now() {
+	if [ -n "$clock" ]; then
+		sh "$clock"
+	else
+		date +%s
+	fi
+}
+
+run_observer() {
+	start_now=$(now 2>/dev/null) || return 125
+	case "$start_now" in
+		''|*[!0-9]*) return 125 ;;
+	esac
+	if [ "$start_now" -ge "$operation_deadline" ]; then
+		return 124
+	fi
+	observer_output_file=$(mktemp "${TMPDIR:-/tmp}/sandman-review-wait.XXXXXX") || return 125
+	observer_group=false
+	if command -v setsid >/dev/null 2>&1; then
+		if [ "$late_approval_only" = true ]; then
+			setsid sh "$observer" --request-file "$request_data_file" --late-approval-only >"$observer_output_file" 2>/dev/null &
+		else
+			setsid sh "$observer" --request-file "$request_data_file" >"$observer_output_file" 2>/dev/null &
+		fi
+		observer_group=true
+	else
+		if [ "$late_approval_only" = true ]; then
+			sh "$observer" --request-file "$request_data_file" --late-approval-only >"$observer_output_file" 2>/dev/null &
+		else
+			sh "$observer" --request-file "$request_data_file" >"$observer_output_file" 2>/dev/null &
+		fi
+	fi
+	observer_pid=$!
+	kill_observer_tree() {
+		if command -v pgrep >/dev/null 2>&1; then
+			for child_pid in $(pgrep -P "$1" 2>/dev/null); do
+				kill_observer_tree "$child_pid"
+			done
+		elif command -v ps >/dev/null 2>&1; then
+			for child_pid in $(ps -eo pid=,ppid= | awk -v parent="$1" '$2 == parent {print $1}'); do
+				kill_observer_tree "$child_pid"
+			done
+		fi
+		kill -TERM "$1" 2>/dev/null || true
+		kill -KILL "$1" 2>/dev/null || true
+	}
+	stop_observer() {
+		if [ "$observer_group" = true ]; then
+			kill -TERM -"$observer_pid" 2>/dev/null || true
+			kill -KILL -"$observer_pid" 2>/dev/null || true
+		else
+			kill_observer_tree "$observer_pid"
+		fi
+	}
+	while kill -0 "$observer_pid" 2>/dev/null; do
+		watch_now=$(now 2>/dev/null) || {
+			stop_observer
+			wait "$observer_pid" 2>/dev/null || true
+			rm -f "$observer_output_file"
+			return 125
+		}
+		case "$watch_now" in
+			''|*[!0-9]*)
+				stop_observer
+				wait "$observer_pid" 2>/dev/null || true
+				rm -f "$observer_output_file"
+				return 125
+				;;
+		 esac
+		if [ "$watch_now" -ge "$operation_deadline" ]; then
+			stop_observer
+			wait "$observer_pid" 2>/dev/null || true
+			rm -f "$observer_output_file"
+		return 124
+		fi
+		watch_remaining=$(( operation_deadline - watch_now ))
+		watch_interval=1
+		[ "$watch_interval" -le "$watch_remaining" ] || watch_interval=$watch_remaining
+		sleep_start_now=$(now 2>/dev/null) || {
+			stop_observer
+			wait "$observer_pid" 2>/dev/null || true
+			rm -f "$observer_output_file"
+			return 125
+		}
+		case "$sleep_start_now" in
+			''|*[!0-9]*)
+				stop_observer
+				wait "$observer_pid" 2>/dev/null || true
+				rm -f "$observer_output_file"
+				return 125
+				;;
+		esac
+		if [ "$sleep_start_now" -ge "$operation_deadline" ]; then
+			stop_observer
+			wait "$observer_pid" 2>/dev/null || true
+			rm -f "$observer_output_file"
+			return 124
+		fi
+		if [ -n "$sleeper" ]; then
+			sh "$sleeper" "$watch_interval" >/dev/null 2>&1 || true
+		else
+			sleep "$watch_interval"
+		fi
+	done
+	wait "$observer_pid"
+	observer_status=$?
+	if [ "$observer_status" -ne 0 ]; then
+		rm -f "$observer_output_file"
+		return "$observer_status"
+	fi
+	cat "$observer_output_file"
+	cat_status=$?
+	rm -f "$observer_output_file"
+	return "$cat_status"
+}
+
+write_state() {
+	result_state=$1
+	result_lifecycle=$2
+	result_observed_head=$3
+	result_reason=$4
+	result_snapshot_path=$5
+	result_evidence=$6
+	result_elapsed=$7
+	state_dir=$(dirname -- "$state_file")
+	mkdir -p "$state_dir" || return 1
+	state_tmp=$state_file.tmp.$$
+	if ! jq -cn \
+		--argjson request "$request_json" \
+		--arg state "$result_state" \
+		--arg lifecycle "$result_lifecycle" \
+		--arg observed_head_sha "$result_observed_head" \
+		--arg reason "$result_reason" \
+		--arg snapshot_path "$result_snapshot_path" \
+		--argjson elapsed_seconds "$result_elapsed" \
+		--argjson evidence "$result_evidence" \
+		'{protocol:"review-wait/v1",repository:$request.repository,pull_request:$request.pull_request,head_sha:$request.head_sha,trigger_id:$request.trigger_id,trigger_prefix:$request.trigger_prefix,trigger_created_at:$request.trigger_created_at,confirmed_at:$request.confirmed_at,started_unix_seconds:($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds)),effective_timeout_seconds:$request.effective_timeout_seconds,deadline_unix_seconds:$request.deadline_unix_seconds,started_at:$request.started_at,deadline_at:$request.deadline_at,poll_plan:$request.poll_plan,state:$state,lifecycle:$lifecycle,observed_head_sha:$observed_head_sha,elapsed_seconds:$elapsed_seconds,reason:$reason,snapshot_path:(if $snapshot_path == "" then null else $snapshot_path end),evidence:$evidence}' >"$state_tmp"
+	then
+		rm -f "$state_tmp"
+		return 1
+	fi
+	chmod 600 "$state_tmp" || {
+		rm -f "$state_tmp"
+		return 1
+	}
+	mv -f "$state_tmp" "$state_file" || {
+		rm -f "$state_tmp"
+		return 1
+	}
+}
+
+emit_result() {
+	result_state=$1
+	result_lifecycle=$2
+	result_observed_head=$3
+	result_reason=$4
+	result_snapshot_path=$5
+	result_evidence=$6
+	result_elapsed=$7
+	jq -cn \
+		--argjson request "$request_json" \
+		--arg state "$result_state" \
+		--arg lifecycle "$result_lifecycle" \
+		--arg observed_head_sha "$result_observed_head" \
+		--arg reason "$result_reason" \
+		--arg snapshot_path "$result_snapshot_path" \
+		--argjson elapsed_seconds "$result_elapsed" \
+		--argjson evidence "$result_evidence" \
+		'{protocol:"review-wait/v1",state:$state,lifecycle:$lifecycle,request:{repository:$request.repository,pull_request:$request.pull_request,head_sha:$request.head_sha,trigger_id:$request.trigger_id,started_unix_seconds:($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds)),deadline_unix_seconds:$request.deadline_unix_seconds,effective_timeout_seconds:$request.effective_timeout_seconds},observed_head_sha:$observed_head_sha,started_at:$request.started_at,deadline_at:$request.deadline_at,elapsed_seconds:$elapsed_seconds,reason:$reason,snapshot_path:(if $snapshot_path == "" then null else $snapshot_path end),counters:{top:($evidence.response_counts.top_level // 0),reviews:($evidence.response_counts.formal_reviews // 0),inline:($evidence.response_counts.inline_comments // 0)},evidence:$evidence}'
+}
+
+normalize_timeout_evidence() {
+	if ! observer_evidence=$(printf '%s' "$observer_evidence" | jq -c '
+		if type != "object" then
+			{response_counts:{top_level:0,formal_reviews:0,inline_comments:0}}
+		elif (.response_counts | type) != "object" then
+			. + {response_counts:{top_level:0,formal_reviews:0,inline_comments:0}}
+		else
+			. + {response_counts: (.response_counts + {
+				top_level: (.response_counts.top_level // 0),
+				formal_reviews: (.response_counts.formal_reviews // 0),
+				inline_comments: (.response_counts.inline_comments // 0)
+			})}
+		end
+	'); then
+		return 1
+	fi
+}
+
+mark_timed_out() {
+	observer_state=timed_out
+	observer_reason=request-deadline-exhausted
+	result_reason=request-deadline-exhausted
+	normalize_timeout_evidence
+}
+
+persist_unavailable() {
+	result_reason=$1
+	result_elapsed=${2:-0}
+	if ! write_state unavailable "$lifecycle" "" "$result_reason" "" null "$result_elapsed"; then
+		emit_unavailable state-persist-failed
+		return 1
+	fi
+	emit_result unavailable "$lifecycle" "" "$result_reason" "" null "$result_elapsed"
+}
+
+emit_persisted_result() {
+	final_now=$(now 2>/dev/null) || {
+		persist_unavailable clock-unavailable
+		return 1
+	}
+	case "$final_now" in
+		''|*[!0-9]*)
+			persist_unavailable clock-invalid
+			return 1
+		;;
+	esac
+	if [ "$observer_state" = "pending" ] && [ "$final_now" -ge "$request_deadline" ]; then
+		if ! mark_timed_out; then
+			persist_unavailable timeout-evidence-invalid
+			return 1
+		fi
+		elapsed_seconds=$((final_now - request_started_unix))
+		[ "$elapsed_seconds" -ge 0 ] || elapsed_seconds=0
+		if ! write_state timed_out "$lifecycle" "$observer_head" "$result_reason" "$snapshot_path" "$observer_evidence" "$elapsed_seconds"; then
+			emit_unavailable state-persist-failed
+			return 1
+		fi
+	fi
+	emit_result "$observer_state" "$lifecycle" "$observer_head" "$result_reason" "$snapshot_path" "$observer_evidence" "$elapsed_seconds"
+}
+
+emit_prior_timed_out() {
+	prior_observed_head=$(jq -r '.observed_head_sha // ""' "$state_file")
+	prior_elapsed=$(jq -r '.elapsed_seconds // 0' "$state_file")
+	jq -cn \
+		--argjson request "$request_json" \
+		--arg lifecycle "$lifecycle" \
+		--arg observed_head_sha "$prior_observed_head" \
+		--arg reason "$(jq -r '.reason // .state' "$state_file")" \
+		--arg snapshot_path "$(jq -r '.snapshot_path // ""' "$state_file")" \
+		--argjson elapsed_seconds "$prior_elapsed" \
+		--argjson evidence "$(jq -c '.evidence // null' "$state_file")" \
+		'{protocol:"review-wait/v1",state:"timed_out",lifecycle:$lifecycle,request:{repository:$request.repository,pull_request:$request.pull_request,head_sha:$request.head_sha,trigger_id:$request.trigger_id,started_unix_seconds:($request.started_unix_seconds // ($request.deadline_unix_seconds - $request.effective_timeout_seconds)),deadline_unix_seconds:$request.deadline_unix_seconds,effective_timeout_seconds:$request.effective_timeout_seconds},observed_head_sha:$observed_head_sha,started_at:$request.started_at,deadline_at:$request.deadline_at,elapsed_seconds:$elapsed_seconds,reason:$reason,snapshot_path:(if $snapshot_path == "" then null else $snapshot_path end),counters:{top:($evidence.response_counts.top_level // 0),reviews:($evidence.response_counts.formal_reviews // 0),inline:($evidence.response_counts.inline_comments // 0)},evidence:$evidence}'
+}
+
+mark_late_approval_recheck_done() {
+	state_tmp=$state_file.tmp.$$
+	if ! jq -c '. + {late_approval_recheck_done:true}' "$state_file" >"$state_tmp" || ! chmod 600 "$state_tmp" || ! mv -f "$state_tmp" "$state_file"; then
+		rm -f "$state_tmp"
+		return 1
+	fi
+}
+
+persist_late_approval_recheck_window() {
+	started=$1
+	deadline=$2
+	state_tmp=$state_file.tmp.$$
+	if ! jq -cn --slurpfile state "$state_file" --argjson started "$started" --argjson deadline "$deadline" \
+		'$state[0] + {late_approval_recheck_started_unix:$started,late_approval_recheck_deadline_unix:$deadline,late_approval_recheck_done:false}' >"$state_tmp" ||
+		! chmod 600 "$state_tmp" || ! mv -f "$state_tmp" "$state_file"; then
+		rm -f "$state_tmp"
+		return 1
+	fi
+}
+
+validate_late_recheck() {
+	printf '%s' "$observer_json" | jq -e --argjson request "$request_json" --argjson observed_now "$late_completed_now" '
+		def timestamp_key:
+			if type != "string" or (test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$") | not) then null
+			else capture("^(?<base>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\\.(?<fraction>[0-9]{1,9}))?Z$") as $parts | $parts.base + "." + (((($parts.fraction // "") + "000000000")[0:9])) + "Z" end;
+		def timestamp_epoch:
+			if type != "string" or (test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$") | not) then null
+			else capture("^(?<base>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\\.(?<fraction>[0-9]{1,9}))?Z$") as $parts | try (($parts.base + "Z") | fromdateiso8601) catch null end;
+		def late_source($source):
+			. as $evidence |
+			($evidence.source == $source) and ($evidence.late_approval == true) and
+			($evidence.id | type == "string" and length > 0) and
+			(($evidence.response_timestamp | timestamp_epoch) as $event |
+				$event != null and
+				$evidence.response_timestamp > (($request.deadline_unix_seconds | todateiso8601) | sub("Z$"; ".000000000Z")) and
+				$event <= $observed_now);
+		def request_source($source):
+			. as $evidence |
+			($evidence.source == $source) and ($evidence.late_approval != true) and
+			($evidence.id | type == "string" and length > 0) and
+			($source == "top_level" and $evidence.head_status == "current" or
+				($source != "top_level" and
+					(if $evidence.head_status == "current" then
+						($evidence.commit_id // $evidence.commitId // "") == $request.head_sha
+					elif $evidence.head_status == "stale" then
+						($evidence.commit_id // $evidence.commitId // "") != "" and ($evidence.commit_id // $evidence.commitId // "") != $request.head_sha
+					elif $evidence.head_status == "unknown" then
+						($evidence.commit_id // $evidence.commitId // "") == ""
+					else false end))) and
+			(($evidence.response_timestamp | timestamp_key) as $event |
+				($request.trigger_created_at | timestamp_key) as $start |
+				($request.deadline_unix_seconds | todateiso8601 | sub("Z$"; ".000000000Z")) as $deadline |
+				$event != null and $start != null and $event > $start and $event <= $deadline);
+		def positive_body:
+			(.body | type == "string") and (.body | test("(?i)(approved|\\blgtm\\b|looks? (good|great)|nice work|good work|ship it|thumbs up|\\+1|all good|all set|good to go|no major issues|minor issues only)"));
+		(.snapshot.classification) as $classification |
+		(.state == "responded") and (.late_approval_only == true) and
+		(.observed_head_sha == $request.head_sha) and
+		($classification | type == "object") and
+		($classification.protocol == "review-classification/v1") and
+		($classification.request.repository == $request.repository) and
+		($classification.request.pull_request == $request.pull_request) and
+		($classification.request.head_sha == $request.head_sha) and
+		($classification.request.trigger_id == $request.trigger_id) and
+		($classification.request.trigger_prefix == $request.trigger_prefix) and
+		($classification.request.trigger_created_at == $request.trigger_created_at) and
+		($classification.request.deadline_at == $request.deadline_at) and
+		($classification.request.deadline_unix_seconds == $request.deadline_unix_seconds) and
+		($classification.observed_head_sha == $request.head_sha) and
+		($classification.request_state == "active") and
+		($classification.window.next_trigger == null) and
+		($classification.boundary_evidence.request == $classification.request) and
+		($classification.boundary_evidence.sources == $classification.sources) and
+		($classification.sources.top_level | type == "array" and all(.[]; (late_source("top_level") or request_source("top_level")) and .head_status == "current" and (.publication_status | IN("unpublished", "matched")) and (.body | type == "string") and ((.body | startswith($request.trigger_prefix)) | not))) and
+		($classification.sources.formal_reviews | type == "array" and all(.[]; (late_source("formal_review") or request_source("formal_review")) and (.state | IN("APPROVED", "COMMENTED", "CHANGES_REQUESTED")) and (.head_status | IN("current", "stale", "unknown")))) and
+		($classification.sources.inline_comments | type == "array" and all(.[]; request_source("inline_comment"))) and
+		($classification.response_counts.top_level == ($classification.sources.top_level | length)) and
+		($classification.response_counts.formal_reviews == ($classification.sources.formal_reviews | length)) and
+		($classification.response_counts.inline_comments == ($classification.sources.inline_comments | length)) and
+		(($classification.formal.requested_changes | type == "array")) and
+		(($classification.formal.approval_evidence | type == "array")) and
+		(($classification.formal.approval_evidence | all(.[]; (late_source("formal_review") or request_source("formal_review")) and .state == "APPROVED" and .head_status == "current")))
+	' >/dev/null 2>&1
+}
+
+has_late_approval_candidate() {
+	printf '%s' "$observer_json" | jq -e '
+		def positive_body:
+			(.body | type == "string") and (.body | test("(?i)(approved|\\blgtm\\b|looks? (good|great)|nice work|good work|ship it|thumbs up|\\+1|all good|all set|good to go|no major issues|minor issues only)"));
+		.snapshot.classification as $classification |
+		(any($classification.formal.approval_evidence[]; true)) or
+		any($classification.sources.formal_reviews[]; .state == "COMMENTED" and (.head_status != "stale") and positive_body) or
+		any($classification.sources.top_level[]; .head_status == "current" and (.publication_status | IN("unpublished", "matched")) and positive_body)
+	' >/dev/null 2>&1
+}
+
+if [ "$late_approval_only" = true ]; then
+	# Each explicit late continuation gets one fixed, bounded evidence read.
+	# Persist its window so a process restart cannot renew that read; an empty
+	# completed read may be followed by another bounded read on later re-entry.
+	late_started_now=$(now 2>/dev/null) || {
+		emit_unavailable late-observation-clock-unavailable
+		exit 0
+	}
+	case "$late_started_now" in
+		''|*[!0-9]*)
+			emit_unavailable late-observation-clock-invalid
+			exit 0
+		;;
+	esac
+	late_recheck_started=$(jq -r '.late_approval_recheck_started_unix // empty' "$state_file")
+	late_recheck_deadline=$(jq -r '.late_approval_recheck_deadline_unix // empty' "$state_file")
+	if [ "$prior_late_recheck_done" = true ] || [ -z "$late_recheck_started" ]; then
+		late_recheck_started=$late_started_now
+		late_recheck_deadline=$((late_recheck_started + 60))
+		if ! persist_late_approval_recheck_window "$late_recheck_started" "$late_recheck_deadline"; then
+			emit_unavailable late-approval-window-persist-failed
+			exit 0
+		fi
+	fi
+	operation_deadline=$late_recheck_deadline
+	if [ "$late_started_now" -ge "$operation_deadline" ]; then
+		if ! mark_late_approval_recheck_done; then
+			emit_unavailable late-approval-state-persist-failed
+			exit 0
+		fi
+		emit_prior_timed_out
+		exit 0
+	fi
+fi
+
+while :; do
+	now_value=$(now 2>/dev/null) || {
+		persist_unavailable clock-unavailable
+		exit 0
+	}
+	case "$now_value" in
+		''|*[!0-9]*)
+			persist_unavailable clock-invalid
+			exit 0
+		;;
+	esac
+
+	if [ "$late_approval_only" != true ] && [ "$now_value" -ge "$request_deadline" ]; then
+		observer_json='{"state":"timed_out","observed_head_sha":"","reason":"request-deadline-exhausted","snapshot":null}'
+	else
+		observer_output=$(run_observer)
+		observer_status=$?
+		if [ "$observer_status" -eq 124 ]; then
+			observer_json='{"state":"timed_out","observed_head_sha":"","reason":"request-deadline-exhausted","snapshot":null}'
+		elif [ "$observer_status" -ne 0 ]; then
+			persist_unavailable observer-failed
+			exit 0
+		else
+			observer_json=$(printf '%s' "$observer_output" | jq -c . 2>/dev/null) || {
+				persist_unavailable observer-output-invalid
+				exit 0
+			}
+		fi
+	fi
+	observer_state=$(printf '%s' "$observer_json" | jq -r '.state // ""')
+	observer_head=$(printf '%s' "$observer_json" | jq -r '.observed_head_sha // ""')
+	observer_reason=$(printf '%s' "$observer_json" | jq -r '.reason // ""')
+	observer_evidence=$(printf '%s' "$observer_json" | jq -c '.snapshot // .evidence // null')
+	if [ "$late_approval_only" = true ]; then
+		late_completed_now=$(now 2>/dev/null) || {
+			emit_unavailable late-observation-clock-unavailable
+			exit 0
+		}
+		case "$late_completed_now" in
+			''|*[!0-9]*)
+				emit_unavailable late-observation-clock-invalid
+				exit 0
+			;;
+		esac
+		if [ "$observer_state" = "unavailable" ]; then
+			emit_unavailable "late-observation-${observer_reason}"
+			exit 0
+		fi
+		if [ "$observer_state" = "responded" ]; then
+			if ! validate_late_recheck; then
+				emit_unavailable late-observer-classification-invalid
+				exit 0
+			fi
+			if has_late_approval_candidate; then
+				prior_elapsed=$(jq -r '.elapsed_seconds // 0' "$state_file")
+				snapshot_path=$state_file.snapshot.json
+				snapshot_tmp=$snapshot_path.tmp.$$
+				if ! printf '%s\n' "$observer_json" >"$snapshot_tmp" || ! chmod 600 "$snapshot_tmp" || ! mv -f "$snapshot_tmp" "$snapshot_path"; then
+					rm -f "$snapshot_tmp"
+					emit_unavailable late-approval-snapshot-persist-failed
+					exit 0
+				fi
+				if ! write_state responded resumed "$observer_head" late-approval-recheck "$snapshot_path" "$observer_evidence" "$prior_elapsed"; then
+					emit_unavailable state-persist-failed
+					exit 0
+				fi
+				emit_result responded resumed "$observer_head" late-approval-recheck "$snapshot_path" "$observer_evidence" "$prior_elapsed"
+				exit 0
+			fi
+		elif [ "$observer_state" != "pending" ] && [ "$observer_state" != "timed_out" ]; then
+			emit_unavailable observer-state-invalid
+			exit 0
+		fi
+		if ! mark_late_approval_recheck_done; then
+			emit_unavailable late-approval-state-persist-failed
+			exit 0
+		fi
+		emit_prior_timed_out
+		exit 0
+	fi
+	case "$observer_state" in
+		responded|timed_out|pending|unavailable) ;;
+		*)
+			persist_unavailable observer-state-invalid
+			exit 0
+		;;
+	esac
+	if [ "$observer_state" = "timed_out" ]; then
+		if ! normalize_timeout_evidence; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+	fi
+	if [ "$observer_state" = "responded" ] && ! printf '%s' "$observer_json" | jq -e --argjson request "$request_json" '
+		def valid_count:
+			type == "number" and floor == . and . >= 0;
+		def timestamp_parts:
+			if type != "string" or (test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$") | not) then
+				null
+			else
+				capture("^(?<base>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\\.(?<fraction>[0-9]{1,9}))?Z$") as $parts |
+				(try (($parts.base + "Z") | fromdateiso8601) catch null) as $epoch |
+				if $epoch == null or (($epoch | todateiso8601) != ($parts.base + "Z")) then null
+				else {key: ($parts.base + "." + (((($parts.fraction // "") + "000000000")[0:9])) + "Z")} end
+			end;
+		def timestamp_key:
+			timestamp_parts | if . == null then null else .key end;
+		def valid_id:
+			if (.id | type) == "string" then (.id | length) > 0 else false end;
+		def explicit_commit:
+			if .commit_id? != null then .commit_id
+			elif .commitId? != null then .commitId
+			elif (has("commit_id") or has("commitId")) then ""
+			else null end;
+		def valid_head_status($head):
+			explicit_commit as $commit |
+			if $commit == null or $commit == "" then .head_status == "unknown"
+			elif ($commit | type) != "string" then false
+			elif $commit == $head then .head_status == "current"
+			else .head_status == "stale" end;
+		def in_request_window($classification; $deadline_key):
+			.response_timestamp as $raw |
+			($raw | timestamp_key) as $timestamp |
+			($classification.request.trigger_created_at | timestamp_key) as $start |
+			($classification.window.end | if . == null then null else timestamp_key end) as $window_end |
+			if $timestamp == null or $start == null then false
+			else
+				$timestamp > $start and
+				$timestamp <= $deadline_key and
+				($window_end == null or $timestamp < $window_end)
+			end;
+		def valid_source($source):
+			if type != "object" then false
+			else
+				.source == $source and
+				valid_id and
+				((.response_timestamp | timestamp_key) != null) and
+				(.head_status | IN("current", "stale", "unknown"))
+			end;
+		def valid_formal($state):
+			if type != "object" then false
+			else
+				(.source == "formal_review") and
+				((.state | type) == "string") and
+				((.state | ascii_upcase) == $state) and
+				valid_id and
+				((.response_timestamp | timestamp_key) != null) and
+				(.head_status | IN("current", "stale", "unknown"))
+			end;
+		.snapshot.classification as $classification |
+		(($classification.request.deadline_unix_seconds | todateiso8601) | sub("Z$"; ".000000000Z")) as $deadline_key |
+		($classification | type == "object") and
+		($classification.protocol == "review-classification/v1") and
+		($classification.request | type == "object") and
+		($classification.request.repository == $request.repository) and
+		($classification.request.pull_request == $request.pull_request) and
+		($classification.request.head_sha == $request.head_sha) and
+		($classification.request.trigger_id == $request.trigger_id) and
+		($classification.request.trigger_prefix == $request.trigger_prefix) and
+		($classification.request.trigger_created_at == $request.trigger_created_at) and
+		($classification.request.deadline_at == $request.deadline_at) and
+		($classification.request.deadline_unix_seconds == $request.deadline_unix_seconds) and
+		(($classification.request.trigger_created_at | timestamp_key) != null) and
+		(($classification.request.trigger_created_at | timestamp_key) <= $deadline_key) and
+		($classification.observed_head_sha == $request.head_sha) and
+		($classification.request_state | IN("active", "superseded")) and
+		($classification.decision | IN("pending", "responded", "approved", "changes_requested")) and
+		($classification.window | type == "object") and
+		($classification.window.start == $request.trigger_created_at) and
+		($classification.window.deadline_at == $request.deadline_at) and
+		($classification.window.deadline_unix_seconds == $request.deadline_unix_seconds) and
+		(($classification.window.end == null and $classification.window.next_trigger == null) or
+			(($classification.window.end | type) == "string" and ($classification.window.end | length) > 0 and
+			 ($classification.window.next_trigger | type) == "object" and
+			 ($classification.window.next_trigger.created_at == $classification.window.end) and
+			 ($classification.window.next_trigger.body | type) == "string" and
+			 ($classification.window.next_trigger.body | startswith($request.trigger_prefix)) and
+			 ($classification.window.next_trigger.id | type) == "string" and
+			 ($classification.window.next_trigger.id | length) > 0 and
+			 (($classification.window.next_trigger.created_at | timestamp_key) != null) and
+			 (($classification.window.next_trigger.created_at | timestamp_key) > ($request.trigger_created_at | timestamp_key)))) and
+		(($classification.request_state == "active" and $classification.window.next_trigger == null) or
+			($classification.request_state == "superseded" and ($classification.window.next_trigger | type) == "object")) and
+		($classification.sources | type == "object") and
+		($classification.sources.top_level | type == "array") and
+		($classification.sources.formal_reviews | type == "array") and
+		($classification.sources.inline_comments | type == "array") and
+		($classification.sources.top_level | all(.[]; valid_source("top_level") and .head_status == "current" and (.body | type) == "string" and ((.body | startswith($request.trigger_prefix)) | not) and in_request_window($classification; $deadline_key))) and
+		($classification.sources.formal_reviews | all(.[]; (valid_formal("COMMENTED") or valid_formal("APPROVED") or valid_formal("CHANGES_REQUESTED")) and valid_head_status($request.head_sha) and in_request_window($classification; $deadline_key))) and
+		($classification.sources.inline_comments | all(.[]; valid_source("inline_comment") and valid_head_status($request.head_sha) and in_request_window($classification; $deadline_key))) and
+		($classification.response_counts | type == "object") and
+		($classification.response_counts.top_level | valid_count) and
+		($classification.response_counts.formal_reviews | valid_count) and
+		($classification.response_counts.inline_comments | valid_count) and
+		($classification.response_counts.top_level == ($classification.sources.top_level | length)) and
+		($classification.response_counts.formal_reviews == ($classification.sources.formal_reviews | length)) and
+		($classification.response_counts.inline_comments == ($classification.sources.inline_comments | length)) and
+		(($classification.request_state == "superseded") or ($classification.response_counts.top_level + $classification.response_counts.formal_reviews + $classification.response_counts.inline_comments) > 0) and
+		($classification.formal | type == "object") and
+		($classification.formal.decision | IN("none", "approved", "changes_requested", "ambiguous")) and
+		($classification.formal.approval_evidence | type == "array") and
+		($classification.formal.approval_evidence | all(.[]; valid_formal("APPROVED") and valid_head_status($request.head_sha) and .head_status == "current" and in_request_window($classification; $deadline_key))) and
+		($classification.formal.approval_evidence | all(.[]; . as $evidence | any($classification.sources.formal_reviews[]; . == $evidence))) and
+		($classification.formal.ambiguous_approval_evidence | type == "array") and
+		($classification.formal.ambiguous_approval_evidence | all(.[]; valid_formal("APPROVED") and valid_head_status($request.head_sha) and .head_status != "current" and in_request_window($classification; $deadline_key))) and
+		($classification.formal.ambiguous_approval_evidence | all(.[]; . as $evidence | any($classification.sources.formal_reviews[]; . == $evidence))) and
+		($classification.formal.requested_changes | type == "array") and
+		($classification.formal.requested_changes | all(.[]; valid_formal("CHANGES_REQUESTED") and valid_head_status($request.head_sha) and in_request_window($classification; $deadline_key))) and
+		($classification.formal.requested_changes | all(.[]; . as $evidence | any($classification.sources.formal_reviews[]; . == $evidence))) and
+		($classification.formal.decision == (if (($classification.formal.requested_changes | length) > 0) then "changes_requested" elif (($classification.formal.approval_evidence | length) > 0) then "approved" elif (($classification.formal.ambiguous_approval_evidence | length) > 0) then "ambiguous" else "none" end)) and
+		($classification.decision == (if $classification.request_state == "superseded" then "pending" elif (($classification.formal.requested_changes | length) > 0) then "changes_requested" elif (($classification.formal.approval_evidence | length) > 0) then "approved" elif (($classification.formal.ambiguous_approval_evidence | length) > 0) then "pending" elif (($classification.response_counts.top_level + $classification.response_counts.formal_reviews + $classification.response_counts.inline_comments) > 0) then "responded" else "pending" end)) and
+		($classification.boundary_evidence | type == "object") and
+		($classification.boundary_evidence.request.head_sha == $request.head_sha) and
+		($classification.boundary_evidence.request.deadline_at == $request.deadline_at) and
+		($classification.boundary_evidence.request.deadline_unix_seconds == $request.deadline_unix_seconds) and
+		($classification.boundary_evidence.request == $classification.request) and
+		($classification.boundary_evidence.sources | type == "object" and (.top_level | type == "array") and (.formal_reviews | type == "array") and (.inline_comments | type == "array")) and
+		($classification.boundary_evidence.sources == $classification.sources)
+	' >/dev/null 2>&1; then
+		persist_unavailable observer-classification-invalid
+		exit 0
+	fi
+	completed_now=$(now 2>/dev/null) || {
+		persist_unavailable clock-unavailable
+		exit 0
+	}
+	case "$completed_now" in
+		''|*[!0-9]*)
+			persist_unavailable clock-invalid
+			exit 0
+		;;
+	esac
+	if [ "$observer_state" = "responded" ] && [ "$completed_now" -gt "$request_deadline" ]; then
+		if ! mark_timed_out; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+	elif [ "$observer_state" = "pending" ] && [ "$completed_now" -ge "$request_deadline" ]; then
+		if ! mark_timed_out; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+	fi
+	elapsed_seconds=$((completed_now - request_started_unix))
+	[ "$elapsed_seconds" -ge 0 ] || elapsed_seconds=0
+
+	snapshot_path=$state_file.snapshot.json
+	snapshot_tmp=$snapshot_path.tmp.$$
+	if ! printf '%s\n' "$observer_json" >"$snapshot_tmp" || ! chmod 600 "$snapshot_tmp" || ! mv -f "$snapshot_tmp" "$snapshot_path"; then
+		rm -f "$snapshot_tmp"
+		persist_unavailable snapshot-persist-failed
+		exit 0
+	fi
+	decision_now=$(now 2>/dev/null) || {
+		persist_unavailable clock-unavailable
+		exit 0
+	}
+	case "$decision_now" in
+		''|*[!0-9]*)
+			persist_unavailable clock-invalid
+			exit 0
+		;;
+	esac
+	if [ "$observer_state" = "pending" ] && [ "$decision_now" -ge "$request_deadline" ]; then
+		if ! mark_timed_out; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+	fi
+	elapsed_seconds=$((decision_now - request_started_unix))
+	[ "$elapsed_seconds" -ge 0 ] || elapsed_seconds=0
+
+	result_reason=$observer_reason
+	[ -n "$result_reason" ] || result_reason=$observer_state
+	if [ "$observer_state" = "responded" ] || [ "$observer_state" = "unavailable" ] || [ "$observer_state" = "timed_out" ]; then
+		if ! write_state "$observer_state" "$lifecycle" "$observer_head" "$result_reason" "$snapshot_path" "$observer_evidence" "$elapsed_seconds"; then
+			emit_unavailable state-persist-failed
+			exit 0
+		fi
+		emit_persisted_result || exit 0
+		exit 0
+	fi
+
+	if [ "$poll_once" = true ]; then
+		if ! write_state pending "$lifecycle" "$observer_head" pending "$snapshot_path" "$observer_evidence" "$elapsed_seconds"; then
+			emit_unavailable state-persist-failed
+			exit 0
+		fi
+		emit_persisted_result || exit 0
+		exit 0
+	fi
+
+	if [ "$decision_now" -ge "$request_deadline" ]; then
+		if ! normalize_timeout_evidence; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+		if ! write_state timed_out "$lifecycle" "$observer_head" request-deadline-exhausted "$snapshot_path" "$observer_evidence" "$elapsed_seconds"; then
+			emit_unavailable state-persist-failed
+			exit 0
+		fi
+		emit_result timed_out "$lifecycle" "$observer_head" request-deadline-exhausted "$snapshot_path" "$observer_evidence" "$elapsed_seconds"
+		exit 0
+	fi
+
+	interval=$(jq -r --argjson index "$poll_index" 'if $index < (.poll_plan | length) then .poll_plan[$index] else .poll_plan[-1] end' "$request_data_file")
+	remaining=$(( request_deadline - decision_now ))
+	sleep_interval=$interval
+	[ "$sleep_interval" -le "$remaining" ] || sleep_interval=$remaining
+	sleep_start_now=$(now 2>/dev/null) || {
+		persist_unavailable clock-unavailable
+		exit 0
+	}
+	case "$sleep_start_now" in
+		''|*[!0-9]*)
+			persist_unavailable clock-invalid
+			exit 0
+		;;
+	esac
+	if [ "$sleep_start_now" -ge "$request_deadline" ]; then
+		elapsed_seconds=$((sleep_start_now - request_started_unix))
+		[ "$elapsed_seconds" -ge 0 ] || elapsed_seconds=0
+		if ! normalize_timeout_evidence; then
+			persist_unavailable timeout-evidence-invalid
+			exit 0
+		fi
+		if ! write_state timed_out "$lifecycle" "$observer_head" request-deadline-exhausted "$snapshot_path" "$observer_evidence" "$elapsed_seconds"; then
+			emit_unavailable state-persist-failed
+			exit 0
+		fi
+		emit_result timed_out "$lifecycle" "$observer_head" request-deadline-exhausted "$snapshot_path" "$observer_evidence" "$elapsed_seconds"
+		exit 0
+	fi
+	if [ -n "$sleeper" ]; then
+		sh "$sleeper" "$sleep_interval" || {
+			persist_unavailable sleeper-failed
+			exit 0
+		}
+	else
+		sleep "$sleep_interval" || {
+			persist_unavailable sleeper-failed
+		exit 0
+		}
+	fi
+	poll_index=$((poll_index + 1))
+done
