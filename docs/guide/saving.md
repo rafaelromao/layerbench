@@ -404,7 +404,9 @@ stands. It includes the layouts, their selected layers, and the analysis setting
 heat, sample and switches. Bundled and community layouts keep their public references; custom,
 new and edited layouts travel as snapshots, whether saved or not. A recipient can open the link in
 a clean browser without signing in or having your layouts saved. A custom layout they receive is
-their own copy; saving it adds it to their Library.
+their own copy unless its embedded id already belongs to a layout in their browser: then it opens as
+that layout, with the received contents marked unsaved, and **Save** can overwrite it. Use **Save as
+copy** to keep the received layout beside the existing one.
 
 Preset rules keep their reference. If the current custom rule set has finished loading, its contents
 travel as a snapshot too, so the recipient need not have that set saved. The snapshot is part of

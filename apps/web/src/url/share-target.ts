@@ -3,6 +3,7 @@ import { communityId } from '../community/ref.js';
 import { customId } from '../custom/ref.js';
 import { decodeInline } from './inline.js';
 import { parseParams, type RawSearch, toSearch } from './params.js';
+import { decodeRuleSnapshot } from './rule-snapshot.js';
 
 export type PortableRoute = 'analyze' | 'compare';
 export const PORTABLE_TARGET_ERROR_KEY = '__portableTargetError';
@@ -186,13 +187,18 @@ function targetError(
         ok: false,
         error: 'This link is missing its custom rule-set snapshot. Create a new share link.',
       };
-    if (!ruleSnapshot.startsWith('v1.'))
+    if (ruleSnapshot.length > MAX_RULE_SNAPSHOT_CHARS)
       return {
         ok: false,
-        error: 'The custom rule-set snapshot version is unsupported. Create a new share link.',
+        error:
+          'The custom rule-set snapshot is too large. Choose a smaller rule set and create a new share link.',
       };
-    if (ruleSnapshot.length > MAX_RULE_SNAPSHOT_CHARS)
-      return { ok: false, error: 'The custom rule-set snapshot is too large to share.' };
+    const decoded = decodeRuleSnapshot(ruleSnapshot);
+    if (!decoded.ok)
+      return {
+        ok: false,
+        error: `${decoded.error} Create a new share link.`,
+      };
   } else if (ruleSnapshot !== undefined) {
     return {
       ok: false,

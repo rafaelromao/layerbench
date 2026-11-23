@@ -22,7 +22,9 @@ export function encodeRuleSnapshot(ruleSet: RuleSet): string {
   if (!parsed.ok) throw new Error(`Cannot share invalid custom rules: ${parsed.error}`);
   const bytes = new TextEncoder().encode(JSON.stringify(parsed.ruleSet));
   if (bytes.length > MAX_RULE_SNAPSHOT_BYTES)
-    throw new Error('The custom rule-set snapshot is too large to share.');
+    throw new Error(
+      'The custom rule-set snapshot is too large to share. Choose a smaller rule set.',
+    );
   return VERSION + encodeBase64Url(bytes);
 }
 
@@ -37,7 +39,11 @@ export function decodeRuleSnapshot(
     const bytes = decodeBase64Url(encoded);
     if (encodeBase64Url(bytes) !== encoded) throw new Error('noncanonical base64url data');
     if (bytes.length > MAX_RULE_SNAPSHOT_BYTES)
-      return { ok: false, error: 'The custom rule-set snapshot is too large to share.' };
+      return {
+        ok: false,
+        error:
+          'The custom rule-set snapshot is too large to share. Choose a smaller rule set and retry.',
+      };
     const value: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     const parsed = safeParseRuleSet(value);
     if (!parsed.ok)

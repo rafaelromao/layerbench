@@ -1,6 +1,7 @@
 import { bundledLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { encodeInline, MAX_INLINE_BYTES } from './inline.js';
+import { MAX_RULE_SNAPSHOT_BYTES } from './rule-snapshot.js';
 import { buildPortableTarget, parsePortableSearch, parsePortableTarget } from './share-target.js';
 
 const ORIGIN = 'https://layerbench.example';
@@ -202,6 +203,44 @@ describe('portable share targets', () => {
         rulesSnapshot: 'v1.encoded',
       }),
     ).rejects.toThrow(/preset/i);
+  });
+
+  it('rejects malformed, invalid, and over-budget custom rule snapshots before building a target', async () => {
+    const tooLarge = `v1.${'A'.repeat(Math.ceil(((MAX_RULE_SNAPSHOT_BYTES + 1) * 4) / 3))}`;
+    const cases = [
+      ['v1.***', /invalid custom rule-set snapshot/i],
+      ['v1.e30', /invalid custom rule-set snapshot/i],
+      [tooLarge, /too large to share/i],
+    ] as const;
+
+    for (const [rulesSnapshot, reason] of cases) {
+      const target = new URL('/analyze', ORIGIN);
+      target.search = new URLSearchParams({
+        corpus: 'en-general',
+        layout: 'qwerty',
+        rules: 'custom:strict',
+        share: '1',
+      }).toString();
+      target.hash = new URLSearchParams({ rulesSnapshot }).toString();
+      expect(parsePortableTarget(target.href, ORIGIN)).toMatchObject({
+        ok: false,
+        error: expect.stringMatching(reason),
+      });
+
+      await expect(
+        buildPortableTarget({
+          baseHref: '/analyze',
+          origin: ORIGIN,
+          route: 'analyze',
+          search: {
+            layout: 'qwerty',
+            corpus: 'en-general',
+            rules: 'custom:strict',
+          },
+          rulesSnapshot,
+        }),
+      ).rejects.toThrow(reason);
+    }
   });
 
   it('does not let portable targets resolve custom layouts from sender storage', () => {
