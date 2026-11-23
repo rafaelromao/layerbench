@@ -287,7 +287,22 @@ describe('portable Analyze links', () => {
       id: 'theirs',
       name: 'Their Layout',
     });
-    const get = vi.spyOn(storage, 'get');
+    let releaseRead = () => {};
+    let signalReadStarted = () => {};
+    const readStarted = new Promise<void>((resolve) => {
+      signalReadStarted = resolve;
+    });
+    const readMayFinish = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const originalGet = storage.get.bind(storage);
+    const get = vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
+      if (collection === 'layouts' && id === 'mine') {
+        signalReadStarted();
+        await readMayFinish;
+      }
+      return originalGet(collection, id);
+    });
     const client = new RecordingClient();
     const target = new URL(href);
     const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
@@ -298,6 +313,13 @@ describe('portable Analyze links', () => {
     await screen.findByRole('group', { name: 'Layers of B' });
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Layout A' }), 'custom:mine');
+
+    await readStarted;
+    try {
+      expect(new URLSearchParams(source.currentSearch().split('#')[0]).get('share')).toBe('1');
+    } finally {
+      releaseRead();
+    }
 
     await waitFor(async () => {
       expect(await customInLink(source.currentSearch())).toBe('mine');
