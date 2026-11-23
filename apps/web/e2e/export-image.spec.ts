@@ -300,3 +300,42 @@ test('the dialog fits the screen, at a phone’s width as at a desk’s', async 
   await download.scrollIntoViewIfNeeded();
   await expect(download).toBeInViewport();
 });
+
+test('the dialog keeps its status and its buttons inside it while the image is made', async ({
+  page,
+}) => {
+  test.slow();
+  // A PNG is made in a blink for a small card: slow the last step so the status stays long enough
+  // to be measured, at a phone's width as at a desk's.
+  await page.addInitScript(() => {
+    const toBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (...args: Parameters<typeof toBlob>) {
+      setTimeout(() => toBlob.apply(this, args), 5000);
+    };
+  });
+  await page.goto(ANALYZE);
+  const open = page.getByRole('button', { name: 'Export image' });
+  await expect(open).toBeEnabled({ timeout: 60_000 });
+  await open.click();
+  const dialog = page.getByRole('dialog', { name: 'Export image' });
+  const status = dialog.getByText('Preparing the image…');
+  await expect(status).toBeVisible();
+
+  const box = await dialog.locator('.modal-box').boundingBox();
+  const inside = async (what: string, el: ReturnType<typeof dialog.getByText>) => {
+    const b = await el.boundingBox();
+    expect(b, `${what} is drawn`).not.toBeNull();
+    const ok = !!b && !!box && b.x >= box.x - 1 && b.x + b.width <= box.x + box.width + 1;
+    expect(ok, `${what} is inside the dialog`).toBe(true);
+  };
+  await inside('the status', status);
+  for (const name of ['Close', 'Copy image', 'Download PNG']) {
+    const button = dialog.getByRole('button', { name, exact: true });
+    if ((await button.count()) > 0) await inside(`the ${name} button`, button);
+  }
+  // Nothing in it is pushed out of its own box, to be scrolled to sideways.
+  const overflow = await dialog
+    .locator('.modal-box')
+    .evaluate((el) => el.scrollWidth - el.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
