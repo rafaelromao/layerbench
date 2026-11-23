@@ -1,10 +1,12 @@
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
+import { getPreset } from '@layerbench/core/rules';
 import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
 import { createAppRouter } from '../router.js';
 import { fromFragment, toFragment } from './fragment.js';
 import { encodeInline } from './inline.js';
 import { inlineRef } from './params.js';
+import { encodeRuleSnapshot } from './rule-snapshot.js';
 
 const ORIGIN = 'https://app.example';
 
@@ -40,17 +42,21 @@ describe('layouts never saved, in the address', () => {
   });
 
   it('keeps portable layout and rule snapshots after the hash, not in the request', () => {
-    const path =
-      '/analyze?corpus=en-general&layout=inline%3Aaaa&rules=custom%3Astrict&rulesSnapshot=v1.abc&share=1';
+    const rulesSnapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Strict',
+    });
+    const path = `/analyze?corpus=en-general&layout=inline%3Aaaa&rules=custom%3Astrict&rulesSnapshot=${rulesSnapshot}&share=1`;
     expect(outgoing(path)).toBe(
-      '/analyze?corpus=en-general&rules=custom%3Astrict&share=1#layout=inline%3Aaaa&rulesSnapshot=v1.abc',
+      `/analyze?corpus=en-general&rules=custom%3Astrict&share=1#layout=inline%3Aaaa&rulesSnapshot=${rulesSnapshot}`,
     );
     const restored = new URL(incoming(outgoing(path)), ORIGIN);
     expect(Object.fromEntries(restored.searchParams)).toEqual({
       corpus: 'en-general',
       layout: 'inline:aaa',
       rules: 'custom:strict',
-      rulesSnapshot: 'v1.abc',
+      rulesSnapshot,
       share: '1',
     });
     expect(restored.hash).toBe('');
