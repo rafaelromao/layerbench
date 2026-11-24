@@ -272,8 +272,10 @@ function targetError(
   if (url.href.length >= MAX_URL_CHARS)
     return {
       ok: false,
-      error:
-        'The share link is too long for browsers to open. Shorten the snapshots or choose smaller ones, then retry.',
+      error: [
+        'The share link is too long for browsers to open.',
+        'Shorten the snapshots or choose smaller ones, then retry.',
+      ].join(' '),
     };
 
   if (ruleSnapshot !== undefined) effective.rulesSnapshot = ruleSnapshot;
