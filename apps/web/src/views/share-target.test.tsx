@@ -250,7 +250,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('does not let a pending Analyze pick overwrite browser Back', async () => {
+  it('does not let a pending Analyze pick survive Back and Forward before effects run', async () => {
     const user = userEvent.setup();
     const snapshot = encodeRuleSnapshot({
       ...getPreset('cyanophage'),
@@ -303,21 +303,23 @@ describe('portable Analyze links', () => {
     await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'custom:mine');
     await readStarted;
 
-    source.back();
+    source.backAndForward();
+    releaseRead();
     await waitFor(() => {
       expect(source.currentPath()).toBe('/analyze');
       const search = new URLSearchParams(source.currentSearch());
-      expect(search.get('rules')).toBe('cyanophage');
+      expect(search.get('rules')).toBe('custom:strict');
       expect(search.get('layout')).toBe('qwerty');
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+      expect(search.get('share')).toBe('1');
     });
-    releaseRead();
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const search = new URLSearchParams(source.currentSearch());
     expect(search.get('layout')).toBe('qwerty');
-    expect(search.get('rules')).toBe('cyanophage');
-    expect(search.has('share')).toBe(false);
-    expect(search.has('rulesSnapshot')).toBe(false);
+    expect(search.get('rules')).toBe('custom:strict');
+    expect(search.get('rulesSnapshot')).toBe(snapshot);
+    expect(search.get('share')).toBe('1');
     expect(screen.queryByRole('alert')).toBeNull();
   }, 60_000);
 

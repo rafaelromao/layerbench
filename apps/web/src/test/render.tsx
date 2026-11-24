@@ -112,6 +112,7 @@ export function renderRoute(
   currentSearch: () => string;
   currentPath: () => string;
   back: () => void;
+  backAndForward: () => void;
 } {
   const client = opts.client ?? testClient();
   toastsShown.length = 0;
@@ -136,5 +137,9 @@ export function renderRoute(
     currentSearch: () => router.state.location.searchStr,
     currentPath: () => router.state.location.pathname,
     back: () => history.back(),
+    backAndForward: () => {
+      history.back();
+      history.forward();
+    },
   };
 }
