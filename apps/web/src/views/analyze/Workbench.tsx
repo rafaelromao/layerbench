@@ -362,6 +362,7 @@ export function Workbench({
       urlLayer.current = params.layer;
       const layer = Math.min(params.layer, state.compiled.layers.length - 1);
       if (layer !== state.layer) send({ type: 'selectLayer', layer });
+      if (layer !== params.layer) setParams({ layer });
       return;
     }
     if (params.layer !== state.layer) setParams({ layer: state.layer });

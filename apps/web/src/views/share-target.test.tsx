@@ -262,6 +262,26 @@ describe('portable Analyze links', () => {
     );
   }, 60_000);
 
+  it('normalizes an invalid history layer when the last layer is already selected', async () => {
+    const user = userEvent.setup();
+    const layerCount = bundledLayout('magic-romak')?.layers.length ?? 1;
+    const lastLayer = layerCount - 1;
+    const source = renderRoute(
+      `/analyze?layout=magic-romak&corpus=en-general&sample=10000&layer=${lastLayer}`,
+      { storage: new MemoryStorage() },
+    );
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    expect(shownLayer()).toBe(bundledLayout('magic-romak')?.layers.at(-1)?.name);
+
+    source.push('/analyze?layout=magic-romak&corpus=en-general&sample=10000&layer=31');
+
+    await waitFor(() =>
+      expect(new URLSearchParams(source.currentSearch()).get('layer')).toBe(String(lastLayer)),
+    );
+    expect(screen.getByRole('region', { name: 'Combos' })).toBeInTheDocument();
+  }, 60_000);
+
   it('shares the editor layer selected while its edited layout is being compressed', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
@@ -376,7 +396,7 @@ describe('portable Analyze links', () => {
     expect(writeText).not.toHaveBeenCalled();
   }, 60_000);
 
-  it('cancels Share when Back changes settings on the same layout during target validation', async () => {
+  it('cancels Share on same-layout Back during target validation', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
@@ -450,7 +470,7 @@ describe('portable Analyze links', () => {
     expect(screen.getByRole('region', { name: 'Layout' })).toBeInTheDocument();
   }, 60_000);
 
-  it('cancels Compare when Back changes settings on the same layout during draft compression', async () => {
+  it('cancels Compare on same-layout Back during draft compression', async () => {
     const user = userEvent.setup();
     const previous = '/analyze?layout=magic-romak&corpus=en-general&sample=10000';
     const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
@@ -483,7 +503,7 @@ describe('portable Analyze links', () => {
     expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
   }, 60_000);
 
-  it('cancels Share when Back changes settings on the same layout during draft compression', async () => {
+  it('cancels Share on same-layout Back during draft compression', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
