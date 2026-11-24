@@ -2,7 +2,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { customId } from '../custom/ref.js';
 import { DEFAULT_PARAMS, parseParams, type RawSearch, toSearch } from '../url/params.js';
-import { isPortableLayoutRef } from '../url/share-target.js';
+import { isPortableLayoutRef, retainPortableState } from '../url/share-target.js';
 import type { LinkPort } from './session.js';
 
 type Navigate = ReturnType<typeof useNavigate>;
@@ -61,13 +61,9 @@ export class RouterLink implements LinkPort {
           layer: DEFAULT_PARAMS.layer,
         });
         this.pendingPortableOpen = null;
-        return String(prev.share) === '1' && isPortableLayoutRef(ref)
-          ? {
-              ...next,
-              share: '1',
-              ...(prev.rulesSnapshot !== undefined ? { rulesSnapshot: prev.rulesSnapshot } : {}),
-            }
-          : next;
+        const retained = retainPortableState(prev, next);
+        if (String(prev.share) !== '1' || !isPortableLayoutRef(ref)) delete retained.share;
+        return retained;
       }) as never,
       replace: true,
       resetScroll: false,

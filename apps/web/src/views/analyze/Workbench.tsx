@@ -600,19 +600,15 @@ export function Workbench({
   const compare = async () => {
     const ref = await session.link();
     const next = toSearch(params, { layoutRef: ref });
-    if (rawSearch.share === '1') {
-      const { layer: _layer, ...compareSearch } = next;
-      navigate({
-        to: '/compare',
-        search: retainPortableState(rawSearch, {
-          ...compareSearch,
-          b: 'qwerty',
-          ...(params.layer > 0 && { layerA: String(params.layer) }),
-        }) as never,
-      });
-      return;
-    }
-    navigate({ to: '/compare', search: next as never });
+    const { layer: _layer, ...compareSearch } = next;
+    navigate({
+      to: '/compare',
+      search: retainPortableState(rawSearch, {
+        ...compareSearch,
+        b: 'qwerty',
+        ...(rawSearch.share === '1' && params.layer > 0 && { layerA: String(params.layer) }),
+      }) as never,
+    });
   };
 
   const shareLink = async () => {

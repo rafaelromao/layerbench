@@ -346,7 +346,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('keeps shared Analyze rules after switching to a local corpus without a local rule set', async () => {
+  it('keeps shared Analyze rules after a local corpus switch and layout change', async () => {
     const user = userEvent.setup();
     const engine = testClient();
     const privateCorpus = await engine.buildCustomCorpus(
@@ -373,6 +373,12 @@ describe('portable Analyze links', () => {
     });
     const storage = new MemoryStorage();
     await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+    await storage.put('rulesets', 'strict', {
+      ...getPreset('layouts_doc'),
+      id: 'strict',
+      name: 'Different Local Strict',
+    });
+    const get = vi.spyOn(storage, 'get');
     const client = new RecordingClient(engine);
     const target = new URL(href);
     const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
@@ -398,10 +404,37 @@ describe('portable Analyze links', () => {
         ),
       ).toBe(true),
     );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'colemak');
+    await waitFor(() => expect(client.analyses.at(-1)?.layout.name).toBe('Colemak'));
+    await waitFor(() => {
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.has('share')).toBe(false);
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+
     await user.click(screen.getByRole('button', { name: 'Share link' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /custom corpus text stays on this device/i,
     );
+
+    await user.click(screen.getByRole('button', { name: /^Compare$/ }));
+    await screen.findByRole('group', { name: 'Layers of A' });
+    await screen.findByRole('group', { name: 'Layers of B' });
+    await waitFor(() => {
+      expect(source.currentPath()).toBe('/compare');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.has('share')).toBe(false);
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
   }, 60_000);
 
   it('keeps shared custom rules for Compare after switching the second corpus to a conflicting local rule set', async () => {
@@ -439,6 +472,7 @@ describe('portable Analyze links', () => {
       id: 'strict',
       name: 'Different Local Strict',
     });
+    const get = vi.spyOn(storage, 'get');
     const client = new RecordingClient(engine);
     const target = new URL(href);
     const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
@@ -472,6 +506,19 @@ describe('portable Analyze links', () => {
     expect(
       client.analyses.some((analysis) => analysis.settings.rules.name === 'Different Local Strict'),
     ).toBe(false);
+
+    await user.click(screen.getByRole('link', { name: 'Analyze A' }));
+    await screen.findByRole('region', { name: 'Layout' });
+    await waitFor(() => {
+      expect(source.currentPath()).toBe('/analyze');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.has('share')).toBe(false);
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
   }, 60_000);
 
   it('shows an error instead of loading a local custom set when a portable snapshot is missing', async () => {

@@ -76,11 +76,18 @@ export function isPortableLayoutRef(ref: string): boolean {
   return ref.startsWith('inline:') || communityId(ref) !== null || bundledLayout(ref) !== undefined;
 }
 
-/** Keep a portable rule snapshot when an in-app action moves the same analysis to another route. */
+/**
+ * Keep a custom rule snapshot when an in-app action moves the same analysis, even after a local
+ * corpus has made the current URL non-shareable. The portable marker is retained independently.
+ */
 export function retainPortableState(source: RawSearch, destination: RawSearch): RawSearch {
-  if (source.share !== VERSION) return destination;
-  const next: RawSearch = { ...destination, share: VERSION };
-  if (source.rulesSnapshot !== undefined && customId(next.rules ?? '') !== null)
+  const next: RawSearch = { ...destination };
+  if (String(source.share) === VERSION) next.share = VERSION;
+  if (
+    source.rulesSnapshot !== undefined &&
+    source.rules === destination.rules &&
+    customId(destination.rules ?? '') !== null
+  )
     next.rulesSnapshot = source.rulesSnapshot;
   return next;
 }
