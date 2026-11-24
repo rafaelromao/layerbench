@@ -2,12 +2,13 @@ import { bundledLayout, getPreset, type Layout, toCanonicalJson } from '@layerbe
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useToasts } from '../state/toasts.js';
 import { dragKey } from '../test/analyze-editing.js';
 import { showLayer, shownLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
-import { decodeInline } from '../url/inline.js';
+import { decodeInline, encodeInline } from '../url/inline.js';
 import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
 import { buildPortableTarget } from '../url/share-target.js';
 
@@ -1016,6 +1017,100 @@ describe('portable Analyze links', () => {
     expect(
       get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
     ).toHaveLength(0);
+  }, 60_000);
+
+  it('keeps Analyze open when a local layout would make its shared URL too long', async () => {
+    const user = userEvent.setup();
+    useToasts.setState({ toasts: [] });
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+      description: 'x'.repeat(1_450_000),
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    expect(href.length).toBeGreaterThan(1_900_000);
+    expect(href.length).toBeLessThan(2_097_152);
+
+    let seed = 17;
+    const chars = new Array<string>(360_000);
+    for (let i = 0; i < chars.length; i++) {
+      seed = (seed * 48_271) % 2_147_483_647;
+      chars[i] = String.fromCharCode(32 + (seed % 95));
+    }
+    const customLayout: Layout = {
+      ...bundledLayout('colemak')!,
+      id: 'mine',
+      name: 'My Large Layout',
+      description: chars.join(''),
+    };
+    const inline = `inline:${await encodeInline(customLayout)}`;
+    await expect(
+      buildPortableTarget({
+        baseHref: '/analyze',
+        origin: window.location.origin,
+        route: 'analyze',
+        search: {
+          layout: inline,
+          corpus: 'en-general',
+          sample: '10000',
+          rules: 'custom:strict',
+        },
+        rulesSnapshot: snapshot,
+      }),
+    ).rejects.toThrow(/too long for browsers to open/i);
+
+    const storage = new MemoryStorage();
+    await storage.put('layouts', 'mine', toCanonicalJson(customLayout));
+    const client = new RecordingClient();
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'custom:mine');
+
+    await waitFor(() =>
+      expect(source.currentSearch()).toMatch(/layout=(?:custom%3Amine|inline%3A)/),
+    );
+    await waitFor(() => {
+      expect(client.analyses.at(-1)?.layout.name).toBe('My Large Layout');
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    });
+    expect(source.currentPath()).toBe('/analyze');
+    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+    const finalSearch = new URLSearchParams(source.currentSearch());
+    expect(finalSearch.get('share')).toBeNull();
+    expect(finalSearch.get('layout')).toBe('custom:mine');
+    expect(finalSearch.get('rulesSnapshot')).toBe(snapshot);
+    const warning = await screen.findByRole('alert');
+    expect(warning).toHaveTextContent(
+      /open on this device.*shorten.*layout description.*smaller custom rule set/i,
+    );
+    await user.click(within(warning).getByRole('button', { name: 'close' }));
+
+    const localUrl = new URL('/analyze', window.location.origin);
+    localUrl.search = new URLSearchParams({
+      corpus: finalSearch.get('corpus') ?? '',
+      layout: finalSearch.get('layout') ?? '',
+      rules: finalSearch.get('rules') ?? '',
+      sample: finalSearch.get('sample') ?? '',
+    }).toString();
+    localUrl.hash = new URLSearchParams({ rulesSnapshot: snapshot }).toString();
+    expect(localUrl.href.length).toBeLessThan(2_097_152);
   }, 60_000);
 
   it('does not let a pending Analyze pick survive Back and Forward before effects run', async () => {

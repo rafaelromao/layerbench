@@ -18,6 +18,8 @@ export interface PortableTarget {
 
 export type PortableTargetResult = ({ ok: true } & PortableTarget) | { ok: false; error: string };
 
+export const PORTABLE_URL_TOO_LONG_MESSAGE = 'The share link is too long for browsers to open.';
+
 interface BuildPortableTarget {
   /** A router-built route address, without application state. */
   baseHref: string;
@@ -273,7 +275,7 @@ function targetError(
     return {
       ok: false,
       error: [
-        'The share link is too long for browsers to open.',
+        PORTABLE_URL_TOO_LONG_MESSAGE,
         'Shorten the snapshots or choose smaller ones, then retry.',
       ].join(' '),
     };
@@ -363,7 +365,10 @@ export function parsePortableSearch(
     (entry): entry is [string, string] => entry[1] !== undefined,
   );
   const fragmentEntries = Object.entries(fragment);
-  const url = new URL(`/${route}`, 'https://portable.layerbench.invalid');
+  const basePath = new URL(import.meta.env.BASE_URL, 'https://portable.layerbench.invalid')
+    .pathname;
+  const baseHref = `${basePath.endsWith('/') ? basePath : `${basePath}/`}${route}`;
+  const url = new URL(baseHref, 'https://portable.layerbench.invalid');
   const query = canonicalParams(queryEntries);
   const hash = canonicalParams(fragmentEntries);
   url.search = query;
