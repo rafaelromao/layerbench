@@ -16,6 +16,54 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function holdNextCompression() {
+  const NativeCompressionStream = globalThis.CompressionStream;
+  let signalStarted = () => {};
+  let release = () => {};
+  let signalFinished = () => {};
+  const started = new Promise<void>((resolve) => {
+    signalStarted = resolve;
+  });
+  const mayFinish = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const finished = new Promise<void>((resolve) => {
+    signalFinished = resolve;
+  });
+  let held = false;
+
+  class HeldCompressionStream {
+    readonly readable: ReadableStream<Uint8Array>;
+    readonly writable: WritableStream<BufferSource>;
+
+    constructor(format: CompressionFormat) {
+      const stream = new NativeCompressionStream(format);
+      const writer = stream.writable.getWriter();
+      this.readable = stream.readable;
+      this.writable = new WritableStream({
+        async write(chunk) {
+          if (!held) {
+            held = true;
+            signalStarted();
+            await mayFinish;
+          }
+          await writer.write(chunk);
+        },
+        async close() {
+          await writer.close();
+          signalFinished();
+        },
+        abort(reason) {
+          return writer.abort(reason);
+        },
+      });
+    }
+  }
+
+  vi.stubGlobal('CompressionStream', HeldCompressionStream as unknown as typeof CompressionStream);
+  return { started, release, finished };
+}
+
 describe('portable Analyze links', () => {
   it('copies a same-site target that restores the bundled layout and analysis settings', async () => {
     const user = userEvent.setup();
@@ -72,6 +120,116 @@ describe('portable Analyze links', () => {
     });
   }, 60_000);
 
+  it('follows same-layout layer history and shares the layer currently shown', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const target = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'magic-romak',
+        corpus: 'pt-br-general',
+        sample: '10000',
+        layer: '1',
+      },
+    });
+    const source = renderRoute(target.replace(window.location.origin, ''), {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await waitFor(() =>
+      expect(new URLSearchParams(source.currentSearch()).get('layout')).toMatch(/^inline:/),
+    );
+
+    const layerTarget = async (layer: number | null) => {
+      const search = Object.fromEntries(new URLSearchParams(source.currentSearch()));
+      if (layer === null) delete search.layer;
+      else search.layer = String(layer);
+      return (
+        await buildPortableTarget({
+          baseHref: '/analyze',
+          origin: window.location.origin,
+          route: 'analyze',
+          search,
+        })
+      ).replace(window.location.origin, '');
+    };
+    const alpha1 = await layerTarget(null);
+    const alpha2 = await layerTarget(1);
+    source.push(alpha1);
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 1'));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
+
+    source.push(alpha2);
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    source.back();
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 1'));
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    let shared = new URL(writeText.mock.calls[0]?.[0] ?? '');
+    expect(new URLSearchParams(shared.hash.slice(1)).get('layout')).toMatch(/^inline:/);
+    expect(shared.searchParams.has('layer')).toBe(false);
+
+    source.forward();
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    shared = new URL(writeText.mock.calls[1]?.[0] ?? '');
+    expect(new URLSearchParams(shared.hash.slice(1)).get('layout')).toMatch(/^inline:/);
+    expect(shared.searchParams.get('layer')).toBe('1');
+
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Redo' })).toBeEnabled();
+  }, 60_000);
+
+  it('shares the editor layer selected while its edited layout is being compressed', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const target = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'magic-romak',
+        corpus: 'pt-br-general',
+        sample: '10000',
+        layer: '1',
+      },
+    });
+    renderRoute(target.replace(window.location.origin, ''), {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      await user.click(screen.getByRole('button', { name: 'Next layer' }));
+      await waitFor(() => expect(shownLayer()).not.toBe('Alpha 2'));
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const shared = new URL(writeText.mock.calls[0]?.[0] ?? '');
+    expect(shared.searchParams.get('layer')).toBe('2');
+  }, 60_000);
+
   it('captures an edit made immediately before the share action', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
@@ -108,6 +266,38 @@ describe('portable Analyze links', () => {
       );
       expect(reloadClient.analyses[0]?.layout).toEqual(toCanonicalJson(decoded.layout));
     }
+  }, 60_000);
+
+  it('does not share a draft whose edit was undone while compression was pending', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const source = renderRoute('/analyze?layout=qwerty&corpus=en-general&sample=10000', {
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    const compression = holdNextCompression();
+
+    await dragKey('LTP', 'LTR');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Undo' }));
+      await waitFor(() =>
+        expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty'),
+      );
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const target = new URL(writeText.mock.calls[0]?.[0] ?? '');
+    const layoutRef =
+      target.searchParams.get('layout') ?? new URLSearchParams(target.hash.slice(1)).get('layout');
+    expect(layoutRef).toBe('qwerty');
   }, 60_000);
 
   it('keeps an async generated link selectable when clipboard writing fails', async () => {

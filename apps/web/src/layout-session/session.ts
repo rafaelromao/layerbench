@@ -207,8 +207,13 @@ export function createLayoutSession(
   let source: LayoutSource | null = null;
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
   let editor: { layout: Layout; unsaved: boolean } | null = null;
+  let editorRevision = 0;
   /** A draft waiting to be written, and the promise of its reference once it is. */
-  let pending: { timer: ReturnType<typeof setTimeout> | null; ref: Promise<string> } | null = null;
+  let pending: {
+    revision: number;
+    timer: ReturnType<typeof setTimeout> | null;
+    ref: Promise<string> | null;
+  } | null = null;
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
   /**
@@ -258,10 +263,10 @@ export function createLayoutSession(
    * first save or a rename has since changed, or a bundled or community layout's, which a custom
    * layout may have too, so a layout never saved here carries none.
    */
-  const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
+  const writeDraft = async (layout: Layout, opening: number, revision: number): Promise<string> => {
     const { id: _own, ...rest } = layout;
     const ref = inlineRef(await encodeInline(storedId === null ? rest : { ...rest, id: storedId }));
-    if (state.opening === opening && !disposed) {
+    if (state.opening === opening && editorRevision === revision && !disposed) {
       drafts.remember(ref, storedId, source, basedOn);
       write(ref);
     }
@@ -274,6 +279,7 @@ export function createLayoutSession(
     state = { status: 'opening', opening };
     own = new Set([ref]);
     editor = null;
+    editorRevision += 1;
     opened = null;
     publish();
 
@@ -354,21 +360,24 @@ export function createLayoutSession(
       if (state.status !== 'open' || disposed) return;
       if (editor && editor.layout === layout && editor.unsaved === unsaved) return;
       editor = { layout, unsaved };
+      const revision = ++editorRevision;
       cancelPending();
       if (!unsaved) {
         write(cleanRef);
       } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
-        let resolve: (ref: string) => void = () => {};
-        const ref = new Promise<string>((r) => {
-          resolve = r;
-        });
-        const timer = setTimeout(() => {
-          if (pending?.ref === ref) pending.timer = null;
-          void writeDraft(layout, opening).then(resolve);
+        const request = {
+          revision,
+          timer: null as ReturnType<typeof setTimeout> | null,
+          ref: null as Promise<string> | null,
+        };
+        request.timer = setTimeout(() => {
+          if (pending !== request) return;
+          request.timer = null;
+          request.ref = writeDraft(layout, opening, revision);
         }, delay);
-        pending = { timer, ref };
+        pending = request;
       }
       publish();
     },
@@ -478,11 +487,31 @@ export function createLayoutSession(
     open: openRef,
 
     async link() {
-      if (pending?.timer && editor) {
-        clearTimeout(pending.timer);
-        pending = { timer: null, ref: writeDraft(editor.layout, state.opening) };
+      for (;;) {
+        const current = editor;
+        const revision = editorRevision;
+        const opening = state.opening;
+        if (!current) return cleanRef || link.current();
+        if (!current.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
+          if (state.opening === opening && editorRevision === revision)
+            return cleanRef || link.current();
+          continue;
+        }
+
+        let request = pending?.revision === revision ? pending : null;
+        if (!request) {
+          request = { revision, timer: null, ref: null };
+          pending = request;
+        }
+        if (request.timer !== null) {
+          clearTimeout(request.timer);
+          request.timer = null;
+        }
+        request.ref ??= writeDraft(current.layout, opening, revision);
+        const ref = await request.ref;
+        if (disposed) return ref;
+        if (state.opening === opening && editorRevision === revision) return ref;
       }
-      return pending ? pending.ref : link.current();
     },
 
     dispose() {

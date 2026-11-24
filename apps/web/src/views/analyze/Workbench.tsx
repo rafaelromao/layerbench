@@ -169,6 +169,8 @@ export function Workbench({
     // unsaved: the layout stored, if any, is not this one yet.
     return session.startsUnsaved ? { ...start, dirty: true, saved: null } : start;
   });
+  const editorState = useRef(state);
+  editorState.current = state;
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
@@ -343,11 +345,18 @@ export function Workbench({
     });
   }, [boardAsked]);
 
-  // The layer edited is the one the link names, so a link opens on it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
+  // The URL opens on a layer, but browser history can change it without an editor action. Restore
+  // that selection into the existing reducer (which keeps layout undo history), and write editor
+  // selections back only when the URL itself did not just change.
+  const urlLayer = useRef(params.layer);
   useEffect(() => {
+    if (urlLayer.current !== params.layer) {
+      urlLayer.current = params.layer;
+      if (params.layer !== state.layer) send({ type: 'selectLayer', layer: params.layer });
+      return;
+    }
     if (params.layer !== state.layer) setParams({ layer: state.layer });
-  }, [state.layer]);
+  }, [params.layer, setParams, state.layer]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -599,14 +608,15 @@ export function Workbench({
 
   const compare = async () => {
     const ref = await session.link();
-    const next = toSearch(params, { layoutRef: ref });
+    const layer = editorState.current.layer;
+    const next = toSearch(params, { layoutRef: ref, layer });
     const { layer: _layer, ...compareSearch } = next;
     navigate({
       to: '/compare',
       search: retainPortableState(rawSearch, {
         ...compareSearch,
         b: 'qwerty',
-        ...(rawSearch.share === '1' && params.layer > 0 && { layerA: String(params.layer) }),
+        ...(rawSearch.share === '1' && layer > 0 && { layerA: String(layer) }),
       }) as never,
     });
   };
@@ -627,12 +637,13 @@ export function Workbench({
       rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
     }
     const ref = await session.link();
+    const layer = editorState.current.layer;
     const baseHref = router.buildLocation({ to: '/analyze', search: {} as never }).publicHref;
     return buildPortableTarget({
       baseHref,
       origin: window.location.origin,
       route: 'analyze',
-      search: toSearch(params, { layoutRef: ref }),
+      search: toSearch(params, { layoutRef: ref, layer }),
       ...(rulesSnapshot !== undefined && { rulesSnapshot }),
     });
   };

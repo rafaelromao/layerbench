@@ -111,7 +111,9 @@ export function renderRoute(
   client: AnalysisClient;
   currentSearch: () => string;
   currentPath: () => string;
+  push: (path: string) => void;
   back: () => void;
+  forward: () => void;
   backAndForward: () => void;
 } {
   const client = opts.client ?? testClient();
@@ -136,7 +138,9 @@ export function renderRoute(
     client,
     currentSearch: () => router.state.location.searchStr,
     currentPath: () => router.state.location.pathname,
+    push: (next) => history.push(next),
     back: () => history.back(),
+    forward: () => history.forward(),
     backAndForward: () => {
       history.back();
       history.forward();
