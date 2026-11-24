@@ -183,6 +183,14 @@ function ComparePage({
   const storage = useStorage();
   const layoutSelection = useRef({ layout: 0, b: 0 });
   useEffect(
+    () =>
+      router.history.subscribe(() => {
+        layoutSelection.current.layout += 1;
+        layoutSelection.current.b += 1;
+      }),
+    [router],
+  );
+  useEffect(
     () => () => {
       layoutSelection.current.layout += 1;
       layoutSelection.current.b += 1;

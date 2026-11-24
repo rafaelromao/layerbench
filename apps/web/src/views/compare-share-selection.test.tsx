@@ -106,6 +106,29 @@ describe('asynchronous custom Compare layout picks', () => {
     expect(search.get('b')).toBe('dvorak');
   }, 60_000);
 
+  it('does not revive a pending pick when the comparison returns to its earlier URL', async () => {
+    const { user, source, releaseRead, compressionStarted } = await beginBlockedCustomPick();
+
+    const layoutB = screen.getByRole('combobox', { name: 'Layout B' });
+    await user.selectOptions(layoutB, 'dvorak');
+    await waitFor(() => {
+      expect(new URLSearchParams(source.currentSearch()).get('b')).toBe('dvorak');
+    });
+    await user.selectOptions(layoutB, 'colemak');
+    await waitFor(() => {
+      expect(new URLSearchParams(source.currentSearch()).get('b')).toBe('colemak');
+    });
+
+    releaseRead();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const search = new URLSearchParams(source.currentSearch());
+    expect(compressionStarted).not.toHaveBeenCalled();
+    expect(source.currentPath()).toBe('/compare');
+    expect(search.get('layout')).toBe('qwerty');
+    expect(search.get('b')).toBe('colemak');
+  }, 60_000);
+
   it('cancels a pending pick when comparison settings change', async () => {
     const { user, source, releaseRead, compressionStarted } = await beginBlockedCustomPick();
 
