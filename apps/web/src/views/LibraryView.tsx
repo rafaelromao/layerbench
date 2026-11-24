@@ -548,8 +548,8 @@ export function LibraryView() {
   const search = useSearch({ strict: false }) as RawSearch;
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
   const ranking = useMemo(() => forRanking(settingsOf(params)), [params]);
-  useRememberSelection(params);
-  const settings = useAnalysisSettings(ranking);
+  useRememberSelection(params, search.rulesSnapshot);
+  const settings = useAnalysisSettings(ranking, search.rulesSnapshot);
   const corpora = useCorpora();
   const corpusName = textName(ranking, corpora);
   const corpusLanguage = textLanguage(ranking, corpora);

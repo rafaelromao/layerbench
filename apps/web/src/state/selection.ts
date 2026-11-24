@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
+import { customId } from '../custom/ref.js';
 import { type Params, type RawSearch, selectionSearch } from '../url/params.js';
 
 /**
@@ -11,13 +12,15 @@ import { type Params, type RawSearch, selectionSearch } from '../url/params.js';
 interface SelectionState {
   /** As query keys, ready to put in a link; null until a view that analyzes has been opened. */
   search: RawSearch | null;
-  remember: (params: Params) => void;
+  remember: (params: Params, rulesSnapshot?: string) => void;
 }
 
 export const useSelection = create<SelectionState>()((set, get) => ({
   search: null,
-  remember: (params) => {
+  remember: (params, rulesSnapshot) => {
     const next = selectionSearch(params);
+    if (customId(params.preset) !== null && rulesSnapshot !== undefined)
+      next.rulesSnapshot = rulesSnapshot;
     const current = get().search;
     // The same choices give the same keys in the same order, so this is enough to tell them apart.
     if (current && JSON.stringify(current) === JSON.stringify(next)) return;
@@ -26,9 +29,9 @@ export const useSelection = create<SelectionState>()((set, get) => ({
 }));
 
 /** Keep the choices a view is showing as the ones in force, for the links to other views. */
-export function useRememberSelection(params: Params): void {
+export function useRememberSelection(params: Params, rulesSnapshot?: string): void {
   const remember = useSelection((s) => s.remember);
-  useEffect(() => remember(params), [remember, params]);
+  useEffect(() => remember(params, rulesSnapshot), [remember, params, rulesSnapshot]);
 }
 
 /**

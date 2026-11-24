@@ -158,7 +158,7 @@ function ComparePage({
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
   const shown = useFamilyShown();
-  useRememberSelection(params);
+  useRememberSelection(params, search.rulesSnapshot);
   const refB = search.b ?? DEFAULT_B;
 
   const [corpora, setCorpora] = useState<CorpusManifest[]>(sharedCorpora ?? []);

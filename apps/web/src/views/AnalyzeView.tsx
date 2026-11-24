@@ -62,7 +62,7 @@ function AnalyzeWorkbench({
   const navigate = useNavigate();
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
-  useRememberSelection(params);
+  useRememberSelection(params, search.rulesSnapshot);
   const settings = useAnalysisSettings(settingsOf(params), search.rulesSnapshot);
   const session = useLayoutSession();
   const carried = useCarried();

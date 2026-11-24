@@ -422,11 +422,25 @@ describe('portable Analyze links', () => {
       /custom corpus text stays on this device/i,
     );
 
-    await user.click(screen.getByRole('button', { name: /^Compare$/ }));
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    await user.click(within(nav).getByRole('link', { name: 'Compare' }));
     await screen.findByRole('group', { name: 'Layers of A' });
     await screen.findByRole('group', { name: 'Layers of B' });
     await waitFor(() => {
       expect(source.currentPath()).toBe('/compare');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.has('share')).toBe(false);
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+
+    await user.click(within(nav).getByRole('link', { name: 'Analyze' }));
+    await screen.findByRole('region', { name: 'Layout' });
+    await waitFor(() => {
+      expect(source.currentPath()).toBe('/analyze');
       const search = new URLSearchParams(source.currentSearch());
       expect(search.has('share')).toBe(false);
       expect(search.get('rulesSnapshot')).toBe(snapshot);
