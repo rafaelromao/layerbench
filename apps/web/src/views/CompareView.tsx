@@ -182,6 +182,13 @@ function ComparePage({
   const custom = useCollection('layouts');
   const storage = useStorage();
   const layoutSelection = useRef({ layout: 0, b: 0 });
+  useEffect(
+    () => () => {
+      layoutSelection.current.layout += 1;
+      layoutSelection.current.b += 1;
+    },
+    [],
+  );
   const a = useLayout(params.layoutRef);
   const b = useLayout(refB);
   useCarriedInLink('layout', params.layoutRef, a);
@@ -288,20 +295,34 @@ function ComparePage({
   const chooseLayout = useCallback(
     async (key: 'layout' | 'b', ref: string) => {
       const sequence = ++layoutSelection.current[key];
+      const startedWith = {
+        a: search.layout ?? params.layoutRef,
+        b: refB,
+      };
+      const isCurrentSelection = () => {
+        const location = router.state.location;
+        const currentSearch = location.search as RawSearch;
+        return (
+          sequence === layoutSelection.current[key] &&
+          location.pathname === '/compare' &&
+          (currentSearch.layout ?? DEFAULT_PARAMS.layoutRef) === startedWith.a &&
+          (currentSearch.b ?? DEFAULT_B) === startedWith.b
+        );
+      };
       const id = customId(ref);
       if (search.share === '1' && id !== null) {
         try {
           const opened = await openLayout(ref, storage);
-          if (sequence !== layoutSelection.current[key]) return;
+          if (!isCurrentSelection()) return;
           if (!opened.ok) {
             toast.error(`Could not include that layout in the shared link: ${opened.error}`);
             return;
           }
           const inline = await snapshotRef(opened.layout, opened.storedId ?? id);
-          if (sequence !== layoutSelection.current[key]) return;
+          if (!isCurrentSelection()) return;
           setParams(key === 'layout' ? { layoutRef: inline, layerA: 0 } : { b: inline, layerB: 0 });
         } catch (error) {
-          if (sequence !== layoutSelection.current[key]) return;
+          if (!isCurrentSelection()) return;
           toast.error(
             `Could not include that layout in the shared link: ${
               error instanceof Error ? error.message : String(error)
@@ -312,7 +333,7 @@ function ComparePage({
       }
       setParams(key === 'layout' ? { layoutRef: ref, layerA: 0 } : { b: ref, layerB: 0 });
     },
-    [search.share, setParams, storage],
+    [params.layoutRef, refB, router, search.layout, search.share, setParams, storage],
   );
 
   const rows = useMemo(
