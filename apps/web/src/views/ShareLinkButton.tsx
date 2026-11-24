@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../state/toasts.js';
 
-export function ShareLinkButton({ createTarget }: { createTarget: () => Promise<string> }) {
+export function ShareLinkButton({ createTarget }: { createTarget: () => Promise<string | null> }) {
   const [copying, setCopying] = useState(false);
   const [manualLink, setManualLink] = useState<string | null>(null);
   const manualLinkInput = useRef<HTMLInputElement>(null);
@@ -17,7 +17,9 @@ export function ShareLinkButton({ createTarget }: { createTarget: () => Promise<
     setManualLink(null);
     let target: string | undefined;
     try {
-      target = await createTarget();
+      const created = await createTarget();
+      if (created === null) return;
+      target = created;
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable.');
       await navigator.clipboard.writeText(target);
       toast.info('Copied the link');

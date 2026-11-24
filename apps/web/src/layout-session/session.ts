@@ -101,8 +101,13 @@ export interface LayoutSession {
   duplicate(layout: Layout): Promise<DuplicateResult>;
   /** Open another layout, or the same one afresh: a layout picked. */
   open(ref: string): Promise<void>;
-  /** The link as it is about to be: a draft still waiting to be written is written now. */
-  link(): Promise<string>;
+  /** Whether `opening` is still the layout currently open in this session. */
+  isCurrentOpening(opening: number): boolean;
+  /**
+   * The link as it is about to be: a draft still waiting to be written is written now. Returns
+   * null if this opening is left while the draft is being prepared.
+   */
+  link(opening?: number): Promise<string | null>;
   /** Write nothing more, and stop listening to the link. */
   dispose(): void;
 }
@@ -486,14 +491,18 @@ export function createLayoutSession(
 
     open: openRef,
 
-    async link() {
+    isCurrentOpening(opening) {
+      return !disposed && state.status === 'open' && state.opening === opening;
+    },
+
+    async link(expectedOpening = state.opening) {
       for (;;) {
+        if (disposed || state.status !== 'open' || state.opening !== expectedOpening) return null;
         const current = editor;
         const revision = editorRevision;
-        const opening = state.opening;
         if (!current) return cleanRef || link.current();
         if (!current.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
-          if (state.opening === opening && editorRevision === revision)
+          if (state.opening === expectedOpening && editorRevision === revision)
             return cleanRef || link.current();
           continue;
         }
@@ -507,10 +516,10 @@ export function createLayoutSession(
           clearTimeout(request.timer);
           request.timer = null;
         }
-        request.ref ??= writeDraft(current.layout, opening, revision);
+        request.ref ??= writeDraft(current.layout, expectedOpening, revision);
         const ref = await request.ref;
-        if (disposed) return ref;
-        if (state.opening === opening && editorRevision === revision) return ref;
+        if (disposed || state.opening !== expectedOpening || state.status !== 'open') return null;
+        if (editorRevision === revision) return ref;
       }
     },
 

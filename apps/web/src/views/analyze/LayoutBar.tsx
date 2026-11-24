@@ -92,7 +92,7 @@ export function LayoutBar({
   settings: AnalysisSettingsState;
   onParams: (overrides: Partial<Params>) => void;
   onCompare: () => void;
-  onShareLink: () => Promise<string>;
+  onShareLink: () => Promise<string | null>;
   /** Whether the board draws the combos that type; absent when the layout has none. */
   showCombos?: { on: boolean; onChange: (on: boolean) => void };
 }) {

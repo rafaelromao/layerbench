@@ -64,6 +64,57 @@ function holdNextCompression() {
   return { started, release, finished };
 }
 
+function holdNextDecompression() {
+  const NativeDecompressionStream = globalThis.DecompressionStream;
+  let signalStarted = () => {};
+  let release = () => {};
+  let signalFinished = () => {};
+  const started = new Promise<void>((resolve) => {
+    signalStarted = resolve;
+  });
+  const mayFinish = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const finished = new Promise<void>((resolve) => {
+    signalFinished = resolve;
+  });
+  let held = false;
+
+  class HeldDecompressionStream {
+    readonly readable: ReadableStream<Uint8Array>;
+    readonly writable: WritableStream<BufferSource>;
+
+    constructor(format: CompressionFormat) {
+      const stream = new NativeDecompressionStream(format);
+      const writer = stream.writable.getWriter();
+      this.readable = stream.readable;
+      this.writable = new WritableStream({
+        async write(chunk) {
+          if (!held) {
+            held = true;
+            signalStarted();
+            await mayFinish;
+          }
+          await writer.write(chunk);
+        },
+        async close() {
+          await writer.close();
+          signalFinished();
+        },
+        abort(reason) {
+          return writer.abort(reason);
+        },
+      });
+    }
+  }
+
+  vi.stubGlobal(
+    'DecompressionStream',
+    HeldDecompressionStream as unknown as typeof DecompressionStream,
+  );
+  return { started, release, finished };
+}
+
 describe('portable Analyze links', () => {
   it('copies a same-site target that restores the bundled layout and analysis settings', async () => {
     const user = userEvent.setup();
@@ -228,6 +279,114 @@ describe('portable Analyze links', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
     const shared = new URL(writeText.mock.calls[0]?.[0] ?? '');
     expect(shared.searchParams.get('layer')).toBe('2');
+  }, 60_000);
+
+  it('does not share an old opening after Back during draft compression', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const previous = '/analyze?layout=qwerty&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      source.back();
+      await waitFor(() => {
+        expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+        expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+      });
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share link' })).toBeEnabled());
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+    expect(writeText).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it('cancels Share when Back happens while its inline target is being validated', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const previous = '/analyze?layout=qwerty&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+    const decompression = holdNextDecompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      compression.release();
+      await compression.finished;
+      await decompression.started;
+      source.back();
+      await waitFor(() => {
+        expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+        expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+      });
+    } finally {
+      compression.release();
+      decompression.release();
+    }
+    await decompression.finished;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+    expect(writeText).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it('does not compare an old opening after Back during draft compression', async () => {
+    const user = userEvent.setup();
+    const previous = '/analyze?layout=qwerty&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Compare' }));
+      source.back();
+      await waitFor(() => {
+        expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+        expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+      });
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+    expect(screen.getByRole('region', { name: 'Layout' })).toBeInTheDocument();
   }, 60_000);
 
   it('captures an edit made immediately before the share action', async () => {

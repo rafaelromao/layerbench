@@ -21,7 +21,7 @@ export function reopenAfterReplace(state: SessionState, changed: readonly string
 }
 
 export type LayoutSessionView = SessionState &
-  Pick<LayoutSession, 'edited' | 'save' | 'duplicate' | 'open' | 'link'>;
+  Pick<LayoutSession, 'edited' | 'save' | 'duplicate' | 'open' | 'isCurrentOpening' | 'link'>;
 
 /** The layout session once its layout is open, as the editor has it. */
 export type OpenSession = Extract<LayoutSessionView, { status: 'open' }>;
@@ -86,6 +86,7 @@ export function useLayoutSession(): LayoutSessionView {
             save: session.save,
             duplicate: session.duplicate,
             open: session.open,
+            isCurrentOpening: session.isCurrentOpening,
             link: session.link,
           }
         : {
@@ -95,6 +96,7 @@ export function useLayoutSession(): LayoutSessionView {
             duplicate: async () =>
               ({ ok: false, reason: 'failed', error: 'nothing open' }) as const,
             open: async () => {},
+            isCurrentOpening: () => false,
             link: async () => link.current(),
           },
     [session, state, link],

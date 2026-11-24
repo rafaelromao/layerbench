@@ -607,7 +607,9 @@ export function Workbench({
   };
 
   const compare = async () => {
-    const ref = await session.link();
+    const opening = session.opening;
+    const ref = await session.link(opening);
+    if (ref === null || !session.isCurrentOpening(opening)) return;
     const layer = editorState.current.layer;
     const next = toSearch(params, { layoutRef: ref, layer });
     const { layer: _layer, ...compareSearch } = next;
@@ -622,6 +624,7 @@ export function Workbench({
   };
 
   const shareLink = async () => {
+    const opening = session.opening;
     if (!corporaLoaded)
       throw new Error('Wait for the available texts to finish loading before sharing.');
     const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
@@ -636,16 +639,18 @@ export function Workbench({
         );
       rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
     }
-    const ref = await session.link();
+    const ref = await session.link(opening);
+    if (ref === null) return null;
     const layer = editorState.current.layer;
     const baseHref = router.buildLocation({ to: '/analyze', search: {} as never }).publicHref;
-    return buildPortableTarget({
+    const target = await buildPortableTarget({
       baseHref,
       origin: window.location.origin,
       route: 'analyze',
       search: toSearch(params, { layoutRef: ref, layer }),
       ...(rulesSnapshot !== undefined && { rulesSnapshot }),
     });
+    return session.isCurrentOpening(opening) ? target : null;
   };
 
   // ------------------------------------------------------------------ outlines and playback

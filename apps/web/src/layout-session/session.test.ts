@@ -160,7 +160,7 @@ describe('The link', () => {
     const { s, link } = session('qwerty');
     const state = await opened(s);
     s.edited(withCedilla(state.layout), true);
-    const ref = await s.link();
+    const ref = (await s.link())!;
     expect(JSON.stringify(await carried(ref))).toContain('ç');
     expect(link.current()).toBe(ref);
   });
@@ -174,7 +174,7 @@ describe('Drafts', () => {
     const first = session('custom:qwerty-copy', { storage, drafts });
     const state = await opened(first.s);
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     // The same link, opened again in this tab: a reload, Back.
@@ -204,7 +204,7 @@ describe('Drafts', () => {
     const state = await opened(first.s);
     expect(state.source).toEqual({ kind: 'bundled', id: 'qwerty' });
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     const again = session(draft, { storage, drafts });
@@ -224,7 +224,7 @@ describe('Drafts', () => {
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const first = session('custom:qwerty-copy', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
 
     const other = session(draft, { storage });
     const elsewhere = await opened(other.s);
@@ -283,7 +283,7 @@ describe('A custom layout sent by its link', () => {
     });
     // The editor's layout still carries the bundled id; the draft carries the saved one.
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     expect((await carried(draft))?.id).toBe('qwerty-copy');
     const elsewhere = await opened(session(draft, { storage }).s);
     expect(elsewhere).toMatchObject({ storedId: 'qwerty-copy', startsUnsaved: true });
@@ -295,7 +295,7 @@ describe('A custom layout sent by its link', () => {
     await seed(storage, 'qwerty', 'qwerty', { name: 'QWERTY!', description: 'mine' });
     const first = session('qwerty', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     expect((await carried(draft))?.id).toBeUndefined();
     const elsewhere = await opened(session(draft, { storage }).s);
     expect(elsewhere).toMatchObject({ storedId: null, source: null });
@@ -453,7 +453,7 @@ describe('Saving what was read', () => {
     const first = session('custom:mine', { storage, drafts });
     const state = await opened(first.s);
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
     expect(drafts.shaOf(draft)).toBe(readAt);
 
@@ -949,7 +949,7 @@ describe('Duplicating', () => {
     const drafts = webDrafts(mapStore());
     const first = session('custom:mine', { storage, drafts });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     const { s } = session(draft, { storage, drafts });
@@ -1322,7 +1322,7 @@ describe('A draft reloaded after a send failed', () => {
     // Save E1: the send fails, the save is kept. Then more edits, unsaved, as a draft.
     expect(await first.save({ ...state.layout, description: 'E1' })).toMatchObject({ ok: true });
     first.edited({ ...state.layout, description: 'E1 and more' }, true);
-    const draft = await first.link();
+    const draft = (await first.link())!;
     first.dispose();
 
     // The tab is reloaded onto the draft, and the draft is saved.
