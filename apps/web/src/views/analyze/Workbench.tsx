@@ -163,6 +163,14 @@ export function Workbench({
   navigate,
 }: WorkbenchProps) {
   const router = useRouter();
+  const historyRevision = useRef(0);
+  useEffect(
+    () =>
+      router.history.subscribe(({ action }) => {
+        if (action.type !== 'REPLACE') historyRevision.current += 1;
+      }),
+    [router],
+  );
   const [state, send] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made, or a custom layout's link with edits not saved in it, is still
@@ -352,11 +360,12 @@ export function Workbench({
   useEffect(() => {
     if (urlLayer.current !== params.layer) {
       urlLayer.current = params.layer;
-      if (params.layer !== state.layer) send({ type: 'selectLayer', layer: params.layer });
+      const layer = Math.min(params.layer, state.compiled.layers.length - 1);
+      if (layer !== state.layer) send({ type: 'selectLayer', layer });
       return;
     }
     if (params.layer !== state.layer) setParams({ layer: state.layer });
-  }, [params.layer, setParams, state.layer]);
+  }, [params.layer, setParams, state.compiled.layers.length, state.layer]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -608,8 +617,10 @@ export function Workbench({
 
   const compare = async () => {
     const opening = session.opening;
+    const history = historyRevision.current;
     const ref = await session.link(opening);
-    if (ref === null || !session.isCurrentOpening(opening)) return;
+    if (ref === null || !session.isCurrentOpening(opening) || historyRevision.current !== history)
+      return;
     const layer = editorState.current.layer;
     const next = toSearch(params, { layoutRef: ref, layer });
     const { layer: _layer, ...compareSearch } = next;
@@ -625,6 +636,7 @@ export function Workbench({
 
   const shareLink = async () => {
     const opening = session.opening;
+    const history = historyRevision.current;
     if (!corporaLoaded)
       throw new Error('Wait for the available texts to finish loading before sharing.');
     const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
@@ -640,7 +652,7 @@ export function Workbench({
       rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
     }
     const ref = await session.link(opening);
-    if (ref === null) return null;
+    if (ref === null || historyRevision.current !== history) return null;
     const layer = editorState.current.layer;
     const baseHref = router.buildLocation({ to: '/analyze', search: {} as never }).publicHref;
     const target = await buildPortableTarget({
@@ -650,7 +662,7 @@ export function Workbench({
       search: toSearch(params, { layoutRef: ref, layer }),
       ...(rulesSnapshot !== undefined && { rulesSnapshot }),
     });
-    return session.isCurrentOpening(opening) ? target : null;
+    return session.isCurrentOpening(opening) && historyRevision.current === history ? target : null;
   };
 
   // ------------------------------------------------------------------ outlines and playback

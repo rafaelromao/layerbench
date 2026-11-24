@@ -242,6 +242,26 @@ describe('portable Analyze links', () => {
     expect(screen.getByRole('button', { name: 'Redo' })).toBeEnabled();
   }, 60_000);
 
+  it('clamps an unavailable history layer while the Combos panel is open', async () => {
+    const user = userEvent.setup();
+    const source = renderRoute('/analyze?layout=magic-romak&corpus=en-general&sample=10000', {
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(screen.getByRole('tab', { name: 'Combos' }));
+    expect(screen.getByRole('region', { name: 'Combos' })).toBeInTheDocument();
+    const lastLayer = bundledLayout('magic-romak')?.layers.at(-1)?.name;
+    expect(lastLayer).toBeDefined();
+
+    source.push('/analyze?layout=magic-romak&corpus=en-general&sample=10000&layer=31');
+
+    await waitFor(() => expect(shownLayer()).toBe(lastLayer));
+    expect(screen.getByRole('region', { name: 'Combos' })).toBeInTheDocument();
+    expect(new URLSearchParams(source.currentSearch()).get('layer')).toBe(
+      String((bundledLayout('magic-romak')?.layers.length ?? 1) - 1),
+    );
+  }, 60_000);
+
   it('shares the editor layer selected while its edited layout is being compressed', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
@@ -356,6 +376,47 @@ describe('portable Analyze links', () => {
     expect(writeText).not.toHaveBeenCalled();
   }, 60_000);
 
+  it('cancels Share when Back changes settings on the same layout during target validation', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const previous = '/analyze?layout=magic-romak&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+    const decompression = holdNextDecompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      compression.release();
+      await compression.finished;
+      await decompression.started;
+      source.back();
+      await waitFor(() => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.get('corpus')).toBe('en-general');
+        expect(search.has('layer')).toBe(false);
+      });
+    } finally {
+      compression.release();
+      decompression.release();
+    }
+    await decompression.finished;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+    expect(writeText).not.toHaveBeenCalled();
+  }, 60_000);
+
   it('does not compare an old opening after Back during draft compression', async () => {
     const user = userEvent.setup();
     const previous = '/analyze?layout=qwerty&corpus=en-general&sample=10000';
@@ -387,6 +448,75 @@ describe('portable Analyze links', () => {
     expect(source.currentPath()).toBe('/analyze');
     expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
     expect(screen.getByRole('region', { name: 'Layout' })).toBeInTheDocument();
+  }, 60_000);
+
+  it('cancels Compare when Back changes settings on the same layout during draft compression', async () => {
+    const user = userEvent.setup();
+    const previous = '/analyze?layout=magic-romak&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Compare' }));
+      source.back();
+      await waitFor(() => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.get('corpus')).toBe('en-general');
+        expect(search.has('layer')).toBe(false);
+      });
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+  }, 60_000);
+
+  it('cancels Share when Back changes settings on the same layout during draft compression', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async (_text: string) => {});
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+    const previous = '/analyze?layout=magic-romak&corpus=en-general&sample=10000';
+    const current = '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1';
+    const source = renderRoute(current, {
+      historyEntries: [previous, current],
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+    const compression = holdNextCompression();
+
+    await dragKey('LTR', 'LTM');
+    await screen.findByText('unsaved');
+    await compression.started;
+    try {
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      source.back();
+      await waitFor(() => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.get('corpus')).toBe('en-general');
+        expect(search.has('layer')).toBe(false);
+      });
+    } finally {
+      compression.release();
+    }
+    await compression.finished;
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share link' })).toBeEnabled());
+
+    expect(source.currentPath()).toBe('/analyze');
+    expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+    expect(writeText).not.toHaveBeenCalled();
   }, 60_000);
 
   it('captures an edit made immediately before the share action', async () => {
