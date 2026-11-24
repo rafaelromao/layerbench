@@ -76,6 +76,7 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
+import { retainPortableState } from '../url/share-target.js';
 import { ChangeDialog } from './library/ChangeDialog.js';
 import { HeatControls } from './library/HeatControls.js';
 import { useHoldPlace } from './library/hold-place.js';
@@ -558,11 +559,12 @@ export function LibraryView() {
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
       // No layout is being looked at here; the one `toSearch` always writes would only be noise.
-      const { layout: _layout, ...rest } = toSearch(params, overrides);
+      const next = retainPortableState(search, toSearch(params, overrides));
+      const { layout: _layout, ...rest } = next;
       // The same view, written again: the page stays where it was scrolled to.
       navigate({ to: '/library', search: rest as never, replace: true, resetScroll: false });
     },
-    [navigate, params],
+    [navigate, params, search],
   );
   /** A language chip ranks the whole list on its language's text, alone. */
   const rankOn = useCallback((corpus: string) => setParams({ corpus, corpus2: null }), [setParams]);
@@ -576,8 +578,9 @@ export function LibraryView() {
    * from here shows the numbers its card showed.
    */
   const analyzeSearch = useCallback(
-    (layoutRef: string) => toSearch(params, { layoutRef, sample: ranking.sample }) as never,
-    [params, ranking.sample],
+    (layoutRef: string) =>
+      retainPortableState(search, toSearch(params, { layoutRef, sample: ranking.sample })) as never,
+    [params, ranking.sample, search],
   );
   const sortBy = useSession((s) => s.librarySort);
   const setSortBy = useSession((s) => s.setLibrarySort);

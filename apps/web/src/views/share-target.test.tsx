@@ -246,6 +246,179 @@ describe('portable Analyze links', () => {
     expect(reloaded.currentPath()).toBe('/library');
   }, 60_000);
 
+  it('keeps embedded custom rules when opening a Library card in Analyze', async () => {
+    const user = userEvent.setup();
+    const sharedRules = {
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    };
+    const snapshot = encodeRuleSnapshot(sharedRules);
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    const get = vi.spyOn(storage, 'get');
+    const client = new RecordingClient();
+    const source = renderRoute(href.replace(window.location.origin, ''), { client, storage });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Library',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Layouts' });
+
+    const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    const analyzeLink = within(card).getByRole('link', { name: 'Analyze Qwerty' });
+    const analyzeHref = new URL(analyzeLink.getAttribute('href') ?? '', window.location.origin);
+    expect(analyzeHref.search).not.toContain('rulesSnapshot');
+    expect(new URLSearchParams(analyzeHref.hash.slice(1)).get('rulesSnapshot')).toMatch(/^v1\./);
+
+    const previousAnalyses = client.analyses.length;
+    await user.click(analyzeLink);
+    await waitFor(() => expect(source.currentPath()).toBe('/analyze'));
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => {
+      expect(client.analyses.length).toBeGreaterThan(previousAnalyses);
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    });
+    expect(source.currentSearch()).toContain('rulesSnapshot');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+  }, 60_000);
+
+  it('keeps embedded custom rules when a Library analysis setting changes', async () => {
+    const user = userEvent.setup();
+    const sharedRules = {
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    };
+    const snapshot = encodeRuleSnapshot(sharedRules);
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    const get = vi.spyOn(storage, 'get');
+    const client = new RecordingClient();
+    const source = renderRoute(href.replace(window.location.origin, ''), { client, storage });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Library',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Layouts' });
+    await user.click(screen.getByRole('button', { name: 'Rank and filter' }));
+    const corpus = await screen.findByRole('combobox', { name: 'Corpus' });
+    await waitFor(() => expect(within(corpus).getAllByRole('option').length).toBeGreaterThan(1));
+    await user.selectOptions(corpus, 'pt-br-general');
+    await waitFor(() =>
+      expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('pt-br-general'),
+    );
+    expect(new URLSearchParams(source.currentSearch()).get('rulesSnapshot')).toMatch(/^v1\./);
+
+    const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    const analyzeLink = within(card).getByRole('link', { name: 'Analyze Qwerty' });
+    const analyzeHref = new URL(analyzeLink.getAttribute('href') ?? '', window.location.origin);
+    expect(analyzeHref.search).not.toContain('rulesSnapshot');
+    expect(new URLSearchParams(analyzeHref.hash.slice(1)).get('rulesSnapshot')).toMatch(/^v1\./);
+
+    const previousAnalyses = client.analyses.length;
+    await user.click(analyzeLink);
+    await waitFor(() => expect(source.currentPath()).toBe('/analyze'));
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => {
+      expect(client.analyses.length).toBeGreaterThan(previousAnalyses);
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+    });
+    expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('pt-br-general');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+  }, 60_000);
+
+  it('drops embedded custom rules when the Library selects another rule set', async () => {
+    const user = userEvent.setup();
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const client = new RecordingClient();
+    const source = renderRoute(href.replace(window.location.origin, ''), {
+      client,
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Library',
+      }),
+    );
+    await screen.findByRole('heading', { name: 'Layouts' });
+    await user.click(screen.getByRole('button', { name: 'Rank and filter' }));
+    const ruleSet = await screen.findByRole('combobox', { name: 'Rule set' });
+    await user.selectOptions(ruleSet, 'cyanophage');
+    await waitFor(() =>
+      expect(new URLSearchParams(source.currentSearch()).get('rules')).toBe('cyanophage'),
+    );
+    expect(new URLSearchParams(source.currentSearch()).has('rulesSnapshot')).toBe(false);
+
+    const card = (await screen.findByRole('heading', { name: 'Qwerty', level: 3 })).closest(
+      'article',
+    ) as HTMLElement;
+    const analyzeLink = within(card).getByRole('link', { name: 'Analyze Qwerty' });
+    const analyzeHref = new URL(analyzeLink.getAttribute('href') ?? '', window.location.origin);
+    expect(analyzeHref.searchParams.get('rules')).toBe('cyanophage');
+    expect(new URLSearchParams(analyzeHref.hash.slice(1)).has('rulesSnapshot')).toBe(false);
+
+    const previousAnalyses = client.analyses.length;
+    await user.click(analyzeLink);
+    await waitFor(() => expect(source.currentPath()).toBe('/analyze'));
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => {
+      expect(client.analyses.length).toBeGreaterThan(previousAnalyses);
+      expect(client.analyses.at(-1)?.settings.rules.id).toBe('cyanophage');
+    });
+  }, 60_000);
+
   it('drops an inherited snapshot when Rules explicitly selects another set', async () => {
     const user = userEvent.setup();
     const snapshot = encodeRuleSnapshot({
