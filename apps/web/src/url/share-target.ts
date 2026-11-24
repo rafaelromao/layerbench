@@ -31,6 +31,8 @@ const VERSION_KEY = 'share';
 const VERSION = '1';
 const MAX_REQUEST_CHARS = 7_900;
 const MAX_FRAGMENT_CHARS = 6_000_000;
+// Chromium limits the complete serialized URL, including its fragment, to 2 Mi characters.
+const MAX_URL_CHARS = 2_097_152;
 const MAX_LAYOUT_BLOB_CHARS = 2_800_000;
 const MAX_RULE_SNAPSHOT_CHARS = 2_800_000;
 
@@ -266,6 +268,13 @@ function targetError(
       error: 'This share link has invalid or noncanonical state. Create a new link.',
     };
   }
+
+  if (url.href.length >= MAX_URL_CHARS)
+    return {
+      ok: false,
+      error:
+        'The share link is too long for browsers to open. Shorten the snapshots or choose smaller ones, then retry.',
+    };
 
   if (ruleSnapshot !== undefined) effective.rulesSnapshot = ruleSnapshot;
   return { ok: true, route, search: effective, fragment };

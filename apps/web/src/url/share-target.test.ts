@@ -1,7 +1,7 @@
 import { bundledLayout } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { encodeInline, MAX_INLINE_BYTES } from './inline.js';
-import { MAX_RULE_SNAPSHOT_BYTES } from './rule-snapshot.js';
+import { encodeRuleSnapshot, MAX_RULE_SNAPSHOT_BYTES } from './rule-snapshot.js';
 import { buildPortableTarget, parsePortableSearch, parsePortableTarget } from './share-target.js';
 
 const ORIGIN = 'https://layerbench.example';
@@ -78,6 +78,41 @@ describe('portable share targets', () => {
       route: 'compare',
       search: { layerA: '2', layerB: '3' },
     });
+  });
+
+  it('rejects a full share URL that exceeds the browser navigation limit', async () => {
+    const rulesSnapshot = encodeRuleSnapshot({
+      description: 'x'.repeat(1_650_000),
+      globals: {},
+      rules: [],
+    });
+    const target = new URL('/analyze', ORIGIN);
+    target.search = new URLSearchParams({
+      corpus: 'en-general',
+      layout: 'qwerty',
+      rules: 'custom:large',
+      share: '1',
+    }).toString();
+    target.hash = new URLSearchParams({ rulesSnapshot }).toString();
+
+    expect(target.href.length).toBeGreaterThan(2_097_152);
+    expect(parsePortableTarget(target.href, ORIGIN)).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/too long.*browser.*shorten.*smaller/i),
+    });
+    await expect(
+      buildPortableTarget({
+        baseHref: '/analyze',
+        origin: ORIGIN,
+        route: 'analyze',
+        search: {
+          layout: 'qwerty',
+          corpus: 'en-general',
+          rules: 'custom:large',
+        },
+        rulesSnapshot,
+      }),
+    ).rejects.toThrow(/too long.*browser.*shorten.*smaller/i);
   });
 
   it('refuses snapshots above the inflated inline-layout limit on either Compare side', async () => {
