@@ -346,6 +346,134 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
+  it('keeps shared Analyze rules after switching to a local corpus without a local rule set', async () => {
+    const user = userEvent.setup();
+    const engine = testClient();
+    const privateCorpus = await engine.buildCustomCorpus(
+      'private notes stay local for analysis',
+      'Private notes',
+      'en',
+    );
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+    const client = new RecordingClient(engine);
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    const settings = await openSettings();
+    await user.selectOptions(
+      within(settings).getByRole('combobox', { name: 'Corpus' }),
+      'custom:private-notes',
+    );
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+
+    expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
+    await waitFor(() =>
+      expect(
+        client.analyses.some(
+          (analysis) =>
+            analysis.settings.corpus.startsWith('custom:private-notes@') &&
+            analysis.settings.rules.name === 'Shared Strict',
+        ),
+      ).toBe(true),
+    );
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /custom corpus text stays on this device/i,
+    );
+  }, 60_000);
+
+  it('keeps shared custom rules for Compare after switching the second corpus to a conflicting local rule set', async () => {
+    const user = userEvent.setup();
+    const engine = testClient();
+    const privateCorpus = await engine.buildCustomCorpus(
+      'private notes stay local for comparison',
+      'Private notes',
+      'en',
+    );
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/compare',
+      origin: window.location.origin,
+      route: 'compare',
+      search: {
+        layout: 'qwerty',
+        b: 'colemak',
+        corpus: 'en-general',
+        corpus2: 'pt-br-general',
+        mix: '60',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+    await storage.put('rulesets', 'strict', {
+      ...getPreset('layouts_doc'),
+      id: 'strict',
+      name: 'Different Local Strict',
+    });
+    const client = new RecordingClient(engine);
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+    await screen.findByRole('group', { name: 'Layers of B' });
+
+    const settings = await openSettings();
+    await user.selectOptions(
+      within(settings).getByRole('combobox', { name: 'Mix with' }),
+      'custom:private-notes',
+    );
+    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+
+    expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
+    await waitFor(() =>
+      expect(
+        client.analyses.some(
+          (analysis) =>
+            analysis.settings.corpus2?.startsWith('custom:private-notes@') &&
+            analysis.settings.rules.name === 'Shared Strict',
+        ),
+      ).toBe(true),
+    );
+    await user.click(screen.getByRole('button', { name: 'Share link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /custom corpus text stays on this device/i,
+    );
+    expect(
+      client.analyses.some((analysis) => analysis.settings.rules.name === 'Different Local Strict'),
+    ).toBe(false);
+  }, 60_000);
+
   it('shows an error instead of loading a local custom set when a portable snapshot is missing', async () => {
     const storage = new MemoryStorage();
     await storage.put('rulesets', 'strict', {

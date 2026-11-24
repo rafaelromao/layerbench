@@ -1,8 +1,9 @@
 import { bundledLayout } from '@layerbench/core';
 import { communityId } from '../community/ref.js';
 import { customId } from '../custom/ref.js';
+import { portableCorpusError } from './corpus-share.js';
 import { decodeInline } from './inline.js';
-import { parseParams, type RawSearch, toSearch } from './params.js';
+import { DEFAULT_PARAMS, parseParams, type RawSearch, toSearch } from './params.js';
 import { decodeRuleSnapshot } from './rule-snapshot.js';
 
 export type PortableRoute = 'analyze' | 'compare';
@@ -52,13 +53,23 @@ const ANALYZE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'layer']);
 const COMPARE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'b', 'layerA', 'layerB']);
 const FRAGMENT_KEYS = new Set(['layout', 'b', 'rulesSnapshot']);
 
-function routeAt(pathname: string): PortableRoute | null {
+function routeAt(pathname: string, routerRelative = false): PortableRoute | null {
+  if (routerRelative) {
+    const relativeRoute = pathname.replace(/\/$/, '');
+    if (relativeRoute === '/analyze' || relativeRoute === '/compare')
+      return relativeRoute.slice(1) as PortableRoute;
+  }
   const basePath = new URL(import.meta.env.BASE_URL, 'https://portable.layerbench.invalid')
     .pathname;
   const prefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
   const route = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
   const deployedRoute = route.endsWith('/') ? route.slice(0, -1) : route;
   return deployedRoute === 'analyze' || deployedRoute === 'compare' ? deployedRoute : null;
+}
+
+/** Whether an address is one of the two share routes, before or after router base-path stripping. */
+export function isPortableRoutePath(pathname: string): boolean {
+  return routeAt(pathname, true) !== null;
 }
 
 export function isPortableLayoutRef(ref: string): boolean {
@@ -102,12 +113,13 @@ function targetError(
   origin: string,
   queryEntries: [string, string][],
   fragmentEntries: [string, string][],
+  routerRelative = false,
 ): PortableTargetResult {
   const expectedOrigin = new URL(origin).origin;
   if (url.origin !== expectedOrigin || url.username || url.password)
     return { ok: false, error: 'Share links must stay on this LayerBench site.' };
 
-  const route = routeAt(url.pathname);
+  const route = routeAt(url.pathname, routerRelative);
   if (!route) return { ok: false, error: 'Share links only support Analyze and Compare.' };
   const search = Object.fromEntries(queryEntries);
   if (search[VERSION_KEY] !== VERSION)
@@ -172,12 +184,11 @@ function targetError(
       error:
         'Share links can use bundled or community layouts; local layouts must be included as snapshots.',
     };
-  if ([search.corpus, search.corpus2].some((id) => id !== undefined && customId(id) !== null))
-    return {
-      ok: false,
-      error:
-        'Custom corpus text stays on this device and cannot be shared. Choose a shipped corpus instead.',
-    };
+  const corpusError = portableCorpusError(
+    search.corpus ?? DEFAULT_PARAMS.corpus,
+    search.corpus2 ?? null,
+  );
+  if (corpusError) return { ok: false, error: corpusError };
 
   const ruleSnapshot = fragment.rulesSnapshot;
   const ruleRef = search.rules;
@@ -329,11 +340,15 @@ export function parsePortableSearch(
   const hash = canonicalParams(fragmentEntries);
   url.search = query;
   url.hash = hash;
-  return targetError(url, url.origin, queryEntries, fragmentEntries);
+  return targetError(url, url.origin, queryEntries, fragmentEntries, true);
 }
 
 /** Validate and read a versioned target. Ordinary, unmarked app URLs are not portable targets. */
-export function parsePortableTarget(href: string, origin: string): PortableTargetResult {
+export function parsePortableTarget(
+  href: string,
+  origin: string,
+  routerRelative = false,
+): PortableTargetResult {
   let url: URL;
   try {
     url = new URL(href, origin);
@@ -342,5 +357,5 @@ export function parsePortableTarget(href: string, origin: string): PortableTarge
   }
   const queryEntries = entriesOf(url.searchParams);
   const fragmentEntries = entriesOf(new URLSearchParams(url.hash.slice(1)));
-  return targetError(url, origin, queryEntries, fragmentEntries);
+  return targetError(url, origin, queryEntries, fragmentEntries, routerRelative);
 }

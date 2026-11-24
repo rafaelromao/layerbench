@@ -194,10 +194,7 @@ function ComparePage({
   // What each side can write of the languages it is for, as its Library card shows them.
   const languagesA = useMemo(() => (a.compiled ? layoutLanguages(a.compiled) : []), [a.compiled]);
   const languagesB = useMemo(() => (b.compiled ? layoutLanguages(b.compiled) : []), [b.compiled]);
-  const settings = useAnalysisSettings(
-    settingsOf(params),
-    search.share === '1' ? search.rulesSnapshot : undefined,
-  );
+  const settings = useAnalysisSettings(settingsOf(params), search.rulesSnapshot);
   /** The settings to analyze on: none until the rule set is read, nor when it will not open. */
   const ready = settings.settings;
 
@@ -258,6 +255,10 @@ function ComparePage({
       if (selectedB > 0) next.layerB = String(selectedB);
       const portableRulesUnchanged =
         rest.preset === undefined || rest.preset === currentParams.preset;
+      const keepSnapshot =
+        currentSearch.rulesSnapshot &&
+        portableRulesUnchanged &&
+        customId(next.rules ?? '') !== null;
       const canStayPortable =
         customId(next.layout ?? '') === null &&
         customId(next.b ?? '') === null &&
@@ -271,9 +272,8 @@ function ComparePage({
           ) === null);
       if (currentSearch.share === '1' && portableRulesUnchanged && canStayPortable) {
         next.share = '1';
-        if (currentSearch.rulesSnapshot && customId(next.rules ?? '') !== null)
-          next.rulesSnapshot = currentSearch.rulesSnapshot;
       }
+      if (keepSnapshot) next.rulesSnapshot = currentSearch.rulesSnapshot;
       navigate({
         to: '/compare',
         search: next as never,

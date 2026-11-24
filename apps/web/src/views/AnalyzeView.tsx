@@ -63,10 +63,7 @@ function AnalyzeWorkbench({
   const client = useAnalysisClient();
   const params = useMemo(() => parseParams(search), [search]);
   useRememberSelection(params);
-  const settings = useAnalysisSettings(
-    settingsOf(params),
-    search.share === '1' ? search.rulesSnapshot : undefined,
-  );
+  const settings = useAnalysisSettings(settingsOf(params), search.rulesSnapshot);
   const session = useLayoutSession();
   const carried = useCarried();
 
@@ -86,18 +83,17 @@ function AnalyzeWorkbench({
             (!corporaLoaded ||
               portableCorpusError(next.corpus ?? previous.corpus, next.corpus2 ?? null, corpora) ===
                 null);
-          if (
-            prev.share === '1' &&
-            canStayPortable &&
-            (overrides.preset === undefined || overrides.preset === previous.preset)
-          )
+          const rulesUnchanged =
+            overrides.preset === undefined || overrides.preset === previous.preset;
+          const keepSnapshot =
+            prev.rulesSnapshot && rulesUnchanged && customId(next.rules ?? '') !== null;
+          if (prev.share === '1' && canStayPortable && rulesUnchanged)
             return {
               ...next,
               share: '1',
-              ...(prev.rulesSnapshot && customId(next.rules ?? '') !== null
-                ? { rulesSnapshot: prev.rulesSnapshot }
-                : {}),
+              ...(keepSnapshot ? { rulesSnapshot: prev.rulesSnapshot } : {}),
             };
+          if (keepSnapshot) return { ...next, rulesSnapshot: prev.rulesSnapshot };
           return next;
         }) as never,
         replace: true,

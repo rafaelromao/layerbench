@@ -205,6 +205,43 @@ describe('portable share targets', () => {
     ).rejects.toThrow(/preset/i);
   });
 
+  it('refuses transient and unknown corpus IDs in either portable target slot', async () => {
+    for (const target of [
+      {
+        route: 'analyze' as const,
+        baseHref: '/analyze',
+        search: { layout: 'qwerty', corpus: 'custom-0123456789ab' },
+      },
+      {
+        route: 'compare' as const,
+        baseHref: '/compare',
+        search: {
+          layout: 'qwerty',
+          b: 'colemak',
+          corpus: 'en-general',
+          corpus2: 'not-shipped',
+        },
+      },
+    ]) {
+      await expect(
+        buildPortableTarget({
+          ...target,
+          origin: ORIGIN,
+        }),
+      ).rejects.toThrow(/corpus.*(?:shipped|device)|cannot be shared/i);
+      expect(parsePortableSearch(target.route, { ...target.search, share: '1' })?.ok).toBe(false);
+      const address = new URL(target.baseHref, ORIGIN);
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(target.search)) {
+        if (value !== undefined) query.set(key, value);
+      }
+      query.set('share', '1');
+      query.sort();
+      address.search = query.toString();
+      expect(parsePortableTarget(address.href, ORIGIN).ok).toBe(false);
+    }
+  });
+
   it('rejects malformed, invalid, and over-budget custom rule snapshots before building a target', async () => {
     const tooLarge = `v1.${'A'.repeat(Math.ceil(((MAX_RULE_SNAPSHOT_BYTES + 1) * 4) / 3))}`;
     const cases = [

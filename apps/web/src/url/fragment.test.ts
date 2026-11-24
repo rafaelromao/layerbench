@@ -1,12 +1,13 @@
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
 import { getPreset } from '@layerbench/core/rules';
 import { createMemoryHistory } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from '../router.js';
 import { fromFragment, toFragment } from './fragment.js';
 import { encodeInline } from './inline.js';
 import { inlineRef } from './params.js';
 import { encodeRuleSnapshot } from './rule-snapshot.js';
+import { buildPortableTarget } from './share-target.js';
 
 const ORIGIN = 'https://app.example';
 
@@ -60,6 +61,16 @@ describe('layouts never saved, in the address', () => {
       share: '1',
     });
     expect(restored.hash).toBe('');
+  });
+
+  it('keeps a local rule snapshot in the fragment after portability ends', () => {
+    const path =
+      '/analyze?corpus=custom%3Anotes&layout=qwerty&rules=custom%3Astrict&rulesSnapshot=v1.local';
+    const written =
+      '/analyze?corpus=custom%3Anotes&layout=qwerty&rules=custom%3Astrict#rulesSnapshot=v1.local';
+    expect(outgoing(path)).toBe(written);
+    expect(incoming(written)).toBe(path);
+    expect(incoming('/guide#rulesSnapshot=v1.anchor')).toBe('/guide#rulesSnapshot=v1.anchor');
   });
 
   it('canonicalizes portable router output and flags snapshot data in the request query', () => {
@@ -183,4 +194,33 @@ describe('the router', () => {
     expect(rewritten.searchParams.get('__portableTargetError')).toMatch(/unsupported snapshot/i);
     expect(rewritten.searchParams.get('corpus2')).toBe('pt-general');
   });
+
+  it.each(['analyze', 'compare'] as const)(
+    'accepts a portable %s link at router ingress under a non-root base',
+    async (route) => {
+      vi.stubEnv('BASE_URL', '/fork/');
+      try {
+        const href = await buildPortableTarget({
+          baseHref: `/fork/${route}`,
+          origin: ORIGIN,
+          route,
+          search:
+            route === 'analyze'
+              ? { layout: 'qwerty', corpus: 'en-general' }
+              : { layout: 'qwerty', b: 'colemak', corpus: 'en-general' },
+        });
+        const target = new URL(href);
+        const router = createAppRouter({
+          history: createMemoryHistory({
+            initialEntries: [`${target.pathname}${target.search}${target.hash}`],
+          }),
+        });
+        await router.load();
+
+        expect(router.state.location.search.__portableTargetError).toBeUndefined();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 });

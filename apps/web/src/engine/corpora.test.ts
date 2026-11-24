@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { CODE_TAG, languageProfile } from '@layerbench/core';
 import { isAllowedLicense } from '@layerbench/core/prepare';
 import { describe, expect, it } from 'vitest';
+import { SHIPPED_CORPUS_IDS } from '../url/corpus-share.js';
 
 /**
  * The texts that come with the app: `packages/corpora/raw/sources.json` says what each is, and
@@ -49,6 +50,10 @@ function isOpen(license: string): boolean {
 const MAX_RAW_BYTES = 10_000_000;
 
 describe('the texts that come with the app', () => {
+  it('keeps the portable URL corpus allowlist in sync with the shipped index', () => {
+    expect([...SHIPPED_CORPUS_IDS].sort()).toEqual(index.map(({ id }) => id).sort());
+  });
+
   it.each(Object.entries(sources))(
     '%s says what it is, where it comes from, and its licence',
     (id, s) => {

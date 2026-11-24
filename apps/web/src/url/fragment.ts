@@ -1,5 +1,9 @@
 import type { LocationRewrite } from '@tanstack/react-router';
-import { PORTABLE_TARGET_ERROR_KEY, parsePortableTarget } from './share-target.js';
+import {
+  isPortableRoutePath,
+  PORTABLE_TARGET_ERROR_KEY,
+  parsePortableTarget,
+} from './share-target.js';
 
 /**
  * A layout that was never saved travels in its link as `inline:` and the whole compressed document,
@@ -31,7 +35,9 @@ export function toFragment(url: URL): URL {
   if (url.hash) return url;
   const portable = url.searchParams.get('share') === '1';
   const moved = [...url.searchParams].filter(
-    ([key, value]) => isInline(value) || (portable && key === 'rulesSnapshot'),
+    ([key, value]) =>
+      isInline(value) ||
+      (key === 'rulesSnapshot' && (portable || isPortableRoutePath(url.pathname))),
   );
   const fragment = new URLSearchParams();
   for (const [key, value] of moved) {
@@ -53,10 +59,13 @@ export function fromFragment(url: URL): URL {
   const entries = [...new URLSearchParams(url.hash.slice(1))] as [string, string][];
   // Anything else after the `#` is an anchor, such as a guide section's, and stays one.
   const portable = url.searchParams.get('share') === '1';
-  if (!portable && (entries.length === 0 || !entries.every(([, value]) => isInline(value))))
-    return url;
+  const appStateFragment = entries.every(
+    ([key, value]) =>
+      isInline(value) || (key === 'rulesSnapshot' && isPortableRoutePath(url.pathname)),
+  );
+  if (!portable && (entries.length === 0 || !appStateFragment)) return url;
   if (portable) {
-    const target = parsePortableTarget(url.href, url.origin);
+    const target = parsePortableTarget(url.href, url.origin, true);
     if (!target.ok) url.searchParams.set(PORTABLE_TARGET_ERROR_KEY, target.error);
   }
   if (entries.length === 0) return url;
