@@ -1,4 +1,4 @@
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { customId } from '../custom/ref.js';
 import { DEFAULT_PARAMS, parseParams, type RawSearch, toSearch } from '../url/params.js';
@@ -15,6 +15,7 @@ type Navigate = ReturnType<typeof useNavigate>;
 export class RouterLink implements LinkPort {
   private readonly listeners = new Set<(ref: string) => void>();
   private pendingPortableOpen: { rulesSnapshot?: string } | null = null;
+  private observedHref: string | null = null;
 
   constructor(
     private ref: string,
@@ -71,7 +72,9 @@ export class RouterLink implements LinkPort {
   }
 
   /** The reference the link names now, as the router has it. */
-  follow(ref: string): void {
+  follow(ref: string, href: string): void {
+    if (this.observedHref !== null && this.observedHref !== href) this.pendingPortableOpen = null;
+    this.observedHref = href;
     if (ref === this.ref) return;
     this.ref = ref;
     for (const listener of this.listeners) listener(ref);
@@ -85,12 +88,12 @@ export class RouterLink implements LinkPort {
 
 /** The link of the view this is called in, as a port: one for as long as the view is mounted. */
 export function useRouterLink(): RouterLink {
-  const search = useSearch({ strict: false }) as RawSearch;
-  const ref = parseParams(search).layoutRef;
+  const location = useLocation({ strict: false });
+  const ref = parseParams(location.search as RawSearch).layoutRef;
   const navigate = useNavigate();
   const navigateNow = useRef(navigate);
   navigateNow.current = navigate;
   const [link] = useState(() => new RouterLink(ref, (opts) => navigateNow.current(opts)));
-  useEffect(() => link.follow(ref), [link, ref]);
+  useEffect(() => link.follow(ref, location.href), [link, ref, location.href]);
   return link;
 }

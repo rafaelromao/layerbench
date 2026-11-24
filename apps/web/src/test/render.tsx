@@ -106,16 +106,18 @@ export async function rankingSays(text: RegExp, timeout?: number): Promise<HTMLE
  */
 export function renderRoute(
   path: string,
-  opts: { client?: AnalysisClient; storage?: StorageAdapter } = {},
+  opts: { client?: AnalysisClient; storage?: StorageAdapter; historyEntries?: string[] } = {},
 ): RenderResult & {
   client: AnalysisClient;
   currentSearch: () => string;
   currentPath: () => string;
+  back: () => void;
 } {
   const client = opts.client ?? testClient();
   toastsShown.length = 0;
+  const history = createMemoryHistory({ initialEntries: opts.historyEntries ?? [path] });
   const router = createAppRouter({
-    history: createMemoryHistory({ initialEntries: [path] }),
+    history,
     basepath: '/',
   });
   const result = render(
@@ -133,5 +135,6 @@ export function renderRoute(
     client,
     currentSearch: () => router.state.location.searchStr,
     currentPath: () => router.state.location.pathname,
+    back: () => history.back(),
   };
 }

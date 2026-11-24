@@ -250,6 +250,77 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
+  it('does not let a pending Analyze pick overwrite browser Back', async () => {
+    const user = userEvent.setup();
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const target = new URL(href);
+    const ordinary = '/analyze?corpus=en-general&layout=qwerty&rules=cyanophage&sample=10000';
+    const storage = new MemoryStorage();
+    await storage.put('layouts', 'mine', {
+      ...toCanonicalJson(bundledLayout('colemak')!),
+      id: 'mine',
+      name: 'My Layout',
+    });
+    let releaseRead = () => {};
+    let signalReadStarted = () => {};
+    const readStarted = new Promise<void>((resolve) => {
+      signalReadStarted = resolve;
+    });
+    const readMayFinish = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const originalGet = storage.get.bind(storage);
+    vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
+      if (collection === 'layouts' && id === 'mine') {
+        signalReadStarted();
+        await readMayFinish;
+      }
+      return originalGet(collection, id);
+    });
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client: new RecordingClient(),
+      storage,
+      historyEntries: [ordinary, `${target.pathname}${target.search}${target.hash}`],
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'custom:mine');
+    await readStarted;
+
+    source.back();
+    await waitFor(() => {
+      expect(source.currentPath()).toBe('/analyze');
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('rules')).toBe('cyanophage');
+      expect(search.get('layout')).toBe('qwerty');
+    });
+    releaseRead();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const search = new URLSearchParams(source.currentSearch());
+    expect(search.get('layout')).toBe('qwerty');
+    expect(search.get('rules')).toBe('cyanophage');
+    expect(search.has('share')).toBe(false);
+    expect(search.has('rulesSnapshot')).toBe(false);
+    expect(screen.queryByRole('alert')).toBeNull();
+  }, 60_000);
+
   it('keeps shared custom rules when a custom Compare layout is selected', async () => {
     const user = userEvent.setup();
     const sharedRules = {
