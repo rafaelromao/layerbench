@@ -88,7 +88,7 @@ export class RouterLink implements LinkPort {
 
 /** The link of the view this is called in, as a port: one for as long as the view is mounted. */
 export function useRouterLink(): RouterLink {
-  const location = useLocation({ strict: false });
+  const location = useLocation();
   const ref = parseParams(location.search as RawSearch).layoutRef;
   const navigate = useNavigate();
   const navigateNow = useRef(navigate);
