@@ -195,6 +195,102 @@ describe('portable Analyze links', () => {
     expect(new URLSearchParams(reloaded.currentSearch()).get('rulesSnapshot')).toMatch(/^v1\./);
   }, 60_000);
 
+  it('keeps a large carried rule snapshot out of the Library request and restores it on reload', async () => {
+    const sharedRules = {
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Large shared rules',
+      description: 'A'.repeat(40_000),
+    };
+    const snapshot = encodeRuleSnapshot(sharedRules);
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const source = renderRoute(href.replace(window.location.origin, ''), {
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+
+    const libraryLink = within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+      name: 'Library',
+    });
+    const libraryHref = new URL(libraryLink.getAttribute('href') ?? '', window.location.origin);
+    expect((libraryHref.pathname + libraryHref.search).length).toBeLessThan(7_900);
+    expect(libraryHref.search).not.toContain('rulesSnapshot');
+    expect(libraryHref.searchParams.has('share')).toBe(false);
+    expect(new URLSearchParams(libraryHref.hash.slice(1)).get('rulesSnapshot')).toBe(snapshot);
+    source.unmount();
+
+    const storage = new MemoryStorage();
+    const get = vi.spyOn(storage, 'get');
+    const client = new RecordingClient();
+    const reloaded = renderRoute(
+      `${libraryHref.pathname}${libraryHref.search}${libraryHref.hash}`,
+      { client, storage },
+    );
+    await screen.findByRole('heading', { name: 'Layouts' });
+    await waitFor(() => expect(client.analyses.length).toBeGreaterThan(0));
+    expect(client.analyses[0]?.settings.rules.name).toBe('Large shared rules');
+    expect(
+      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+    ).toHaveLength(0);
+    expect(reloaded.currentPath()).toBe('/library');
+  }, 60_000);
+
+  it('drops an inherited snapshot when Rules explicitly selects another set', async () => {
+    const user = userEvent.setup();
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: {
+        layout: 'qwerty',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      },
+      rulesSnapshot: snapshot,
+    });
+    const client = new RecordingClient();
+    const source = renderRoute(href.replace(window.location.origin, ''), {
+      client,
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
+        name: 'Rules',
+      }),
+    );
+
+    const rulePicker = await screen.findByRole('combobox', { name: 'Rule set' });
+    await user.selectOptions(rulePicker, 'cyanophage');
+    await waitFor(() => expect(rulePicker).toHaveValue('cyanophage'));
+    const analyzeLink = screen.getByRole('link', { name: 'Analyze with this set' });
+    const analyzeHref = new URL(analyzeLink.getAttribute('href') ?? '', window.location.origin);
+    expect(analyzeHref.searchParams.get('rules')).toBe('cyanophage');
+    expect(new URLSearchParams(analyzeHref.hash.slice(1)).has('rulesSnapshot')).toBe(false);
+
+    await user.click(analyzeLink);
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => expect(client.analyses.at(-1)?.settings.rules.id).toBe('cyanophage'));
+    expect(new URLSearchParams(source.currentSearch()).has('rulesSnapshot')).toBe(false);
+  }, 60_000);
+
   it('keeps shared custom rules when a custom Analyze layout is selected', async () => {
     const user = userEvent.setup();
     const sharedRules = {

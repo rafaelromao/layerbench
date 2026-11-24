@@ -53,23 +53,33 @@ const ANALYZE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'layer']);
 const COMPARE_QUERY_KEYS = new Set([...COMMON_QUERY_KEYS, 'b', 'layerA', 'layerB']);
 const FRAGMENT_KEYS = new Set(['layout', 'b', 'rulesSnapshot']);
 
-function routeAt(pathname: string, routerRelative = false): PortableRoute | null {
+function routeNameAt(pathname: string, routerRelative = false): string | null {
   if (routerRelative) {
     const relativeRoute = pathname.replace(/\/$/, '');
-    if (relativeRoute === '/analyze' || relativeRoute === '/compare')
-      return relativeRoute.slice(1) as PortableRoute;
+    if (relativeRoute.startsWith('/') && !relativeRoute.slice(1).includes('/'))
+      return relativeRoute.slice(1);
   }
   const basePath = new URL(import.meta.env.BASE_URL, 'https://portable.layerbench.invalid')
     .pathname;
   const prefix = basePath.endsWith('/') ? basePath : `${basePath}/`;
   const route = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
-  const deployedRoute = route.endsWith('/') ? route.slice(0, -1) : route;
-  return deployedRoute === 'analyze' || deployedRoute === 'compare' ? deployedRoute : null;
+  return (route.endsWith('/') ? route.slice(0, -1) : route) || null;
+}
+
+function routeAt(pathname: string, routerRelative = false): PortableRoute | null {
+  const route = routeNameAt(pathname, routerRelative);
+  return route === 'analyze' || route === 'compare' ? route : null;
 }
 
 /** Whether an address is one of the two share routes, before or after router base-path stripping. */
 export function isPortableRoutePath(pathname: string): boolean {
   return routeAt(pathname, true) !== null;
+}
+
+/** Routes whose router state can carry a custom rule snapshot in its browser-only fragment. */
+export function isRuleSnapshotRoutePath(pathname: string): boolean {
+  const route = routeNameAt(pathname, true) ?? routeNameAt(pathname);
+  return route === 'analyze' || route === 'compare' || route === 'library';
 }
 
 export function isPortableLayoutRef(ref: string): boolean {

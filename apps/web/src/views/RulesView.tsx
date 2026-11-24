@@ -311,7 +311,7 @@ export function RulesView() {
 
             <Link
               to="/analyze"
-              search={carried({ rules: ref }) as never}
+              search={carried({ rules: ref, rulesSnapshot: undefined }) as never}
               className="lb-wide btn btn-sm btn-primary"
             >
               Analyze with this set

@@ -1,6 +1,6 @@
 import type { LocationRewrite } from '@tanstack/react-router';
 import {
-  isPortableRoutePath,
+  isRuleSnapshotRoutePath,
   PORTABLE_TARGET_ERROR_KEY,
   parsePortableTarget,
 } from './share-target.js';
@@ -37,7 +37,7 @@ export function toFragment(url: URL): URL {
   const moved = [...url.searchParams].filter(
     ([key, value]) =>
       isInline(value) ||
-      (key === 'rulesSnapshot' && (portable || isPortableRoutePath(url.pathname))),
+      (key === 'rulesSnapshot' && (portable || isRuleSnapshotRoutePath(url.pathname))),
   );
   const fragment = new URLSearchParams();
   for (const [key, value] of moved) {
@@ -61,7 +61,7 @@ export function fromFragment(url: URL): URL {
   const portable = url.searchParams.get('share') === '1';
   const appStateFragment = entries.every(
     ([key, value]) =>
-      isInline(value) || (key === 'rulesSnapshot' && isPortableRoutePath(url.pathname)),
+      isInline(value) || (key === 'rulesSnapshot' && isRuleSnapshotRoutePath(url.pathname)),
   );
   if (!portable && (entries.length === 0 || !appStateFragment)) return url;
   if (portable) {
