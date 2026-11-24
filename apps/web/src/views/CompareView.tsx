@@ -296,17 +296,18 @@ function ComparePage({
     async (key: 'layout' | 'b', ref: string) => {
       const sequence = ++layoutSelection.current[key];
       const startedWith = {
-        a: search.layout ?? params.layoutRef,
-        b: refB,
+        pathname: router.state.location.pathname,
+        search: router.state.location.searchStr,
+        hash: router.state.location.hash,
       };
       const isCurrentSelection = () => {
         const location = router.state.location;
-        const currentSearch = location.search as RawSearch;
         return (
           sequence === layoutSelection.current[key] &&
+          location.pathname === startedWith.pathname &&
           location.pathname === '/compare' &&
-          (currentSearch.layout ?? DEFAULT_PARAMS.layoutRef) === startedWith.a &&
-          (currentSearch.b ?? DEFAULT_B) === startedWith.b
+          location.searchStr === startedWith.search &&
+          location.hash === startedWith.hash
         );
       };
       const id = customId(ref);
@@ -333,7 +334,7 @@ function ComparePage({
       }
       setParams(key === 'layout' ? { layoutRef: ref, layerA: 0 } : { b: ref, layerB: 0 });
     },
-    [params.layoutRef, refB, router, search.layout, search.share, setParams, storage],
+    [router, search.share, setParams, storage],
   );
 
   const rows = useMemo(

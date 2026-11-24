@@ -1,10 +1,10 @@
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
-import { cleanup, screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
-import { renderRoute } from '../test/render.js';
+import { openSettings, renderRoute } from '../test/render.js';
 import { buildPortableTarget } from '../url/share-target.js';
 
 afterEach(() => {
@@ -104,5 +104,28 @@ describe('asynchronous custom Compare layout picks', () => {
     expect(source.currentPath()).toBe('/compare');
     expect(search.get('layout')).toBe('qwerty');
     expect(search.get('b')).toBe('dvorak');
+  }, 60_000);
+
+  it('cancels a pending pick when comparison settings change', async () => {
+    const { user, source, releaseRead, compressionStarted } = await beginBlockedCustomPick();
+
+    const settings = await openSettings();
+    await user.selectOptions(
+      within(settings).getByRole('combobox', { name: 'Sample size' }),
+      '300000',
+    );
+    await waitFor(() => {
+      expect(new URLSearchParams(source.currentSearch()).get('sample')).toBe('300000');
+    });
+
+    releaseRead();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const search = new URLSearchParams(source.currentSearch());
+    expect(compressionStarted).not.toHaveBeenCalled();
+    expect(source.currentPath()).toBe('/compare');
+    expect(search.get('layout')).toBe('qwerty');
+    expect(search.get('b')).toBe('colemak');
+    expect(search.get('sample')).toBe('300000');
   }, 60_000);
 });
