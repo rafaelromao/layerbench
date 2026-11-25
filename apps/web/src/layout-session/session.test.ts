@@ -680,6 +680,22 @@ describe('Saving', () => {
     expect((await storage.get('layouts', 'qwerty-plus'))?.doc.description).toBe('more');
   });
 
+  it('keeps the compact reference current as a saved layout is renamed', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    const { s, link } = session('custom:qwerty-copy', { storage });
+    const state = await opened(s);
+    const renamed = { ...state.layout, name: 'Renamed layout' };
+    const beforeDraft = link.current();
+    s.edited(renamed, true);
+    await vi.waitFor(() => expect(link.current()).not.toBe(beforeDraft));
+    expect(await s.save(renamed)).toMatchObject({ ok: true, id: 'renamed-layout' });
+    s.edited(renamed, false);
+
+    expect(link.compactRef).toBe('custom:renamed-layout');
+    expect((await carried(link.current()))?.name).toBe('Renamed layout');
+  });
+
   it("moves a renamed layout to its new name's id, or beside one already there", async () => {
     const storage = new MemoryStorage();
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });

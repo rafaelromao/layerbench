@@ -6,6 +6,7 @@ import type { LinkPort } from '../layout-session/session.js';
  */
 export class MemoryLink implements LinkPort {
   readonly writes: { ref: string; how: 'edit' | 'open' }[] = [];
+  compactRef: string | null = null;
   private readonly listeners = new Set<(ref: string) => void>();
 
   constructor(private ref: string) {}
@@ -14,8 +15,9 @@ export class MemoryLink implements LinkPort {
     return this.ref;
   }
 
-  write(ref: string, how: 'edit' | 'open', _localRef?: string): void {
+  write(ref: string, how: 'edit' | 'open', localRef?: string): void {
     this.writes.push({ ref, how });
+    if (localRef !== undefined) this.compactRef = localRef;
     this.change(ref);
   }
 
