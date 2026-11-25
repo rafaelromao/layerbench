@@ -1019,7 +1019,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('keeps Analyze open when a local layout would make its shared URL too long', async () => {
+  it('keeps oversized local layouts usable across Compare, save, and reload', async () => {
     const user = userEvent.setup();
     useToasts.setState({ toasts: [] });
     const snapshot = encodeRuleSnapshot({
@@ -1092,23 +1092,33 @@ describe('portable Analyze links', () => {
     });
     expect(source.currentPath()).toBe('/analyze');
     expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
-    const finalSearch = new URLSearchParams(source.currentSearch());
-    expect(finalSearch.get('share')).toBeNull();
-    expect(finalSearch.get('layout')).toBe('custom:mine');
-    expect(finalSearch.get('rulesSnapshot')).toBe(snapshot);
+    const initialSearch = new URLSearchParams(source.currentSearch());
+    expect(initialSearch.get('share')).toBeNull();
+    expect(initialSearch.get('layout')).toBe('custom:mine');
+    expect(initialSearch.get('rulesSnapshot')).toBe(snapshot);
     const warning = await screen.findByRole('alert');
     expect(warning).toHaveTextContent(
       /open on this device.*shorten.*layout description.*smaller custom rule set/i,
     );
     await user.click(within(warning).getByRole('button', { name: 'close' }));
 
+    const layoutRegion = screen.getByRole('region', { name: 'Layout' });
+    const name = within(layoutRegion).getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'Renamed Large Layout');
+    await user.click(within(layoutRegion).getByRole('button', { name: 'Save' }));
+    await waitFor(async () => {
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('layout')).toBe('custom:renamed-large-layout');
+      expect(search.get('share')).toBeNull();
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+      expect((await storage.list('layouts')).map(({ id }) => id)).toEqual(['renamed-large-layout']);
+    });
+
     const localUrl = new URL('/analyze', window.location.origin);
-    localUrl.search = new URLSearchParams({
-      corpus: finalSearch.get('corpus') ?? '',
-      layout: finalSearch.get('layout') ?? '',
-      rules: finalSearch.get('rules') ?? '',
-      sample: finalSearch.get('sample') ?? '',
-    }).toString();
+    const localSearch = new URLSearchParams(source.currentSearch());
+    localSearch.delete('rulesSnapshot');
+    localUrl.search = localSearch.toString();
     localUrl.hash = new URLSearchParams({ rulesSnapshot: snapshot }).toString();
     expect(localUrl.href.length).toBeLessThan(2_097_152);
 
@@ -1122,7 +1132,7 @@ describe('portable Analyze links', () => {
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => {
       const search = new URLSearchParams(source.currentSearch());
-      expect(search.get('layout')).toBe('custom:mine');
+      expect(search.get('layout')).toBe('custom:renamed-large-layout');
       expect(search.get('share')).toBeNull();
       expect(search.get('rulesSnapshot')).toBe(snapshot);
     });
@@ -1145,7 +1155,7 @@ describe('portable Analyze links', () => {
     await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
     await waitFor(() => {
       const search = new URLSearchParams(reloaded.currentSearch());
-      expect(search.get('layout')).toBe('custom:mine');
+      expect(search.get('layout')).toBe('custom:renamed-large-layout');
       expect(search.get('share')).toBeNull();
       expect(search.get('rulesSnapshot')).toBe(snapshot);
     });
@@ -1156,7 +1166,7 @@ describe('portable Analyze links', () => {
     await waitFor(() => {
       const compareSearch = new URLSearchParams(reloaded.currentSearch());
       expect(reloaded.currentPath()).toBe('/compare');
-      expect(compareSearch.get('layout')).toBe('custom:mine');
+      expect(compareSearch.get('layout')).toBe('custom:renamed-large-layout');
       expect(compareSearch.get('share')).toBeNull();
       expect(compareSearch.get('rulesSnapshot')).toBe(snapshot);
     });

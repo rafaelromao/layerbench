@@ -14,7 +14,7 @@ export class MemoryLink implements LinkPort {
     return this.ref;
   }
 
-  write(ref: string, how: 'edit' | 'open'): void {
+  write(ref: string, how: 'edit' | 'open', _localRef?: string): void {
     this.writes.push({ ref, how });
     this.change(ref);
   }

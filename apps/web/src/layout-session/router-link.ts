@@ -37,9 +37,12 @@ export class RouterLink implements LinkPort {
     return this.ref;
   }
 
-  write(ref: string, how: 'edit' | 'open'): void {
+  write(ref: string, how: 'edit' | 'open', localRef?: string): void {
     this.ref = ref;
-    if (how === 'open' && this.localPortableFallback) {
+    if (this.localPortableFallback && localRef !== undefined) {
+      this.localPortableFallback = { localRef };
+    }
+    if (this.localPortableFallback && (how === 'open' || customId(ref) !== null)) {
       this.localPortableFallback = customId(ref) !== null ? { localRef: ref } : null;
     }
     if (how === 'open' && this.search.share === '1' && customId(ref) !== null) {

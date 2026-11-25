@@ -33,9 +33,10 @@ export interface LinkPort {
   current(): string;
   /**
    * Put `ref` in the link in place of the one there. `edit` leaves the rest of the page as it is;
-   * `open` is a layout picked, which starts on its first layer.
+   * `open` is a layout picked, which starts on its first layer. `localRef`, when supplied, keeps
+   * a compact saved-layout reference current while an oversized snapshot is local-only.
    */
-  write(ref: string, how: 'edit' | 'open'): void;
+  write(ref: string, how: 'edit' | 'open', localRef?: string): void;
   /** Hear every reference the link takes, whoever wrote it. */
   subscribe(listener: (ref: string) => void): () => void;
 }
@@ -248,11 +249,11 @@ export function createLayoutSession(
     for (const listener of listeners) listener();
   };
 
-  const write = (ref: string, how: 'edit' | 'open' = 'edit') => {
+  const write = (ref: string, how: 'edit' | 'open' = 'edit', localRef?: string) => {
     if (disposed) return;
     own.add(ref);
     if (link.current() === ref && how === 'edit') return;
-    link.write(ref, how);
+    link.write(ref, how, localRef);
     publish();
   };
 
@@ -368,7 +369,7 @@ export function createLayoutSession(
       const revision = ++editorRevision;
       cancelPending();
       if (!unsaved) {
-        write(cleanRef);
+        write(cleanRef, 'edit', storedId === null ? undefined : customRef(storedId));
       } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
@@ -429,7 +430,8 @@ export function createLayoutSession(
             source = null;
             // Saved with nothing unsaved, it is in the link at once; otherwise once the editor says
             // the layout saved is the one it has.
-            if (editor && !editor.unsaved) write(cleanRef);
+            if (editor && !editor.unsaved)
+              write(cleanRef, 'edit', storedId === null ? undefined : customRef(storedId));
           }
           return { ok: true, id, leftBehind };
         } catch (e) {
