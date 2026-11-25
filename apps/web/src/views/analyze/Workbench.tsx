@@ -641,7 +641,10 @@ export function Workbench({
           : null;
       if (localRef === null) {
         toast.error(
-          'This layout is too large to open in Compare. Shorten it or save a smaller layout first; Analyze is unchanged.',
+          [
+            'This layout is too large to open in Compare. Shorten it or save a smaller',
+            'layout first; Analyze is unchanged.',
+          ].join(' '),
         );
         return;
       }
@@ -649,12 +652,18 @@ export function Workbench({
       delete localOnly.share;
       if (portableSearchTooLong('compare', localOnly, window.location.origin)) {
         toast.error(
-          'This comparison is too long to open, even with the saved layout reference. Shorten the layout description or choose a smaller custom rule set; Analyze is unchanged.',
+          [
+            'This comparison is too long to open, even with the saved layout reference.',
+            'Shorten the layout description or choose a smaller custom rule set; Analyze is unchanged.',
+          ].join(' '),
         );
         return;
       }
       toast.info(
-        'Compare is open on this device only because the layout snapshot would make its URL too long. Shorten the layout to share it.',
+        [
+          'Compare is open on this device only because the layout snapshot would make its',
+          'URL too long. Shorten the layout to share it.',
+        ].join(' '),
       );
       navigate({ to: '/compare', search: localOnly as never });
       return;

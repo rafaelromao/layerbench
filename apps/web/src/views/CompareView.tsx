@@ -96,7 +96,10 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
           const next = { ...prev, [key]: carried };
           if (portableSearchTooLong('compare', next, window.location.origin)) {
             toast.error(
-              'This layout stays on this device because its snapshot would make the comparison URL too long. Shorten the layout description to make it shareable.',
+              [
+                'This layout stays on this device because its snapshot would make the',
+                'comparison URL too long. Shorten the layout description to make it shareable.',
+              ].join(' '),
             );
             return prev;
           }
