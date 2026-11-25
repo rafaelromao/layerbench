@@ -334,9 +334,11 @@ export function parsePortableSearch(
   if (input.share === undefined) return null;
   const ingressError = input[PORTABLE_TARGET_ERROR_KEY];
   if (typeof ingressError === 'string') return { ok: false, error: ingressError };
+  let origin: string | undefined;
   if (originalHref) {
     try {
       const address = new URL(originalHref);
+      origin = address.origin;
       if (address.searchParams.has(VERSION_KEY)) {
         const original = parsePortableTarget(address.href, address.origin);
         if (!original.ok) return original;
@@ -348,7 +350,7 @@ export function parsePortableSearch(
       return { ok: false, error: 'This share link is not a valid URL.' };
     }
   }
-  const address = portableSearchAddress(route, input);
+  const address = portableSearchAddress(route, input, origin);
   return targetError(
     address.url,
     address.url.origin,

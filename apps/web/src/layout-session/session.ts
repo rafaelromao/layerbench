@@ -19,10 +19,8 @@ import {
 } from '../custom/save-new.js';
 import { forgetProposal } from '../proposals/proposals.js';
 import { CompositeStorage } from '../storage/composite.js';
-import { encodeInline } from '../url/inline.js';
-import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
-import { carriedRef, type LayoutSource, openLayout, snapshotRef } from './open.js';
+import { carriedLayout, type LayoutSource, layoutSnapshot, openLayout } from './open.js';
 
 /**
  * The link, as the layout session reaches it: the router in the app, an array in tests. The session
@@ -36,7 +34,7 @@ export interface LinkPort {
    * `open` is a layout picked, which starts on its first layer. `localRef`, when supplied, keeps
    * a compact saved-layout reference current while an oversized snapshot is local-only.
    */
-  write(ref: string, how: 'edit' | 'open', localRef?: string): void;
+  write(ref: string, how: 'edit' | 'open', localRef?: string, tooLarge?: boolean): void;
   /** Hear every reference the link takes, whoever wrote it. */
   subscribe(listener: (ref: string) => void): () => void;
 }
@@ -206,7 +204,7 @@ export function createLayoutSession(
   /** The reference this opening opened, and every one it has written since. */
   let own = new Set<string>();
   /** What the link holds when nothing is unsaved. */
-  let cleanRef = '';
+  let clean = { ref: '', tooLarge: false };
   let storedId: string | null = null;
   /** The version of the custom layout the editor was opened at, or last saved: what an edit is made on. */
   let basedOn: string | null = null;
@@ -249,11 +247,17 @@ export function createLayoutSession(
     for (const listener of listeners) listener();
   };
 
-  const write = (ref: string, how: 'edit' | 'open' = 'edit', localRef?: string) => {
+  const write = (
+    ref: string,
+    how: 'edit' | 'open' = 'edit',
+    localRef?: string,
+    tooLarge = false,
+  ) => {
     if (disposed) return;
     own.add(ref);
     if (link.current() === ref && how === 'edit') return;
-    link.write(ref, how, localRef);
+    if (tooLarge) link.write(ref, how, localRef, true);
+    else link.write(ref, how, localRef);
     publish();
   };
 
@@ -271,10 +275,12 @@ export function createLayoutSession(
    */
   const writeDraft = async (layout: Layout, opening: number, revision: number): Promise<string> => {
     const { id: _own, ...rest } = layout;
-    const ref = inlineRef(await encodeInline(storedId === null ? rest : { ...rest, id: storedId }));
+    const { ref, tooLarge } = await layoutSnapshot(
+      storedId === null ? rest : { ...rest, id: storedId },
+    );
     if (state.opening === opening && editorRevision === revision && !disposed) {
       drafts.remember(ref, storedId, source, basedOn);
-      write(ref);
+      write(ref, 'edit', undefined, tooLarge);
     }
     return ref;
   };
@@ -314,8 +320,11 @@ export function createLayoutSession(
     source = draft ? drafts.sourceOf(ref) : result.source;
     attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
-    cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
+    const carried = startsUnsaved
+      ? { ref, tooLarge: false }
+      : await carriedLayout(ref, { layout: result.layout, storedId });
     if (state.opening !== opening || disposed) return;
+    clean = carried;
     opened = { layout: result.layout, startsUnsaved };
     saving = false;
     state = {
@@ -329,7 +338,7 @@ export function createLayoutSession(
       pickedRef: '',
       saving,
     };
-    if (!startsUnsaved) write(cleanRef);
+    if (!startsUnsaved) write(clean.ref, 'edit', undefined, clean.tooLarge);
     state = { ...state, pickedRef: pickedRef() };
     publish();
   };
@@ -369,7 +378,12 @@ export function createLayoutSession(
       const revision = ++editorRevision;
       cancelPending();
       if (!unsaved) {
-        write(cleanRef, 'edit', storedId === null ? undefined : customRef(storedId));
+        write(
+          clean.ref,
+          'edit',
+          storedId === null ? undefined : customRef(storedId),
+          clean.tooLarge,
+        );
       } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
@@ -419,10 +433,10 @@ export function createLayoutSession(
           if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
-          const ref = await snapshotRef(layout, id);
+          const saved = await layoutSnapshot({ ...layout, id });
           if (state.opening === opening) {
-            drafts.forget(ref);
-            cleanRef = ref;
+            drafts.forget(saved.ref);
+            clean = saved;
             storedId = id;
             // What was saved is what the next edit is an edit of.
             basedOn = sha;
@@ -430,8 +444,7 @@ export function createLayoutSession(
             source = null;
             // Saved with nothing unsaved, it is in the link at once; otherwise once the editor says
             // the layout saved is the one it has.
-            if (editor && !editor.unsaved)
-              write(cleanRef, 'edit', storedId === null ? undefined : customRef(storedId));
+            if (editor && !editor.unsaved) write(clean.ref, 'edit', customRef(id), clean.tooLarge);
           }
           return { ok: true, id, leftBehind };
         } catch (e) {
@@ -502,10 +515,10 @@ export function createLayoutSession(
         if (disposed || state.status !== 'open' || state.opening !== expectedOpening) return null;
         const current = editor;
         const revision = editorRevision;
-        if (!current) return cleanRef || link.current();
+        if (!current) return clean.ref || link.current();
         if (!current.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
           if (state.opening === expectedOpening && editorRevision === revision)
-            return cleanRef || link.current();
+            return clean.ref || link.current();
           continue;
         }
 

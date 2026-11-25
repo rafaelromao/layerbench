@@ -15,6 +15,8 @@ type Navigate = ReturnType<typeof useNavigate>;
 
 const LOCAL_ONLY_TOO_LONG_MESSAGE =
   'This layout is open on this device only because the shared URL would be too long. Shorten the layout description or choose a smaller custom rule set, then share again.';
+const LAYOUT_TOO_LARGE_MESSAGE =
+  'The layout snapshot exceeds the 2 MB limit. Shorten the layout description, then share again.';
 
 /**
  * The link port over the app's router, on Analyze. What the session writes replaces the reference
@@ -37,10 +39,10 @@ export class RouterLink implements LinkPort {
     return this.ref;
   }
 
-  write(ref: string, how: 'edit' | 'open', localRef?: string): void {
+  write(ref: string, how: 'edit' | 'open', savedRef?: string, tooLarge = false): void {
     this.ref = ref;
-    if (this.localPortableFallback && localRef !== undefined) {
-      this.localPortableFallback = { localRef };
+    if (this.localPortableFallback && savedRef !== undefined) {
+      this.localPortableFallback = { localRef: savedRef };
     }
     if (this.localPortableFallback && (how === 'open' || customId(ref) !== null)) {
       this.localPortableFallback = customId(ref) !== null ? { localRef: ref } : null;
@@ -75,10 +77,13 @@ export class RouterLink implements LinkPort {
               ? { rulesSnapshot: pending.rulesSnapshot }
               : {}),
           };
-          if (portableSearchTooLong('analyze', portableSearch, window.location.origin)) {
+          if (
+            tooLarge ||
+            portableSearchTooLong('analyze', portableSearch, window.location.origin)
+          ) {
             // Keep the selected local layout and embedded rules usable in this browser, but do not
             // replace the working route with a portable URL the browser cannot open.
-            return this.keepLocalOnly(portableSearch, pending.localRef);
+            return this.keepLocalOnly(prev, portableSearch, pending.localRef, tooLarge);
           }
           this.localPortableFallback = { localRef: pending.localRef };
           return portableSearch;
@@ -96,10 +101,12 @@ export class RouterLink implements LinkPort {
             window.location.origin,
           );
 
-          if (tooLong) {
-            if (localRef !== null) return this.keepLocalOnly(candidate, localRef);
-            if (prev.share === '1') {
-              toast.error(LOCAL_ONLY_TOO_LONG_MESSAGE);
+          if (tooLong || tooLarge) {
+            const fallback = savedRef ?? localRef;
+            if (fallback !== null) return this.keepLocalOnly(prev, candidate, fallback, tooLarge);
+            if (tooLarge || prev.share === '1') {
+              this.ref = parseParams(prev).layoutRef;
+              toast.error(tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : LOCAL_ONLY_TOO_LONG_MESSAGE);
               return prev;
             }
           } else if (localRef !== null || prev.share === '1') {
@@ -126,12 +133,27 @@ export class RouterLink implements LinkPort {
     });
   }
 
-  private keepLocalOnly(search: RawSearch, localRef: string): RawSearch {
-    this.ref = localRef;
-    this.localPortableFallback = { localRef };
-    toast.error(LOCAL_ONLY_TOO_LONG_MESSAGE);
+  private keepLocalOnly(
+    previous: RawSearch,
+    search: RawSearch,
+    localRef: string,
+    tooLarge: boolean,
+  ): RawSearch {
     const localOnly: RawSearch = { ...search, layout: localRef };
     delete localOnly.share;
+    this.localPortableFallback = { localRef };
+    if (portableSearchTooLong('analyze', localOnly, window.location.origin)) {
+      this.ref = parseParams(previous).layoutRef;
+      toast.error(
+        [
+          'Even the saved layout reference would make the analysis URL too long.',
+          'Choose a smaller custom rule set, then try again.',
+        ].join(' '),
+      );
+      return previous;
+    }
+    this.ref = localRef;
+    toast.error(tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : LOCAL_ONLY_TOO_LONG_MESSAGE);
     return localOnly;
   }
 

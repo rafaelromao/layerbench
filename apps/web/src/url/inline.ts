@@ -66,9 +66,16 @@ async function pipe(data: Uint8Array, transform: 'deflate' | 'inflate'): Promise
 
 /** Compress a layout into the blob used by `?layout=inline:…`. */
 export async function encodeInline(layout: Layout): Promise<string> {
-  const json = JSON.stringify(toCanonicalJson(layout));
-  const deflated = await pipe(new TextEncoder().encode(json), 'deflate');
-  return bytesToBase64Url(deflated);
+  return (await encodeInlineSnapshot(layout)).blob;
+}
+
+/** Measure the same canonical UTF-8 bytes the reader will inflate. */
+export async function encodeInlineSnapshot(
+  layout: Layout,
+): Promise<{ blob: string; tooLarge: boolean }> {
+  const bytes = new TextEncoder().encode(JSON.stringify(toCanonicalJson(layout)));
+  const deflated = await pipe(bytes, 'deflate');
+  return { blob: bytesToBase64Url(deflated), tooLarge: bytes.length > MAX_INLINE_BYTES };
 }
 
 /** Read a layout back out of an inline blob. */

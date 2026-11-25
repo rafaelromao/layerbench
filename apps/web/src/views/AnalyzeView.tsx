@@ -6,6 +6,7 @@ import { customId } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
 import { useCarried, useRememberSelection } from '../state/selection.js';
+import { toast } from '../state/toasts.js';
 import { portableCorpusError } from '../url/corpus-share.js';
 import {
   DEFAULT_PARAMS,
@@ -15,7 +16,7 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
-import { parsePortableSearch } from '../url/share-target.js';
+import { parsePortableSearch, portableSearchTooLong } from '../url/share-target.js';
 import { Workbench } from './analyze/Workbench.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
 import { useCorporaState } from './useCorpora.js';
@@ -87,13 +88,20 @@ function AnalyzeWorkbench({
             overrides.preset === undefined || overrides.preset === previous.preset;
           const keepSnapshot =
             prev.rulesSnapshot && rulesUnchanged && customId(next.rules ?? '') !== null;
-          if (prev.share === '1' && canStayPortable && rulesUnchanged)
-            return {
-              ...next,
-              share: '1',
-              ...(keepSnapshot ? { rulesSnapshot: prev.rulesSnapshot } : {}),
-            };
-          if (keepSnapshot) return { ...next, rulesSnapshot: prev.rulesSnapshot };
+          if (prev.share === '1' && canStayPortable && rulesUnchanged) next.share = '1';
+          if (keepSnapshot) next.rulesSnapshot = prev.rulesSnapshot;
+          if (
+            (next.share === '1' || keepSnapshot) &&
+            portableSearchTooLong('analyze', next, window.location.origin)
+          ) {
+            toast.error(
+              [
+                'This change would make the analysis URL too long. Shorten the layout description',
+                'or choose a smaller custom rule set; the current URL is unchanged.',
+              ].join(' '),
+            );
+            return prev;
+          }
           return next;
         }) as never,
         replace: true,

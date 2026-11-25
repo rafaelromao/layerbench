@@ -31,7 +31,7 @@ import { type ShareImage, ShareImageDialog } from '../export/ShareImageDialog.js
 import { compareImage, unsavedVersion } from '../export/share-image.js';
 import { HELP, rulerShown } from '../guide/help.js';
 import { tabDrafts } from '../layout-session/drafts.js';
-import { carriedRef, openLayout, snapshotRef } from '../layout-session/open.js';
+import { carriedLayout, layoutSnapshot, openLayout, snapshotRef } from '../layout-session/open.js';
 import { useRememberSelection } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
@@ -88,8 +88,12 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
   useEffect(() => {
     if (!opened || !layout) return;
     let cancelled = false;
-    void carriedRef(ref, { layout, storedId }).then((carried) => {
+    void carriedLayout(ref, { layout, storedId }).then(({ ref: carried, tooLarge }) => {
       if (cancelled || carried === ref) return;
+      if (tooLarge) {
+        toast.error('This layout stays on this device: its snapshot exceeds the 2 MB limit.');
+        return;
+      }
       navigate({
         to: '/compare',
         search: ((prev: RawSearch) => {
@@ -346,8 +350,17 @@ function ComparePage({
             toast.error(`Could not include that layout in the shared link: ${opened.error}`);
             return;
           }
-          const inline = await snapshotRef(opened.layout, opened.storedId ?? id);
+          const { ref: inline, tooLarge } = await layoutSnapshot({
+            ...opened.layout,
+            id: opened.storedId ?? id,
+          });
           if (!isCurrentSelection()) return;
+          if (tooLarge) {
+            toast.error(
+              'The layout snapshot exceeds the 2 MB limit. Shorten its description and try again.',
+            );
+            return;
+          }
           setParams(key === 'layout' ? { layoutRef: inline, layerA: 0 } : { b: inline, layerB: 0 });
         } catch (error) {
           if (!isCurrentSelection()) return;

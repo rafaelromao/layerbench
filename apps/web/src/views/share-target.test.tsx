@@ -1,9 +1,9 @@
 import { bundledLayout, getPreset, type Layout, toCanonicalJson } from '@layerbench/core';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useToasts } from '../state/toasts.js';
-import { dragKey } from '../test/analyze-editing.js';
+import { copyDialog, dragKey } from '../test/analyze-editing.js';
 import { showLayer, shownLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
@@ -1019,6 +1019,47 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
+  it('keeps a working Analyze link when a setting would exceed the URL limit', async () => {
+    useToasts.setState({ toasts: [] });
+    const rule = { ...getPreset('cyanophage'), id: 'strict', name: 'Shared Strict' };
+    const target = {
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze' as const,
+      search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
+    };
+    const baseline = await buildPortableTarget({
+      ...target,
+      rulesSnapshot: encodeRuleSnapshot({ ...rule, description: 'x' }),
+    });
+    const href = await buildPortableTarget({
+      ...target,
+      rulesSnapshot: encodeRuleSnapshot({
+        ...rule,
+        description: 'x'.repeat(Math.floor(((2_097_145 - baseline.length) * 3) / 4)),
+      }),
+    });
+    expect(href.length).toBeGreaterThan(2_097_140);
+    const url = new URL(href);
+    const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    const heat = screen.getByRole('combobox', { name: 'Heat' });
+    const before = source.currentSearch();
+    await userEvent.selectOptions(heat, 'effort');
+    await waitFor(
+      () =>
+        expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+          expect.arrayContaining([expect.stringMatching(/analysis URL too long/i)]),
+        ),
+      { container: document.createElement('div') },
+    );
+    expect(source.currentSearch()).toBe(before);
+    expect(heat).toHaveValue('usage');
+  }, 60_000);
+
   it('keeps oversized local layouts usable across Compare, save, and reload', async () => {
     const user = userEvent.setup();
     useToasts.setState({ toasts: [] });
@@ -1178,6 +1219,120 @@ describe('portable Analyze links', () => {
       expect(compareSearch.get('layout')).toBe('custom:renamed-large-layout');
       expect(compareSearch.get('share')).toBeNull();
       expect(compareSearch.get('rulesSnapshot')).toBe(snapshot);
+    });
+  }, 60_000);
+
+  it.each(['URL limit', '2 MB limit'])(
+    'uses the compact ID on the first save when the snapshot exceeds the %s',
+    async (limit) => {
+      const user = userEvent.setup();
+      const snapshot = encodeRuleSnapshot({
+        ...getPreset('cyanophage'),
+        id: 'strict',
+        name: 'Shared Strict',
+        description: 'x'.repeat(1_450_000),
+      });
+      const href = await buildPortableTarget({
+        baseHref: '/analyze',
+        origin: window.location.origin,
+        route: 'analyze',
+        search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
+        rulesSnapshot: snapshot,
+      });
+      const target = new URL(href);
+      const storage = new MemoryStorage();
+      const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+        client: new RecordingClient(),
+        storage,
+      });
+      const region = await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+      await openSettings();
+      let seed = 17;
+      const description =
+        limit === '2 MB limit'
+          ? 'x'.repeat(2_000_001)
+          : Array.from({ length: 360_000 }, () => {
+              seed = (seed * 48_271) % 2_147_483_647;
+              return String.fromCharCode(32 + (seed % 95));
+            }).join('');
+      const field = screen.getByRole('textbox', { name: 'Description' });
+      fireEvent.change(field, { target: { value: description } });
+      fireEvent.blur(field);
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(within(region).getByRole('button', { name: 'Save' }));
+      const choice = await screen.findByRole('dialog', { name: 'Save Qwerty' });
+      await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
+      const dialog = within(copyDialog());
+      const name = dialog.getByLabelText('Name of the copy');
+      await user.clear(name);
+      await user.type(name, 'My First Copy');
+      await user.click(dialog.getByRole('button', { name: 'Save copy' }));
+      await waitFor(
+        () =>
+          expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe(
+            'custom:my-first-copy',
+          ),
+        { timeout: 25_000, container: document.createElement('div') },
+      );
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('share')).toBeNull();
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+      search.delete('rulesSnapshot');
+      source.unmount();
+      const client = new RecordingClient();
+      renderRoute(`/analyze?${search}#rulesSnapshot=${snapshot}`, { client, storage });
+      await waitFor(
+        () => {
+          expect(client.analyses.at(-1)?.layout.name).toBe('My First Copy');
+          expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+        },
+        { timeout: 25_000, container: document.createElement('div') },
+      );
+    },
+    60_000,
+  );
+
+  it('opens a saved layout over the 2 MB limit in Analyze by its local ID', async () => {
+    const snapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Shared Strict',
+    });
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
+      rulesSnapshot: snapshot,
+    });
+    const storage = new MemoryStorage();
+    await storage.put(
+      'layouts',
+      'mine',
+      toCanonicalJson({
+        ...bundledLayout('colemak')!,
+        id: 'mine',
+        name: 'My Large Layout',
+        description: 'x'.repeat(2_000_001),
+      }),
+    );
+    const client = new RecordingClient();
+    const target = new URL(href);
+    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+      client,
+      storage,
+    });
+    await userEvent.selectOptions(
+      await screen.findByRole('combobox', { name: 'Layout' }),
+      'custom:mine',
+    );
+    await waitFor(() => {
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('layout')).toBe('custom:mine');
+      expect(search.get('share')).toBeNull();
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+      expect(client.analyses.at(-1)?.layout.name).toBe('My Large Layout');
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
     });
   }, 60_000);
 
@@ -1575,9 +1730,13 @@ describe('portable Analyze links', () => {
     expect(client.analyses).toHaveLength(0);
   });
 
-  it.each(['Layout A', 'Layout B'] as const)(
-    'keeps Compare unchanged when selecting a local layout for %s would make its shared URL too long',
-    async (side) => {
+  it.each([
+    ['Layout A', 'URL too long'],
+    ['Layout B', 'URL too long'],
+    ['Layout A', '2 MB limit'],
+  ] as const)(
+    'keeps Compare unchanged when selecting a local layout for %s exceeds the %s budget',
+    async (side, limit) => {
       const user = userEvent.setup();
       useToasts.setState({ toasts: [] });
       const snapshot = encodeRuleSnapshot({
@@ -1613,7 +1772,7 @@ describe('portable Analyze links', () => {
         ...bundledLayout('colemak')!,
         id: 'mine',
         name: 'My Large Layout',
-        description: chars.join(''),
+        description: limit === '2 MB limit' ? 'x'.repeat(2_000_001) : chars.join(''),
       };
       const inline = `inline:${await encodeInline(customLayout)}`;
       await expect(
@@ -1627,7 +1786,7 @@ describe('portable Analyze links', () => {
           },
           rulesSnapshot: snapshot,
         }),
-      ).rejects.toThrow(/too long for browsers to open/i);
+      ).rejects.toThrow(limit === '2 MB limit' ? /2 MB limit/i : /too long for browsers to open/i);
 
       const storage = new MemoryStorage();
       await storage.put('layouts', 'mine', toCanonicalJson(customLayout));
@@ -1644,7 +1803,9 @@ describe('portable Analyze links', () => {
 
       const warning = await screen.findByRole('alert');
       expect(warning).toHaveTextContent(
-        /shared comparison URL too long.*current comparison is unchanged/i,
+        limit === '2 MB limit'
+          ? /2 MB limit.*shorten/i
+          : /shared comparison URL too long.*current comparison is unchanged/i,
       );
       const currentSearch = new URLSearchParams(source.currentSearch());
       expect(source.currentPath()).toBe('/compare');

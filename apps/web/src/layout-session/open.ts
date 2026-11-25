@@ -7,7 +7,7 @@ import {
 } from '@layerbench/core';
 import { communityLayout } from '../community/community.js';
 import { customError, readCustom } from '../custom/read.js';
-import { decodeInline, encodeInline } from '../url/inline.js';
+import { decodeInline, encodeInlineSnapshot } from '../url/inline.js';
 import { inlineRef, parseLayoutRef } from '../url/params.js';
 
 /** A layout of the Library's or of the community's, by its id: what a change can be proposed to. */
@@ -102,18 +102,23 @@ export async function openLayout(ref: string, storage: StorageAdapter): Promise<
 
 /** The link of a custom layout: the layout itself, its id inside, so it opens for anyone sent it. */
 export async function snapshotRef(layout: Layout, id: string): Promise<string> {
-  return inlineRef(await encodeInline({ ...layout, id }));
+  return (await layoutSnapshot({ ...layout, id })).ref;
+}
+
+export async function layoutSnapshot(layout: Layout): Promise<{ ref: string; tooLarge: boolean }> {
+  const { blob, tooLarge } = await encodeInlineSnapshot(layout);
+  return { ref: inlineRef(blob), tooLarge };
 }
 
 /**
  * What a link should carry for a layout `ref` opened: a custom layout named by its id travels whole,
  * its id inside, as an id opens only where the layout is saved; anything else as it is.
  */
-export async function carriedRef(
+export async function carriedLayout(
   ref: string,
   opened: { layout: Layout; storedId: string | null },
-): Promise<string> {
+): Promise<{ ref: string; tooLarge: boolean }> {
   return opened.storedId !== null && parseLayoutRef(ref).kind !== 'inline'
-    ? snapshotRef(opened.layout, opened.storedId)
-    : ref;
+    ? layoutSnapshot({ ...opened.layout, id: opened.storedId })
+    : { ref, tooLarge: false };
 }
