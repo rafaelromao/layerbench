@@ -1660,6 +1660,7 @@ describe('portable Analyze links', () => {
         ...getPreset('cyanophage'),
         id: 'strict',
         name: 'Shared Strict',
+        description: '',
       };
       const input = {
         baseHref: '/compare',
@@ -1687,7 +1688,9 @@ describe('portable Analyze links', () => {
       });
       const href = await buildPortableTarget({ ...input, rulesSnapshot: snapshot });
       const storage = new MemoryStorage();
-      await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+      const privateId =
+        budget === 'overflows' ? `private-notes-${'x'.repeat(128)}` : 'private-notes';
+      await storage.put('corpora', privateId, await engine.corpusDocument(privateCorpus.id));
       await storage.put('rulesets', 'strict', {
         ...getPreset('layouts_doc'),
         id: 'strict',
@@ -1705,20 +1708,31 @@ describe('portable Analyze links', () => {
 
       const settings = await openSettings();
       const before = source.currentSearch();
+      const destination = new URL(href);
+      destination.searchParams.delete('share');
+      destination.searchParams.set('corpus2', `custom:${privateId}`);
+      expect(
+        destination.href.length >= 2_097_152,
+        `${href.length} → ${destination.href.length}`,
+      ).toBe(budget === 'overflows');
       await user.selectOptions(
         within(settings).getByRole('combobox', { name: 'Mix with' }),
-        'custom:private-notes',
+        `custom:${privateId}`,
       );
-      await user.click(within(settings).getByRole('button', { name: 'Done' }));
 
       if (budget === 'overflows') {
-        expect(
-          useToasts.getState().toasts.some(({ text }) => /comparison URL too long/i.test(text)),
-        ).toBe(true);
+        await waitFor(
+          () =>
+            expect(
+              useToasts.getState().toasts.some(({ text }) => /comparison URL too long/i.test(text)),
+            ).toBe(true),
+          { container: document.createElement('div') },
+        );
         expect(source.currentSearch() === before).toBe(true);
         expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
         return;
       }
+      await user.click(within(settings).getByRole('button', { name: 'Done' }));
       expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
       await waitFor(() =>
         expect(
