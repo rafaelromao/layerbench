@@ -1,4 +1,4 @@
-import { bundledLayout } from '@layerbench/core';
+import { bundledLayout, getPreset } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { encodeInline, MAX_INLINE_BYTES } from './inline.js';
 import { encodeRuleSnapshot, MAX_RULE_SNAPSHOT_BYTES } from './rule-snapshot.js';
@@ -181,6 +181,25 @@ describe('portable share targets', () => {
       ok: true,
       route: 'compare',
     });
+  });
+
+  it('leaves room for the deployed directory redirect at the URL limit', async () => {
+    const rule = { ...getPreset('cyanophage'), id: 'strict', name: 'Shared Strict' };
+    const target = {
+      baseHref: '/analyze',
+      origin: ORIGIN,
+      route: 'analyze' as const,
+      search: { layout: 'qwerty', corpus: 'en-general', rules: 'custom:strict' },
+    };
+    const snapshot = (size: number) =>
+      encodeRuleSnapshot({ ...rule, description: 'x'.repeat(size) });
+    const baseline = await buildPortableTarget({ ...target, rulesSnapshot: snapshot(1) });
+    const initial = snapshot(Math.floor(((2_097_150 - baseline.length) * 3) / 4) + 1);
+    const length = baseline.length - snapshot(1).length + initial.length;
+    const origin = ORIGIN.replace('://', `://${'x'.repeat(2_097_151 - length)}`);
+    await expect(
+      buildPortableTarget({ ...target, origin, rulesSnapshot: initial }),
+    ).rejects.toThrow(/too long for browsers to open/i);
   });
 
   it('validates the original route and keeps query-only state out of the fragment', async () => {

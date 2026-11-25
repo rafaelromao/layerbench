@@ -319,8 +319,11 @@ export async function buildPortableTarget(input: BuildPortableTarget): Promise<s
     Object.entries(search).filter((entry): entry is [string, string] => entry[1] !== undefined),
   );
   const hash = canonicalParams(Object.entries(fragment));
-  const href = `${base.origin}${base.pathname}${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
-  const validated = parsePortableTarget(href, expectedOrigin);
+  const suffix = `${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
+  const href = `${base.origin}${base.pathname}${suffix}`;
+  // GitHub Pages can append a slash when serving the route's directory index.
+  const directory = base.pathname.endsWith('/') ? href : `${base.origin}${base.pathname}/${suffix}`;
+  const validated = parsePortableTarget(directory, expectedOrigin);
   if (!validated.ok) throw new Error(validated.error);
   return href;
 }

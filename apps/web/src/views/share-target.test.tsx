@@ -8,7 +8,7 @@ import { showLayer, shownLayer } from '../test/layers.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { RecordingClient } from '../test/recording-client.js';
 import { customInLink, openSettings, renderRoute, testClient } from '../test/render.js';
-import { decodeInline, encodeInline } from '../url/inline.js';
+import { decodeInline, encodeInline, MAX_INLINE_BYTES } from '../url/inline.js';
 import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
 import { buildPortableTarget } from '../url/share-target.js';
 
@@ -1019,208 +1019,227 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('keeps a working Analyze link when a setting would exceed the URL limit', async () => {
-    useToasts.setState({ toasts: [] });
-    const rule = { ...getPreset('cyanophage'), id: 'strict', name: 'Shared Strict' };
-    const target = {
-      baseHref: '/analyze',
-      origin: window.location.origin,
-      route: 'analyze' as const,
-      search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
-    };
-    const baseline = await buildPortableTarget({
-      ...target,
-      rulesSnapshot: encodeRuleSnapshot({ ...rule, description: 'x' }),
-    });
-    const href = await buildPortableTarget({
-      ...target,
-      rulesSnapshot: encodeRuleSnapshot({
-        ...rule,
-        description: 'x'.repeat(Math.floor(((2_097_145 - baseline.length) * 3) / 4)),
-      }),
-    });
-    expect(href.length).toBeGreaterThan(2_097_140);
-    const url = new URL(href);
-    const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
-      client: new RecordingClient(),
-      storage: new MemoryStorage(),
-    });
-    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
-    const heat = screen.getByRole('combobox', { name: 'Heat' });
-    const before = source.currentSearch();
-    await userEvent.selectOptions(heat, 'effort');
-    await waitFor(
-      () =>
-        expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
-          expect.arrayContaining([expect.stringMatching(/analysis URL too long/i)]),
-        ),
-      { container: document.createElement('div') },
-    );
-    expect(source.currentSearch()).toBe(before);
-    expect(heat).toHaveValue('usage');
-  }, 60_000);
+  it.each(['Heat', 'Layout'])(
+    'keeps Analyze open when changing %s exceeds the URL limit',
+    async (field) => {
+      useToasts.setState({ toasts: [] });
+      const rule = { ...getPreset('cyanophage'), id: 'strict', name: 'Shared Strict' };
+      const target = {
+        baseHref: '/analyze',
+        origin: window.location.origin,
+        route: 'analyze' as const,
+        search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
+      };
+      const baseline = await buildPortableTarget({
+        ...target,
+        rulesSnapshot: encodeRuleSnapshot({ ...rule, description: 'x' }),
+      });
+      const snapshot = (size: number) =>
+        encodeRuleSnapshot({
+          ...rule,
+          description: 'x'.repeat(size),
+        });
+      const prefix = baseline.slice(0, baseline.indexOf('#'));
+      const href = `${prefix}#rulesSnapshot=${snapshot(Math.floor(((2_097_150 - baseline.length) * 3) / 4) + 1)}`;
+      expect(href.length).toBeGreaterThanOrEqual(2_097_149);
+      expect(href.length).toBeLessThan(2_097_152);
+      const url = new URL(href);
+      const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
+        client: new RecordingClient(),
+        storage: new MemoryStorage(),
+      });
+      await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+      const picker = screen.getByRole('combobox', { name: field });
+      const before = source.currentSearch();
+      await userEvent.selectOptions(picker, field === 'Heat' ? 'effort' : 'magic-romak');
+      await waitFor(
+        () =>
+          expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+            expect.arrayContaining([expect.stringMatching(/analysis URL too long/i)]),
+          ),
+        { container: document.createElement('div') },
+      );
+      expect(source.currentSearch()).toBe(before);
+      expect(picker).toHaveValue(field === 'Heat' ? 'usage' : 'qwerty');
+    },
+    60_000,
+  );
 
-  it('keeps oversized local layouts usable across Compare, save, and reload', async () => {
-    const user = userEvent.setup();
-    useToasts.setState({ toasts: [] });
-    const snapshot = encodeRuleSnapshot({
-      ...getPreset('cyanophage'),
-      id: 'strict',
-      name: 'Shared Strict',
-      description: 'x'.repeat(1_450_000),
-    });
-    const href = await buildPortableTarget({
-      baseHref: '/analyze',
-      origin: window.location.origin,
-      route: 'analyze',
-      search: {
-        layout: 'qwerty',
-        corpus: 'en-general',
-        sample: '10000',
-        rules: 'custom:strict',
-      },
-      rulesSnapshot: snapshot,
-    });
-    expect(href.length).toBeGreaterThan(1_900_000);
-    expect(href.length).toBeLessThan(2_097_152);
-
-    let seed = 17;
-    const chars = new Array<string>(360_000);
-    for (let i = 0; i < chars.length; i++) {
-      seed = (seed * 48_271) % 2_147_483_647;
-      chars[i] = String.fromCharCode(32 + (seed % 95));
-    }
-    const customLayout: Layout = {
-      ...bundledLayout('colemak')!,
-      id: 'mine',
-      name: 'My Large Layout',
-      description: chars.join(''),
-    };
-    const inline = `inline:${await encodeInline(customLayout)}`;
-    await expect(
-      buildPortableTarget({
+  it.each(['URL limit', '2 MB limit'])(
+    'keeps oversized layouts usable after %s fallback',
+    async (limit) => {
+      const user = userEvent.setup();
+      useToasts.setState({ toasts: [] });
+      const snapshot = encodeRuleSnapshot({
+        ...getPreset('cyanophage'),
+        id: 'strict',
+        name: 'Shared Strict',
+        description: limit === '2 MB limit' ? '' : 'x'.repeat(1_450_000),
+      });
+      const href = await buildPortableTarget({
         baseHref: '/analyze',
         origin: window.location.origin,
         route: 'analyze',
         search: {
-          layout: inline,
+          layout: 'qwerty',
           corpus: 'en-general',
           sample: '10000',
           rules: 'custom:strict',
         },
         rulesSnapshot: snapshot,
-      }),
-    ).rejects.toThrow(/too long for browsers to open/i);
+      });
+      if (limit === 'URL limit') expect(href.length).toBeGreaterThan(1_900_000);
+      expect(href.length).toBeLessThan(2_097_152);
 
-    const storage = new MemoryStorage();
-    await storage.put('layouts', 'mine', toCanonicalJson(customLayout));
-    const client = new RecordingClient();
-    const target = new URL(href);
-    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
-      client,
-      storage,
-    });
-    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+      let seed = 17;
+      const chars = new Array<string>(360_000);
+      for (let i = 0; i < chars.length; i++) {
+        seed = (seed * 48_271) % 2_147_483_647;
+        chars[i] = String.fromCharCode(32 + (seed % 95));
+      }
+      const customLayout: Layout = {
+        ...bundledLayout('colemak')!,
+        id: 'mine',
+        name: 'My Large Layout',
+        description: limit === '2 MB limit' ? 'x'.repeat(MAX_INLINE_BYTES + 1) : chars.join(''),
+      };
+      const inline = `inline:${await encodeInline(customLayout)}`;
+      await expect(
+        buildPortableTarget({
+          baseHref: '/analyze',
+          origin: window.location.origin,
+          route: 'analyze',
+          search: {
+            layout: inline,
+            corpus: 'en-general',
+            sample: '10000',
+            rules: 'custom:strict',
+          },
+          rulesSnapshot: snapshot,
+        }),
+      ).rejects.toThrow(limit === '2 MB limit' ? /2 MB limit/i : /too long for browsers to open/i);
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'custom:mine');
+      const storage = new MemoryStorage();
+      await storage.put('layouts', 'mine', toCanonicalJson(customLayout));
+      const client = new RecordingClient();
+      const target = new URL(href);
+      const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+        client,
+        storage,
+      });
+      await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
 
-    await waitFor(() =>
-      expect(source.currentSearch()).toMatch(/layout=(?:custom%3Amine|inline%3A)/),
-    );
-    await waitFor(() => {
-      expect(client.analyses.at(-1)?.layout.name).toBe('My Large Layout');
-      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
-    });
-    expect(source.currentPath()).toBe('/analyze');
-    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
-    const initialSearch = new URLSearchParams(source.currentSearch());
-    expect(initialSearch.get('share')).toBeNull();
-    expect(initialSearch.get('layout')).toBe('custom:mine');
-    expect(initialSearch.get('rulesSnapshot')).toBe(snapshot);
-    const warning = await screen.findByRole('alert');
-    expect(warning).toHaveTextContent(
-      /open on this device.*shorten.*layout description.*smaller custom rule set/i,
-    );
-    await user.click(within(warning).getByRole('button', { name: 'close' }));
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'custom:mine');
 
-    const layoutRegion = screen.getByRole('region', { name: 'Layout' });
-    const name = within(layoutRegion).getByLabelText('Name');
-    await user.clear(name);
-    await user.type(name, 'Renamed Large Layout');
-    await user.click(within(layoutRegion).getByRole('button', { name: 'Save' }));
-    await waitFor(async () => {
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.get('layout')).toBe('custom:renamed-large-layout');
-      expect(search.get('share')).toBeNull();
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-      expect((await storage.list('layouts')).map(({ id }) => id)).toEqual(['renamed-large-layout']);
-    });
+      await waitFor(() =>
+        expect(source.currentSearch()).toMatch(/layout=(?:custom%3Amine|inline%3A)/),
+      );
+      await waitFor(() => {
+        expect(client.analyses.at(-1)?.layout.name).toBe('My Large Layout');
+        expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+      });
+      expect(source.currentPath()).toBe('/analyze');
+      expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+      const initialSearch = new URLSearchParams(source.currentSearch());
+      expect(initialSearch.get('share')).toBeNull();
+      expect(initialSearch.get('layout')).toBe('custom:mine');
+      expect(initialSearch.get('rulesSnapshot')).toBe(snapshot);
+      const warning = await screen.findByRole('alert');
+      expect(warning).toHaveTextContent(
+        limit === '2 MB limit'
+          ? /2 MB limit.*shorten/i
+          : /open on this device.*shorten.*layout description.*smaller custom rule set/i,
+      );
+      await user.click(within(warning).getByRole('button', { name: 'close' }));
 
-    const localUrl = new URL('/analyze', window.location.origin);
-    const localSearch = new URLSearchParams(source.currentSearch());
-    localSearch.delete('rulesSnapshot');
-    localUrl.search = localSearch.toString();
-    localUrl.hash = new URLSearchParams({ rulesSnapshot: snapshot }).toString();
-    expect(localUrl.href.length).toBeLessThan(2_097_152);
+      const layoutRegion = screen.getByRole('region', { name: 'Layout' });
+      const name = within(layoutRegion).getByLabelText('Name');
+      await user.clear(name);
+      await user.type(name, 'Renamed Large Layout');
+      await user.click(within(layoutRegion).getByRole('button', { name: 'Save' }));
+      await waitFor(async () => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.get('layout')).toBe('custom:renamed-large-layout');
+        expect(search.get('share')).toBeNull();
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+        expect((await storage.list('layouts')).map(({ id }) => id)).toEqual([
+          'renamed-large-layout',
+        ]);
+      });
 
-    await openSettings();
-    const description = screen.getByRole('textbox', { name: 'Description' });
-    await user.clear(description);
-    await user.type(description, 'short');
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    await waitFor(() => expect(new URLSearchParams(source.currentSearch()).get('share')).toBe('1'));
+      const localUrl = new URL('/analyze', window.location.origin);
+      const localSearch = new URLSearchParams(source.currentSearch());
+      localSearch.delete('rulesSnapshot');
+      localUrl.search = localSearch.toString();
+      localUrl.hash = new URLSearchParams({ rulesSnapshot: snapshot }).toString();
+      expect(localUrl.href.length).toBeLessThan(2_097_152);
 
-    await user.click(screen.getByRole('button', { name: 'Undo' }));
-    await waitFor(() => {
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.get('layout')).toBe('custom:renamed-large-layout');
-      expect(search.get('share')).toBeNull();
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+      await openSettings();
+      const description = screen.getByRole('textbox', { name: 'Description' });
+      await user.clear(description);
+      await user.type(description, 'short');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await waitFor(() =>
+        expect(new URLSearchParams(source.currentSearch()).get('share')).toBe('1'),
+      );
 
-    const fallbackSearch = new URLSearchParams(source.currentSearch());
-    const fallbackSnapshot = fallbackSearch.get('rulesSnapshot');
-    fallbackSearch.delete('rulesSnapshot');
-    localUrl.search = fallbackSearch.toString();
-    localUrl.hash = new URLSearchParams({
-      rulesSnapshot: fallbackSnapshot ?? '',
-    }).toString();
-    expect(localUrl.href.length).toBeLessThan(2_097_152);
-    source.unmount();
+      await user.click(screen.getByRole('button', { name: 'Undo' }));
+      await waitFor(() => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.get('layout')).toBe('custom:renamed-large-layout');
+        expect(search.get('share')).toBeNull();
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
 
-    const reloaded = renderRoute(`${localUrl.pathname}${localUrl.search}${localUrl.hash}`, {
-      client: new RecordingClient(),
-      storage,
-    });
-    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
-    await waitFor(() => {
-      const search = new URLSearchParams(reloaded.currentSearch());
-      expect(search.get('layout')).toBe('custom:renamed-large-layout');
-      expect(search.get('share')).toBeNull();
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+      const fallbackSearch = new URLSearchParams(source.currentSearch());
+      const fallbackSnapshot = fallbackSearch.get('rulesSnapshot');
+      fallbackSearch.delete('rulesSnapshot');
+      localUrl.search = fallbackSearch.toString();
+      localUrl.hash = new URLSearchParams({
+        rulesSnapshot: fallbackSnapshot ?? '',
+      }).toString();
+      expect(localUrl.href.length).toBeLessThan(2_097_152);
+      source.unmount();
 
-    await user.click(screen.getByRole('button', { name: 'Compare' }));
-    await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
-    await waitFor(
-      () =>
-        expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
-          expect.arrayContaining([
-            expect.stringMatching(/comparison URL too long.*shorten the layout description/i),
-          ]),
-        ),
-      { timeout: 25_000, container: document.createElement('div') },
-    );
-    await waitFor(() => {
-      const compareSearch = new URLSearchParams(reloaded.currentSearch());
-      expect(reloaded.currentPath()).toBe('/compare');
-      expect(compareSearch.get('layout')).toBe('custom:renamed-large-layout');
-      expect(compareSearch.get('share')).toBeNull();
-      expect(compareSearch.get('rulesSnapshot')).toBe(snapshot);
-    });
-  }, 60_000);
+      const reloaded = renderRoute(`${localUrl.pathname}${localUrl.search}${localUrl.hash}`, {
+        client: new RecordingClient(),
+        storage,
+      });
+      await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+      await waitFor(() => {
+        const search = new URLSearchParams(reloaded.currentSearch());
+        expect(search.get('layout')).toBe('custom:renamed-large-layout');
+        expect(search.get('share')).toBeNull();
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Compare' }));
+      await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+      await waitFor(
+        () =>
+          expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+            expect.arrayContaining([
+              expect.stringMatching(
+                limit === '2 MB limit'
+                  ? /2 MB limit.*shorten/i
+                  : /comparison URL too long.*shorten the layout description/i,
+              ),
+            ]),
+          ),
+        { timeout: 25_000, container: document.createElement('div') },
+      );
+      await waitFor(() => {
+        const compareSearch = new URLSearchParams(reloaded.currentSearch());
+        expect(reloaded.currentPath()).toBe('/compare');
+        expect(compareSearch.get('layout')).toBe('custom:renamed-large-layout');
+        expect(compareSearch.get('share')).toBeNull();
+        expect(compareSearch.get('rulesSnapshot')).toBe(snapshot);
+      });
+    },
+    60_000,
+  );
 
   it.each(['URL limit', '2 MB limit'])(
     'uses the compact ID on the first save when the snapshot exceeds the %s',
@@ -1259,6 +1278,20 @@ describe('portable Analyze links', () => {
       fireEvent.change(field, { target: { value: description } });
       fireEvent.blur(field);
       await user.click(screen.getByRole('button', { name: 'Done' }));
+      if (limit === '2 MB limit') {
+        await user.click(screen.getByRole('button', { name: 'Compare' }));
+        await waitFor(
+          () => {
+            expect(
+              useToasts
+                .getState()
+                .toasts.some(({ text }) => /too large to open in Compare/i.test(text)),
+            ).toBe(true);
+            expect(source.currentPath()).toBe('/analyze');
+          },
+          { container: document.createElement('div') },
+        );
+      }
       await user.click(within(region).getByRole('button', { name: 'Save' }));
       const choice = await screen.findByRole('dialog', { name: 'Save Qwerty' });
       await user.click(within(choice).getByRole('button', { name: 'Save a copy' }));
@@ -1610,89 +1643,115 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('keeps shared custom rules for Compare after switching the second corpus to a conflicting local rule set', async () => {
-    const user = userEvent.setup();
-    const engine = testClient();
-    const privateCorpus = await engine.buildCustomCorpus(
-      'private notes stay local for comparison',
-      'Private notes',
-      'en',
-    );
-    const snapshot = encodeRuleSnapshot({
-      ...getPreset('cyanophage'),
-      id: 'strict',
-      name: 'Shared Strict',
-    });
-    const href = await buildPortableTarget({
-      baseHref: '/compare',
-      origin: window.location.origin,
-      route: 'compare',
-      search: {
-        layout: 'qwerty',
-        b: 'colemak',
-        corpus: 'en-general',
-        corpus2: 'pt-br-general',
-        mix: '60',
-        sample: '10000',
-        rules: 'custom:strict',
-      },
-      rulesSnapshot: snapshot,
-    });
-    const storage = new MemoryStorage();
-    await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
-    await storage.put('rulesets', 'strict', {
-      ...getPreset('layouts_doc'),
-      id: 'strict',
-      name: 'Different Local Strict',
-    });
-    const get = vi.spyOn(storage, 'get');
-    const client = new RecordingClient(engine);
-    const target = new URL(href);
-    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
-      client,
-      storage,
-    });
-    await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
-    await screen.findByRole('group', { name: 'Layers of B' });
+  it.each(['fits', 'overflows'])(
+    'keeps Compare rules when a private corpus %s',
+    async (budget) => {
+      useToasts.setState({ toasts: [] });
+      const user = userEvent.setup();
+      const engine = testClient();
+      const privateCorpus = await engine.buildCustomCorpus(
+        'private notes stay local for comparison',
+        'Private notes',
+        'en',
+      );
+      const rule = {
+        ...getPreset('cyanophage'),
+        id: 'strict',
+        name: 'Shared Strict',
+      };
+      const input = {
+        baseHref: '/compare',
+        origin: window.location.origin,
+        route: 'compare' as const,
+        search: {
+          layout: 'qwerty',
+          b: 'colemak',
+          corpus: 'en-general',
+          corpus2: 'pt-br-general',
+          mix: '60',
+          sample: '10000',
+          rules: 'custom:strict',
+        },
+      };
+      const baseline = await buildPortableTarget({
+        ...input,
+        rulesSnapshot: encodeRuleSnapshot(rule),
+      });
+      const snapshot = encodeRuleSnapshot({
+        ...rule,
+        ...(budget === 'overflows' && {
+          description: 'x'.repeat(Math.floor(((2_097_130 - baseline.length) * 3) / 4)),
+        }),
+      });
+      const href = await buildPortableTarget({ ...input, rulesSnapshot: snapshot });
+      const storage = new MemoryStorage();
+      await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+      await storage.put('rulesets', 'strict', {
+        ...getPreset('layouts_doc'),
+        id: 'strict',
+        name: 'Different Local Strict',
+      });
+      const get = vi.spyOn(storage, 'get');
+      const client = new RecordingClient(engine);
+      const target = new URL(href);
+      const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+        client,
+        storage,
+      });
+      await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+      await screen.findByRole('group', { name: 'Layers of B' });
 
-    const settings = await openSettings();
-    await user.selectOptions(
-      within(settings).getByRole('combobox', { name: 'Mix with' }),
-      'custom:private-notes',
-    );
-    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+      const settings = await openSettings();
+      const before = source.currentSearch();
+      await user.selectOptions(
+        within(settings).getByRole('combobox', { name: 'Mix with' }),
+        'custom:private-notes',
+      );
+      await user.click(within(settings).getByRole('button', { name: 'Done' }));
 
-    expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
-    await waitFor(() =>
+      if (budget === 'overflows') {
+        expect(
+          useToasts.getState().toasts.some(({ text }) => /comparison URL too long/i.test(text)),
+        ).toBe(true);
+        expect(source.currentSearch() === before).toBe(true);
+        expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+        return;
+      }
+      expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
+      await waitFor(() =>
+        expect(
+          client.analyses.some(
+            (analysis) =>
+              analysis.settings.corpus2?.startsWith('custom:private-notes@') &&
+              analysis.settings.rules.name === 'Shared Strict',
+          ),
+        ).toBe(true),
+      );
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /custom corpus text stays on this device/i,
+      );
       expect(
         client.analyses.some(
-          (analysis) =>
-            analysis.settings.corpus2?.startsWith('custom:private-notes@') &&
-            analysis.settings.rules.name === 'Shared Strict',
+          (analysis) => analysis.settings.rules.name === 'Different Local Strict',
         ),
-      ).toBe(true),
-    );
-    await user.click(screen.getByRole('button', { name: 'Share link' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      /custom corpus text stays on this device/i,
-    );
-    expect(
-      client.analyses.some((analysis) => analysis.settings.rules.name === 'Different Local Strict'),
-    ).toBe(false);
+      ).toBe(false);
 
-    await user.click(screen.getByRole('link', { name: 'Analyze A' }));
-    await screen.findByRole('region', { name: 'Layout' });
-    await waitFor(() => {
-      expect(source.currentPath()).toBe('/analyze');
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.has('share')).toBe(false);
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
-    expect(
-      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
-    ).toHaveLength(0);
-  }, 60_000);
+      await user.click(screen.getByRole('link', { name: 'Analyze A' }));
+      await screen.findByRole('region', { name: 'Layout' });
+      await waitFor(() => {
+        expect(source.currentPath()).toBe('/analyze');
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.has('share')).toBe(false);
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+      expect(
+        get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+      ).toHaveLength(0);
+    },
+    60_000,
+  );
 
   it('shows an error instead of loading a local custom set when a portable snapshot is missing', async () => {
     const storage = new MemoryStorage();

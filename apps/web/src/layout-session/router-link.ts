@@ -39,6 +39,34 @@ export class RouterLink implements LinkPort {
     return this.ref;
   }
 
+  canOpen(ref: string): boolean {
+    if (customId(ref) !== null) return true;
+    const destination = this.openSearch(this.search, ref);
+    if (
+      (destination.share !== undefined || destination.rulesSnapshot !== undefined) &&
+      portableSearchTooLong('analyze', destination, window.location.origin)
+    ) {
+      toast.error(
+        [
+          'This layout would make the analysis URL too long.',
+          'Choose a smaller custom rule set or layout; Analyze is unchanged.',
+        ].join(' '),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  private openSearch(search: RawSearch, ref: string): RawSearch {
+    const next = toSearch(parseParams(search), {
+      layoutRef: ref,
+      layer: DEFAULT_PARAMS.layer,
+    });
+    const retained = retainPortableState(search, next);
+    if (String(search.share) !== '1' || !isPortableLayoutRef(ref)) delete retained.share;
+    return retained;
+  }
+
   write(ref: string, how: 'edit' | 'open', savedRef?: string, tooLarge = false): void {
     this.ref = ref;
     if (this.localPortableFallback && savedRef !== undefined) {
@@ -119,14 +147,8 @@ export class RouterLink implements LinkPort {
           return candidate;
         }
         if (how === 'edit') return { ...prev, layout: ref };
-        const next = toSearch(parseParams(prev), {
-          layoutRef: ref,
-          layer: DEFAULT_PARAMS.layer,
-        });
         this.pendingPortableOpen = null;
-        const retained = retainPortableState(prev, next);
-        if (String(prev.share) !== '1' || !isPortableLayoutRef(ref)) delete retained.share;
-        return retained;
+        return this.openSearch(prev, ref);
       }) as never,
       replace: true,
       resetScroll: false,

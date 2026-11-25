@@ -27,6 +27,8 @@ import { carriedLayout, type LayoutSource, layoutSnapshot, openLayout } from './
  * is the only writer of the layout in it (ADR 0002).
  */
 export interface LinkPort {
+  /** Refuse a layout pick before the session leaves the current opening. */
+  canOpen?(ref: string): boolean;
   /** The layout reference the link holds now. */
   current(): string;
   /**
@@ -107,6 +109,8 @@ export interface LayoutSession {
    * null if this opening is left while the draft is being prepared.
    */
   link(opening?: number): Promise<string | null>;
+  /** The current link and whether its snapshot exceeds the reader's inflated limit. */
+  linkSnapshot(opening?: number): Promise<{ ref: string; tooLarge: boolean } | null>;
   /** Write nothing more, and stop listening to the link. */
   dispose(): void;
 }
@@ -212,11 +216,11 @@ export function createLayoutSession(
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
   let editor: { layout: Layout; unsaved: boolean } | null = null;
   let editorRevision = 0;
-  /** A draft waiting to be written, and the promise of its reference once it is. */
+  /** A draft waiting to be written, and the promise of its snapshot once it is. */
   let pending: {
     revision: number;
     timer: ReturnType<typeof setTimeout> | null;
-    ref: Promise<string> | null;
+    snapshot: Promise<{ ref: string; tooLarge: boolean }> | null;
   } | null = null;
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
@@ -273,7 +277,7 @@ export function createLayoutSession(
    * first save or a rename has since changed, or a bundled or community layout's, which a custom
    * layout may have too, so a layout never saved here carries none.
    */
-  const writeDraft = async (layout: Layout, opening: number, revision: number): Promise<string> => {
+  const writeDraft = async (layout: Layout, opening: number, revision: number) => {
     const { id: _own, ...rest } = layout;
     const { ref, tooLarge } = await layoutSnapshot(
       storedId === null ? rest : { ...rest, id: storedId },
@@ -282,7 +286,7 @@ export function createLayoutSession(
       drafts.remember(ref, storedId, source, basedOn);
       write(ref, 'edit', undefined, tooLarge);
     }
-    return ref;
+    return { ref, tooLarge };
   };
 
   const start = async (ref: string) => {
@@ -351,6 +355,7 @@ export function createLayoutSession(
 
   /** A layout picked: written to the link as one, and opened. */
   const openRef = async (ref: string) => {
+    if (link.canOpen?.(ref) === false) return;
     own = new Set([ref]);
     write(ref, 'open');
     await start(ref);
@@ -362,6 +367,31 @@ export function createLayoutSession(
    * rather than make a second.
    */
   const duplicates = retryingSaver();
+
+  const linkSnapshot: LayoutSession['linkSnapshot'] = async (expectedOpening = state.opening) => {
+    for (;;) {
+      if (disposed || state.status !== 'open' || state.opening !== expectedOpening) return null;
+      const current = editor;
+      const revision = editorRevision;
+      if (!current?.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
+        return clean.ref ? clean : { ref: link.current(), tooLarge: false };
+      }
+
+      let request = pending?.revision === revision ? pending : null;
+      if (!request) {
+        request = { revision, timer: null, snapshot: null };
+        pending = request;
+      }
+      if (request.timer !== null) {
+        clearTimeout(request.timer);
+        request.timer = null;
+      }
+      request.snapshot ??= writeDraft(current.layout, expectedOpening, revision);
+      const snapshot = await request.snapshot;
+      if (disposed || state.opening !== expectedOpening || state.status !== 'open') return null;
+      if (editorRevision === revision) return snapshot;
+    }
+  };
 
   return {
     getState: () => state,
@@ -387,15 +417,15 @@ export function createLayoutSession(
       } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
-        const request = {
+        const request: NonNullable<typeof pending> = {
           revision,
-          timer: null as ReturnType<typeof setTimeout> | null,
-          ref: null as Promise<string> | null,
+          timer: null,
+          snapshot: null,
         };
         request.timer = setTimeout(() => {
           if (pending !== request) return;
           request.timer = null;
-          request.ref = writeDraft(layout, opening, revision);
+          request.snapshot = writeDraft(layout, opening, revision);
         }, delay);
         pending = request;
       }
@@ -510,32 +540,10 @@ export function createLayoutSession(
       return !disposed && state.status === 'open' && state.opening === opening;
     },
 
-    async link(expectedOpening = state.opening) {
-      for (;;) {
-        if (disposed || state.status !== 'open' || state.opening !== expectedOpening) return null;
-        const current = editor;
-        const revision = editorRevision;
-        if (!current) return clean.ref || link.current();
-        if (!current.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
-          if (state.opening === expectedOpening && editorRevision === revision)
-            return clean.ref || link.current();
-          continue;
-        }
+    linkSnapshot,
 
-        let request = pending?.revision === revision ? pending : null;
-        if (!request) {
-          request = { revision, timer: null, ref: null };
-          pending = request;
-        }
-        if (request.timer !== null) {
-          clearTimeout(request.timer);
-          request.timer = null;
-        }
-        request.ref ??= writeDraft(current.layout, expectedOpening, revision);
-        const ref = await request.ref;
-        if (disposed || state.opening !== expectedOpening || state.status !== 'open') return null;
-        if (editorRevision === revision) return ref;
-      }
+    async link(opening) {
+      return (await linkSnapshot(opening))?.ref ?? null;
     },
 
     dispose() {

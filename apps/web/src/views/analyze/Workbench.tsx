@@ -623,9 +623,10 @@ export function Workbench({
   const compare = async () => {
     const opening = session.opening;
     const history = historyRevision.current;
-    const ref = await session.link(opening);
-    if (ref === null || !session.isCurrentOpening(opening) || historyRevision.current !== history)
+    const snapshot = await session.linkSnapshot(opening);
+    if (!snapshot || !session.isCurrentOpening(opening) || historyRevision.current !== history)
       return;
+    const { ref, tooLarge } = snapshot;
     const layer = editorState.current.layer;
     const next = toSearch(params, { layoutRef: ref, layer });
     const { layer: _layer, ...compareSearch } = next;
@@ -634,17 +635,22 @@ export function Workbench({
       b: 'qwerty',
       ...(rawSearch.share === '1' && layer > 0 && { layerA: String(layer) }),
     });
-    if (portableSearchTooLong('compare', destination, window.location.origin)) {
+    if (tooLarge || portableSearchTooLong('compare', destination, window.location.origin)) {
       const localRef =
         !editorState.current.dirty && session.storedId !== null
           ? customRef(session.storedId)
           : null;
       if (localRef === null) {
         toast.error(
-          [
-            'This layout is too large to open in Compare. Shorten it or save a smaller',
-            'layout first; Analyze is unchanged.',
-          ].join(' '),
+          tooLarge
+            ? [
+                'This layout is too large to open in Compare (2 MB limit).',
+                'Shorten its description or remove content; Analyze is unchanged.',
+              ].join(' ')
+            : [
+                'This layout is too large to open in Compare. Shorten it or save a smaller',
+                'layout first; Analyze is unchanged.',
+              ].join(' '),
         );
         return;
       }
@@ -660,10 +666,15 @@ export function Workbench({
         return;
       }
       toast.info(
-        [
-          'Compare is open on this device only because the layout snapshot would make its',
-          'URL too long. Shorten the layout to share it.',
-        ].join(' '),
+        tooLarge
+          ? [
+              'Compare is open on this device only. The layout snapshot exceeds the 2 MB limit;',
+              'shorten the layout to share it.',
+            ].join(' ')
+          : [
+              'Compare is open on this device only because the layout snapshot would make its',
+              'URL too long. Shorten the layout to share it.',
+            ].join(' '),
       );
       navigate({ to: '/compare', search: localOnly as never });
       return;
