@@ -46,7 +46,7 @@ import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
-import { customId } from '../../custom/ref.js';
+import { customId, customRef } from '../../custom/ref.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, heatMap, layerShare } from '../../engine/heat.js';
@@ -74,7 +74,11 @@ import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { portableCorpusError } from '../../url/corpus-share.js';
 import { type Params, type RawSearch, toSearch } from '../../url/params.js';
 import { encodeRuleSnapshot } from '../../url/rule-snapshot.js';
-import { buildPortableTarget, retainPortableState } from '../../url/share-target.js';
+import {
+  buildPortableTarget,
+  portableSearchTooLong,
+  retainPortableState,
+} from '../../url/share-target.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyHint, KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
@@ -625,13 +629,39 @@ export function Workbench({
     const layer = editorState.current.layer;
     const next = toSearch(params, { layoutRef: ref, layer });
     const { layer: _layer, ...compareSearch } = next;
+    const destination = retainPortableState(rawSearch, {
+      ...compareSearch,
+      b: 'qwerty',
+      ...(rawSearch.share === '1' && layer > 0 && { layerA: String(layer) }),
+    });
+    if (portableSearchTooLong('compare', destination, window.location.origin)) {
+      const localRef =
+        !editorState.current.dirty && session.storedId !== null
+          ? customRef(session.storedId)
+          : null;
+      if (localRef === null) {
+        toast.error(
+          'This layout is too large to open in Compare. Shorten it or save a smaller layout first; Analyze is unchanged.',
+        );
+        return;
+      }
+      const localOnly: RawSearch = { ...destination, layout: localRef };
+      delete localOnly.share;
+      if (portableSearchTooLong('compare', localOnly, window.location.origin)) {
+        toast.error(
+          'This comparison is too long to open, even with the saved layout reference. Shorten the layout description or choose a smaller custom rule set; Analyze is unchanged.',
+        );
+        return;
+      }
+      toast.info(
+        'Compare is open on this device only because the layout snapshot would make its URL too long. Shorten the layout to share it.',
+      );
+      navigate({ to: '/compare', search: localOnly as never });
+      return;
+    }
     navigate({
       to: '/compare',
-      search: retainPortableState(rawSearch, {
-        ...compareSearch,
-        b: 'qwerty',
-        ...(rawSearch.share === '1' && layer > 0 && { layerA: String(layer) }),
-      }) as never,
+      search: destination as never,
     });
   };
 

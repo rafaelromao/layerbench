@@ -1150,6 +1150,16 @@ describe('portable Analyze links', () => {
       expect(search.get('rulesSnapshot')).toBe(snapshot);
     });
     expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+    await waitFor(() => {
+      const compareSearch = new URLSearchParams(reloaded.currentSearch());
+      expect(reloaded.currentPath()).toBe('/compare');
+      expect(compareSearch.get('layout')).toBe('custom:mine');
+      expect(compareSearch.get('share')).toBeNull();
+      expect(compareSearch.get('rulesSnapshot')).toBe(snapshot);
+    });
   }, 60_000);
 
   it('does not let a pending Analyze pick survive Back and Forward before effects run', async () => {

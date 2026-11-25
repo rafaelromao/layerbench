@@ -92,7 +92,16 @@ function useCarriedInLink(key: 'layout' | 'b', ref: string, loaded: LayoutState)
       if (cancelled || carried === ref) return;
       navigate({
         to: '/compare',
-        search: ((prev: RawSearch) => ({ ...prev, [key]: carried })) as never,
+        search: ((prev: RawSearch) => {
+          const next = { ...prev, [key]: carried };
+          if (portableSearchTooLong('compare', next, window.location.origin)) {
+            toast.error(
+              'This layout stays on this device because its snapshot would make the comparison URL too long. Shorten the layout description to make it shareable.',
+            );
+            return prev;
+          }
+          return next;
+        }) as never,
         replace: true,
         resetScroll: false,
       });
