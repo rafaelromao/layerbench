@@ -1163,6 +1163,15 @@ describe('portable Analyze links', () => {
 
     await user.click(screen.getByRole('button', { name: 'Compare' }));
     await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+    await waitFor(
+      () =>
+        expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+          expect.arrayContaining([
+            expect.stringMatching(/comparison URL too long.*shorten the layout description/i),
+          ]),
+        ),
+      { timeout: 25_000, container: document.createElement('div') },
+    );
     await waitFor(() => {
       const compareSearch = new URLSearchParams(reloaded.currentSearch());
       expect(reloaded.currentPath()).toBe('/compare');
