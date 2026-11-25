@@ -1098,7 +1098,7 @@ describe('portable Analyze links', () => {
         chars[i] = String.fromCharCode(32 + (seed % 95));
       }
       const customLayout: Layout = {
-        ...bundledLayout('colemak')!,
+        ...bundledLayout('magic-romak')!,
         id: 'mine',
         name: 'My Large Layout',
         description: limit === '2 MB limit' ? 'x'.repeat(MAX_INLINE_BYTES + 1) : chars.join(''),
@@ -1215,8 +1215,10 @@ describe('portable Analyze links', () => {
       });
       expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
 
+      await showLayer(user, 'Alpha 2');
       await user.click(screen.getByRole('button', { name: 'Compare' }));
       await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+      expect(shownLayer('Layers of A')).toBe('Alpha 2');
       await waitFor(
         () =>
           expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(

@@ -633,7 +633,7 @@ export function Workbench({
     const destination = retainPortableState(rawSearch, {
       ...compareSearch,
       b: 'qwerty',
-      ...(rawSearch.share === '1' && layer > 0 && { layerA: String(layer) }),
+      ...(layer > 0 && { layerA: String(layer) }),
     });
     if (tooLarge || portableSearchTooLong('compare', destination, window.location.origin)) {
       const localRef =

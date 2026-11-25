@@ -9,10 +9,12 @@ import {
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MemoryLink } from '../test/memory-link.js';
+import { MemoryStorage } from '../test/memory-storage.js';
 import type { RawSearch } from '../url/params.js';
 import { isPortableLayoutRef } from '../url/share-target.js';
+import { webDrafts } from './drafts.js';
 import { useRouterLink } from './router-link.js';
-import type { LinkPort } from './session.js';
+import { createLayoutSession, type LinkPort } from './session.js';
 
 /** A link to test, and how the world changes it: a link followed, then Back. */
 interface Harness {
@@ -93,6 +95,31 @@ describe.each([
   it('names the layout it opened with', async () => {
     const h = await harness('qwerty');
     expect(h.link.current()).toBe('qwerty');
+  });
+
+  it('keeps the current opening and link when a layout pick is refused', async () => {
+    const h = await harness('qwerty');
+    const storage = new MemoryStorage();
+    const session = createLayoutSession({
+      storage: () => storage,
+      drafts: webDrafts(null),
+      link: {
+        canOpen: (ref) => ref !== 'colemak',
+        current: () => h.link.current(),
+        subscribe: (listener) => h.link.subscribe(listener),
+        write: (...args) => h.link.write(...args),
+      },
+    });
+    try {
+      await waitFor(() => expect(session.getState().status).toBe('open'));
+      const before = session.getState();
+      await session.open('colemak');
+      expect(session.getState()).toBe(before);
+      expect(h.link.current()).toBe('qwerty');
+      await h.settled();
+    } finally {
+      session.dispose();
+    }
   });
 
   it('holds what was written, at once and once it lands, and is not heard to change for it', async () => {
