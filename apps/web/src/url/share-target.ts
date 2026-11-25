@@ -348,6 +348,34 @@ export function parsePortableSearch(
       return { ok: false, error: 'This share link is not a valid URL.' };
     }
   }
+  const address = portableSearchAddress(route, input);
+  return targetError(
+    address.url,
+    address.url.origin,
+    address.queryEntries,
+    address.fragmentEntries,
+    true,
+  );
+}
+
+/** Measure the complete URL the router would write for this state, without validating its meaning. */
+export function portableSearchTooLong(
+  route: PortableRoute,
+  input: RawSearch,
+  origin = 'https://portable.layerbench.invalid',
+): boolean {
+  return portableSearchAddress(route, input, origin).url.href.length >= MAX_URL_CHARS;
+}
+
+function portableSearchAddress(
+  route: PortableRoute,
+  input: RawSearch,
+  origin = 'https://portable.layerbench.invalid',
+): {
+  url: URL;
+  queryEntries: [string, string][];
+  fragmentEntries: [string, string][];
+} {
   const search: RawSearch = { ...input };
   const fragment: Record<string, string> = {};
   for (const key of ['layout', 'b'] as const) {
@@ -368,12 +396,12 @@ export function parsePortableSearch(
   const basePath = new URL(import.meta.env.BASE_URL, 'https://portable.layerbench.invalid')
     .pathname;
   const baseHref = `${basePath.endsWith('/') ? basePath : `${basePath}/`}${route}`;
-  const url = new URL(baseHref, 'https://portable.layerbench.invalid');
+  const url = new URL(baseHref, origin);
   const query = canonicalParams(queryEntries);
   const hash = canonicalParams(fragmentEntries);
   url.search = query;
   url.hash = hash;
-  return targetError(url, url.origin, queryEntries, fragmentEntries, true);
+  return { url, queryEntries, fragmentEntries };
 }
 
 /** Validate and read a versioned target. Ordinary, unmarked app URLs are not portable targets. */

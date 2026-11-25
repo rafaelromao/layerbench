@@ -1111,6 +1111,45 @@ describe('portable Analyze links', () => {
     }).toString();
     localUrl.hash = new URLSearchParams({ rulesSnapshot: snapshot }).toString();
     expect(localUrl.href.length).toBeLessThan(2_097_152);
+
+    await openSettings();
+    const description = screen.getByRole('textbox', { name: 'Description' });
+    await user.clear(description);
+    await user.type(description, 'short');
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(new URLSearchParams(source.currentSearch()).get('share')).toBe('1'));
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => {
+      const search = new URLSearchParams(source.currentSearch());
+      expect(search.get('layout')).toBe('custom:mine');
+      expect(search.get('share')).toBeNull();
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
+
+    const fallbackSearch = new URLSearchParams(source.currentSearch());
+    const fallbackSnapshot = fallbackSearch.get('rulesSnapshot');
+    fallbackSearch.delete('rulesSnapshot');
+    localUrl.search = fallbackSearch.toString();
+    localUrl.hash = new URLSearchParams({
+      rulesSnapshot: fallbackSnapshot ?? '',
+    }).toString();
+    expect(localUrl.href.length).toBeLessThan(2_097_152);
+    source.unmount();
+
+    const reloaded = renderRoute(`${localUrl.pathname}${localUrl.search}${localUrl.hash}`, {
+      client: new RecordingClient(),
+      storage,
+    });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    await waitFor(() => {
+      const search = new URLSearchParams(reloaded.currentSearch());
+      expect(search.get('layout')).toBe('custom:mine');
+      expect(search.get('share')).toBeNull();
+      expect(search.get('rulesSnapshot')).toBe(snapshot);
+    });
+    expect(await screen.findByRole('region', { name: 'Layout' })).toBeInTheDocument();
   }, 60_000);
 
   it('does not let a pending Analyze pick survive Back and Forward before effects run', async () => {
@@ -1506,6 +1545,89 @@ describe('portable Analyze links', () => {
     );
     expect(client.analyses).toHaveLength(0);
   });
+
+  it.each(['Layout A', 'Layout B'] as const)(
+    'keeps Compare unchanged when selecting a local layout for %s would make its shared URL too long',
+    async (side) => {
+      const user = userEvent.setup();
+      useToasts.setState({ toasts: [] });
+      const snapshot = encodeRuleSnapshot({
+        ...getPreset('cyanophage'),
+        id: 'strict',
+        name: 'Shared Strict',
+        description: 'x'.repeat(1_450_000),
+      });
+      const initialSearch = {
+        layout: 'qwerty',
+        b: 'rsthd',
+        corpus: 'en-general',
+        sample: '10000',
+        rules: 'custom:strict',
+      };
+      const href = await buildPortableTarget({
+        baseHref: '/compare',
+        origin: window.location.origin,
+        route: 'compare',
+        search: initialSearch,
+        rulesSnapshot: snapshot,
+      });
+      expect(href.length).toBeGreaterThan(1_900_000);
+      expect(href.length).toBeLessThan(2_097_152);
+
+      let seed = 29;
+      const chars = new Array<string>(360_000);
+      for (let i = 0; i < chars.length; i++) {
+        seed = (seed * 48_271) % 2_147_483_647;
+        chars[i] = String.fromCharCode(32 + (seed % 95));
+      }
+      const customLayout: Layout = {
+        ...bundledLayout('colemak')!,
+        id: 'mine',
+        name: 'My Large Layout',
+        description: chars.join(''),
+      };
+      const inline = `inline:${await encodeInline(customLayout)}`;
+      await expect(
+        buildPortableTarget({
+          baseHref: '/compare',
+          origin: window.location.origin,
+          route: 'compare',
+          search: {
+            ...initialSearch,
+            ...(side === 'Layout A' ? { layout: inline } : { b: inline }),
+          },
+          rulesSnapshot: snapshot,
+        }),
+      ).rejects.toThrow(/too long for browsers to open/i);
+
+      const storage = new MemoryStorage();
+      await storage.put('layouts', 'mine', toCanonicalJson(customLayout));
+      const client = new RecordingClient();
+      const target = new URL(href);
+      const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+        client,
+        storage,
+      });
+      await screen.findByRole('group', { name: 'Layers of A' }, { timeout: 25_000 });
+      await screen.findByRole('group', { name: 'Layers of B' }, { timeout: 25_000 });
+
+      await user.selectOptions(screen.getByRole('combobox', { name: side }), 'custom:mine');
+
+      const warning = await screen.findByRole('alert');
+      expect(warning).toHaveTextContent(
+        /shared comparison URL too long.*current comparison is unchanged/i,
+      );
+      const currentSearch = new URLSearchParams(source.currentSearch());
+      expect(source.currentPath()).toBe('/compare');
+      expect(currentSearch.get('share')).toBe('1');
+      expect(currentSearch.get('layout')).toBe('qwerty');
+      expect(currentSearch.get('b')).toBe('rsthd');
+      expect(currentSearch.get('rulesSnapshot')).toBe(snapshot);
+      expect(screen.getByRole('group', { name: 'Layers of A' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Layers of B' })).toBeInTheDocument();
+    },
+    60_000,
+  );
 
   it('shares Compare layouts in their original order with each selected layer restored', async () => {
     const user = userEvent.setup();

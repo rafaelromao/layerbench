@@ -41,6 +41,7 @@ import { encodeRuleSnapshot } from '../url/rule-snapshot.js';
 import {
   buildPortableTarget,
   parsePortableSearch,
+  portableSearchTooLong,
   retainPortableState,
 } from '../url/share-target.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
@@ -289,6 +290,12 @@ function ComparePage({
         next.share = '1';
       }
       if (keepSnapshot) next.rulesSnapshot = currentSearch.rulesSnapshot;
+      if (next.share === '1' && portableSearchTooLong('compare', next, window.location.origin)) {
+        toast.error(
+          'This change would make the shared comparison URL too long. Shorten the layout description or choose a smaller custom rule set; the current comparison is unchanged.',
+        );
+        return;
+      }
       navigate({
         to: '/compare',
         search: next as never,
