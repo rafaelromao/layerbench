@@ -39,11 +39,16 @@ async function beginBlockedCustomPick() {
   const readMayFinish = new Promise<void>((resolve) => {
     releaseRead = resolve;
   });
+  let releaseSecondRead = () => {};
+  const secondReadMayFinish = new Promise<void>((resolve) => {
+    releaseSecondRead = resolve;
+  });
+  let reads = 0;
   const originalGet = storage.get.bind(storage);
   vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
     if (collection === 'layouts' && id === 'mine') {
       signalReadStarted();
-      await readMayFinish;
+      await (++reads === 1 ? readMayFinish : secondReadMayFinish);
     }
     return originalGet(collection, id);
   });
@@ -66,21 +71,35 @@ async function beginBlockedCustomPick() {
   await user.selectOptions(screen.getByRole('combobox', { name: 'Layout A' }), 'custom:mine');
   await readStarted;
 
-  return { user, source, client, releaseRead, compressionStarted };
+  return { user, source, client, releaseRead, releaseSecondRead, compressionStarted };
 }
 
 describe('asynchronous custom Compare layout picks', () => {
-  it('keeps the latest pick across both sides when the older read finishes first', async () => {
-    const { user, source, releaseRead } = await beginBlockedCustomPick();
+  it.each(['older', 'newer'])(
+    'keeps the latest pick across both sides when the %s read finishes first',
+    async (first) => {
+      const { user, source, releaseRead, releaseSecondRead, compressionStarted } =
+        await beginBlockedCustomPick();
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout B' }), 'custom:mine');
-    releaseRead();
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Layout B' }), 'custom:mine');
+      if (first === 'older') {
+        releaseRead();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(compressionStarted).not.toHaveBeenCalled();
+      }
+      releaseSecondRead();
 
-    await waitFor(() => {
-      expect(new URLSearchParams(source.currentSearch()).get('b')).toMatch(/^inline:/);
-    });
-    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
-  }, 60_000);
+      await waitFor(() => {
+        expect(new URLSearchParams(source.currentSearch()).get('b')).toMatch(/^inline:/);
+      });
+      if (first === 'newer') {
+        releaseRead();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+    },
+    60_000,
+  );
 
   it('does not apply a pending pick after navigating to Analyze', async () => {
     const { user, source, client, releaseRead, compressionStarted } =
