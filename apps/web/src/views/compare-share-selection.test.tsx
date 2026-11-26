@@ -1,5 +1,5 @@
 import { bundledLayout, toCanonicalJson } from '@layerbench/core';
-import { cleanup, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryStorage } from '../test/memory-storage.js';
@@ -43,12 +43,20 @@ async function beginBlockedCustomPick() {
   const secondReadMayFinish = new Promise<void>((resolve) => {
     releaseSecondRead = resolve;
   });
+  let signalFirstReadFinished = () => {};
+  const firstReadFinished = new Promise<void>((resolve) => {
+    signalFirstReadFinished = resolve;
+  });
   let reads = 0;
   const originalGet = storage.get.bind(storage);
   vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
     if (collection === 'layouts' && id === 'mine') {
       signalReadStarted();
-      await (++reads === 1 ? readMayFinish : secondReadMayFinish);
+      const first = ++reads === 1;
+      await (first ? readMayFinish : secondReadMayFinish);
+      const result = await originalGet(collection, id);
+      if (first) signalFirstReadFinished();
+      return result;
     }
     return originalGet(collection, id);
   });
@@ -71,20 +79,32 @@ async function beginBlockedCustomPick() {
   await user.selectOptions(screen.getByRole('combobox', { name: 'Layout A' }), 'custom:mine');
   await readStarted;
 
-  return { user, source, client, releaseRead, releaseSecondRead, compressionStarted };
+  const finishFirstRead = () =>
+    act(async () => {
+      releaseRead();
+      await firstReadFinished;
+    });
+  return {
+    user,
+    source,
+    client,
+    releaseRead,
+    releaseSecondRead,
+    finishFirstRead,
+    compressionStarted,
+  };
 }
 
 describe('asynchronous custom Compare layout picks', () => {
   it.each(['older', 'newer'])(
     'keeps the latest pick across both sides when the %s read finishes first',
     async (first) => {
-      const { user, source, releaseRead, releaseSecondRead, compressionStarted } =
+      const { user, source, finishFirstRead, releaseSecondRead, compressionStarted } =
         await beginBlockedCustomPick();
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Layout B' }), 'custom:mine');
       if (first === 'older') {
-        releaseRead();
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await finishFirstRead();
         expect(compressionStarted).not.toHaveBeenCalled();
       }
       releaseSecondRead();
@@ -92,10 +112,7 @@ describe('asynchronous custom Compare layout picks', () => {
       await waitFor(() => {
         expect(new URLSearchParams(source.currentSearch()).get('b')).toMatch(/^inline:/);
       });
-      if (first === 'newer') {
-        releaseRead();
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
+      if (first === 'newer') await finishFirstRead();
       expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
     },
     60_000,
