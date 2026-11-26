@@ -95,13 +95,7 @@ import {
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
-import {
-  editReducer,
-  type Panel,
-  refusalShownIn,
-  selectionOf,
-  shownLayer,
-} from '../edit/reducer.js';
+import { editReducer, type Panel, refusalShownIn, selectionOf } from '../edit/reducer.js';
 import { charLabel, missingKeys, spoken } from '../edit/tray.js';
 import { initialUndoState, type UndoAction, undoable } from '../edit/undo.js';
 import { settingsSummary } from '../SettingsDialog.js';
@@ -368,7 +362,47 @@ export function Workbench({
   // The link carries the layout as it is: the session is told each change, and writes a draft of
   // unsaved edits a moment after the last one, or the layout's clean reference once nothing is.
   const { edited } = session;
-  useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
+  const editedLayout = useRef(state.layout);
+  const pairedLayer = useRef<{ layout: Layout; layer: number } | null>(null);
+  useEffect(() => {
+    const changed = editedLayout.current !== state.layout;
+    editedLayout.current = state.layout;
+    if (!state.dirty) pairedLayer.current = null;
+    if (state.dirty && changed && (pairedLayer.current || params.layer !== state.layer)) {
+      const pair = { layout: state.layout, layer: state.layer };
+      pairedLayer.current = pair;
+      edited(state.layout, true, {
+        layer: state.layer,
+        count: state.compiled.layers.length,
+        current: () => pairedLayer.current === pair,
+        settled(layer) {
+          if (pairedLayer.current !== pair) return;
+          pairedLayer.current = null;
+          const current = editorState.current;
+          if (current.layout !== pair.layout || current.layer !== pair.layer) return;
+          if (layer !== pair.layer)
+            send({
+              type: 'selectLayer',
+              layer: Math.min(layer, current.compiled.layers.length - 1),
+            });
+        },
+      });
+    } else if (
+      !pairedLayer.current &&
+      (changed || !state.dirty || state.layout === session.layout)
+    ) {
+      edited(state.layout, state.dirty);
+    }
+  }, [
+    edited,
+    params.layer,
+    send,
+    session.layout,
+    state.compiled.layers.length,
+    state.dirty,
+    state.layer,
+    state.layout,
+  ]);
 
   // On a phone the tabs and the board fill the screen, so the editor of a key just selected opens
   // below it: bring it into view, as little as it takes. Undo and Redo bring the selection of a
@@ -415,12 +449,13 @@ export function Workbench({
   useEffect(() => {
     if (urlLayer.current !== params.layer) {
       urlLayer.current = params.layer;
+      pairedLayer.current = null;
       const layer = Math.min(params.layer, state.compiled.layers.length - 1);
       if (layer !== state.layer) send({ type: 'selectLayer', layer });
       if (layer !== params.layer) setParams({ layer });
       return;
     }
-    if (params.layer !== state.layer) {
+    if (params.layer !== state.layer && !pairedLayer.current) {
       const requested = state.layer;
       void setParams({ layer: requested }).then((accepted) => {
         const current = editorState.current;
@@ -910,18 +945,22 @@ export function Workbench({
   // While a word plays the board follows it from layer to layer, resting on the one it starts on.
   const playing = play !== null && frames.length > 0;
   const boardLayer = playing ? (frame ?? frames[0]).layer : state.layer;
+  const boardGesture = useRef(0);
 
   /** A gesture on the board while a word plays acts on the layer the board shows, then stops it. */
   const stopPlaying = (gesture?: () => void) => {
+    const request = ++boardGesture.current;
     setPlay(null);
     if (boardLayer === state.layer) {
       gesture?.();
       return;
     }
+    if (pairedLayer.current) return;
     const history = historyRevision.current;
     void setParams({ layer: boardLayer }).then((accepted) => {
       if (
         !accepted ||
+        boardGesture.current !== request ||
         historyRevision.current !== history ||
         !session.isCurrentOpening(session.opening) ||
         editorState.current.layout !== state.layout ||
@@ -935,7 +974,9 @@ export function Workbench({
 
   /** Choosing a layer is looking at it: the word stops playing over it. */
   const selectLayer = async (layer: number, after?: () => void) => {
+    ++boardGesture.current;
     setPlay(null);
+    if (pairedLayer.current && layer !== state.layer) return;
     if (layer === state.layer || (await setParams({ layer }))) {
       if (!session.isCurrentOpening(session.opening)) return;
       after?.();
@@ -1009,7 +1050,7 @@ export function Workbench({
     send({ type: 'setPanel', panel: 'board' });
     // The board turns to the layer the item happens on, so its keys are the ones drawn.
     const layer = itemLayer(item.layers);
-    if (layer !== null && layer !== state.layer) setParams({ layer });
+    if (layer !== null && layer !== state.layer && !pairedLayer.current) setParams({ layer });
     if (item.then?.length) setPressedFor({ rule: rule.label, item });
   };
 

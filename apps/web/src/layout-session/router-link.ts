@@ -9,7 +9,7 @@ import {
   portableSearchTooLong,
   retainPortableState,
 } from '../url/share-target.js';
-import type { LinkPort } from './session.js';
+import type { DraftLayer, LinkPort } from './session.js';
 
 type Navigate = ReturnType<typeof useNavigate>;
 
@@ -172,7 +172,13 @@ export class RouterLink implements LinkPort {
     return retained;
   }
 
-  write(ref: string, how: 'edit' | 'open', savedRef?: string, tooLarge = false): void {
+  write(
+    ref: string,
+    how: 'edit' | 'open',
+    savedRef?: string,
+    tooLarge = false,
+    selection?: DraftLayer,
+  ): void {
     this.ref = ref;
     if (this.localPortableFallback && savedRef !== undefined) {
       this.localPortableFallback = { localRef: savedRef };
@@ -190,7 +196,34 @@ export class RouterLink implements LinkPort {
           const localRef =
             this.localPortableFallback?.localRef ??
             (previousLayout !== null && customId(previousLayout) !== null ? previousLayout : null);
-          const candidate = { ...prev, layout: ref };
+          let candidate = { ...prev, layout: ref };
+          if (selection && !selection.current() && parseParams(prev).layer >= selection.count) {
+            this.ref = parseParams(prev).layoutRef;
+            return prev;
+          }
+          if (selection?.current()) {
+            const previousLayer = parseParams(prev).layer;
+            const selected: RawSearch = { ...candidate, layer: String(selection.layer) };
+            if (selection.layer === DEFAULT_PARAMS.layer) delete selected.layer;
+            let acceptedLayer = previousLayer;
+            if (!tooLarge && !this.tooLong(selected)) {
+              candidate = { ...selected, layout: ref };
+              acceptedLayer = selection.layer;
+            } else if (!tooLarge) {
+              toast.error(
+                'This layer change would make the URL too long. Choose a smaller rule set.',
+              );
+            }
+            queueMicrotask(() => selection.settled(acceptedLayer));
+            if (
+              acceptedLayer !== selection.layer &&
+              (tooLarge || previousLayer >= selection.count || this.tooLong(candidate))
+            ) {
+              this.ref = parseParams(prev).layoutRef;
+              if (tooLarge) toast.error(LAYOUT_TOO_LARGE_MESSAGE);
+              return prev;
+            }
+          }
           const portableCandidate = { ...candidate, share: '1' };
           const tooLong = this.tooLong(candidate);
 

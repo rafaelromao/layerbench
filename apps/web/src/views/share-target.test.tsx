@@ -904,6 +904,41 @@ describe('portable Analyze links', () => {
     });
   });
 
+  it('keeps the published layout and layer together when an added layer is too large', async () => {
+    useToasts.setState({ toasts: [] });
+    const base = bundledLayout('magic-romak')!;
+    const original = {
+      ...base,
+      description: 'x'.repeat(
+        MAX_INLINE_BYTES -
+          new TextEncoder().encode(JSON.stringify(toCanonicalJson({ ...base, description: 'x' })))
+            .length -
+          12,
+      ),
+    };
+    const layout = `inline:${await encodeInline(original)}`;
+    const href = await buildPortableTarget({
+      baseHref: '/analyze',
+      origin: window.location.origin,
+      route: 'analyze',
+      search: { layout, corpus: 'en-general', sample: '10000' },
+    });
+    const source = renderRoute(href, { client: new RecordingClient() });
+    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+    fireEvent.click(screen.getByRole('tab', { name: 'Layers' }));
+    fireEvent.change(screen.getByLabelText('New layer name'), { target: { value: 'Nav' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add layer' }));
+    await screen.findByText(/layout snapshot exceeds the 2 MB limit/i, {}, { timeout: 25_000 });
+    const search = new URLSearchParams(source.currentSearch());
+    expect(search.get('layout')).toBe(layout);
+    expect(search.has('layer')).toBe(false);
+    fireEvent.click(screen.getByRole('tab', { name: 'Board' }));
+    expect(shownLayer()).toBe('Alpha 1');
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled());
+    expect(new URLSearchParams(source.currentSearch()).has('layer')).toBe(false);
+  }, 60_000);
+
   it.each(['add layer', 'undo'])(
     'keeps a request-bound Analyze address in sync on %s',
     async (action) => {

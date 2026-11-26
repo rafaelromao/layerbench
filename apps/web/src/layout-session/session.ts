@@ -22,6 +22,14 @@ import { CompositeStorage } from '../storage/composite.js';
 import type { Drafts } from './drafts.js';
 import { carriedLayout, type LayoutSource, layoutSnapshot, openLayout } from './open.js';
 
+/** A selection that needs to land with its draft, rather than against the old layout. */
+export interface DraftLayer {
+  layer: number;
+  count: number;
+  current(): boolean;
+  settled(layer: number): void;
+}
+
 /**
  * The link, as the layout session reaches it: the router in the app, an array in tests. The session
  * is the only writer of the layout in it (ADR 0002).
@@ -47,7 +55,13 @@ export interface LinkPort {
    * `open` is a layout picked, which starts on its first layer. `localRef`, when supplied, keeps
    * a compact saved-layout reference current while an oversized snapshot is local-only.
    */
-  write(ref: string, how: 'edit' | 'open', localRef?: string, tooLarge?: boolean): void;
+  write(
+    ref: string,
+    how: 'edit' | 'open',
+    localRef?: string,
+    tooLarge?: boolean,
+    selection?: DraftLayer,
+  ): void;
   restore?(snapshot: { ref: string; tooLarge: boolean }, layer: number, localRef?: string): boolean;
   /** Hear every reference the link takes, whoever wrote it. */
   subscribe(listener: (ref: string) => void): () => void;
@@ -97,7 +111,7 @@ export interface LayoutSession {
    * the first render included. With nothing unsaved the link holds the layout's clean reference at
    * once; unsaved, a draft follows a moment after the last edit.
    */
-  edited(layout: Layout, unsaved: boolean): void;
+  edited(layout: Layout, unsaved: boolean, selection?: DraftLayer): void;
   restoreClean(layout: Layout, layer: number): boolean;
   /**
    * Store the layout, under the id its name gives, in place of the one this is, if any. Saves run one
@@ -234,7 +248,7 @@ export function createLayoutSession(
   let basedOn: string | null = null;
   let source: LayoutSource | null = null;
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
-  let editor: { layout: Layout; unsaved: boolean } | null = null;
+  let editor: { layout: Layout; unsaved: boolean; selection?: DraftLayer } | null = null;
   let editorRevision = 0;
   let deferredPick: { current: () => boolean; publishDraft?: () => void } | null = null;
   /** A draft waiting to be written, and the promise of its snapshot once it is. */
@@ -277,11 +291,13 @@ export function createLayoutSession(
     how: 'edit' | 'open' = 'edit',
     localRef?: string,
     tooLarge = false,
+    selection?: DraftLayer,
   ) => {
     if (disposed) return;
     own.add(ref);
-    if (link.current() === ref && how === 'edit') return;
-    if (tooLarge) link.write(ref, how, localRef, true);
+    if (link.current() === ref && how === 'edit' && !selection) return;
+    if (selection) link.write(ref, how, localRef, tooLarge, selection);
+    else if (tooLarge) link.write(ref, how, localRef, true);
     else link.write(ref, how, localRef);
     publish();
   };
@@ -299,7 +315,7 @@ export function createLayoutSession(
     const publishDraft = () => {
       if (state.opening !== opening || editorRevision !== revision || disposed) return;
       drafts.remember(ref, storedId, source, basedOn);
-      write(ref, 'edit', undefined, tooLarge);
+      write(ref, 'edit', undefined, tooLarge, editor?.selection);
     };
     if (state.opening === opening && editorRevision === revision && !disposed) {
       // A draft replacement must not invalidate a pick that is still reading its saved layout.
@@ -488,10 +504,16 @@ export function createLayoutSession(
       return () => listeners.delete(listener);
     },
 
-    edited(layout, unsaved) {
+    edited(layout, unsaved, selection) {
       if (state.status !== 'open' || disposed) return;
-      if (editor && editor.layout === layout && editor.unsaved === unsaved) return;
-      editor = { layout, unsaved };
+      if (
+        editor &&
+        editor.layout === layout &&
+        editor.unsaved === unsaved &&
+        editor.selection?.layer === selection?.layer
+      )
+        return;
+      editor = { layout, unsaved, selection };
       const revision = ++editorRevision;
       cancelPending();
       if (!unsaved) {
@@ -501,7 +523,7 @@ export function createLayoutSession(
           storedId === null ? undefined : customRef(storedId),
           clean.tooLarge,
         );
-      } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
+      } else if (selection || !(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
         const request: NonNullable<typeof pending> = {
