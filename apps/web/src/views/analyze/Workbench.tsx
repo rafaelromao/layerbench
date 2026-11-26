@@ -466,8 +466,11 @@ export function Workbench({
       pairedLayer.current = null;
       localLayer.current = null;
       const layer = Math.min(params.layer, state.compiled.layers.length - 1);
+      if (layer !== params.layer && params.layer < publishedLayerCount.current) {
+        localLayer.current = { layout: state.layout, layer };
+      }
       if (layer !== state.layer) send({ type: 'selectLayer', layer });
-      if (layer !== params.layer) setParams({ layer });
+      if (layer !== params.layer && !localLayer.current) setParams({ layer });
       return;
     }
     if (
