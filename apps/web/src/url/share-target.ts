@@ -363,7 +363,7 @@ export function parsePortableSearch(
 
 /** Measure the router's destination without validating its meaning. */
 export function portableSearchTooLong(
-  route: PortableRoute,
+  route: PortableRoute | 'library',
   input: RawSearch,
   origin = 'https://portable.layerbench.invalid',
 ): boolean {
@@ -385,7 +385,7 @@ function exceedsBrowserBudget(url: URL): boolean {
 }
 
 function portableSearchAddress(
-  route: PortableRoute,
+  route: PortableRoute | 'library',
   input: RawSearch,
   origin = 'https://portable.layerbench.invalid',
 ): {

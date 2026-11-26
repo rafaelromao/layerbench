@@ -835,6 +835,28 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
+  it('does not offer a Library card link beyond the Pages request budget', async () => {
+    const id = 'r'.repeat(7_830);
+    const snapshot = encodeRuleSnapshot({ ...getPreset('cyanophage'), id, rules: [] });
+    const query = new URLSearchParams({
+      corpus: 'en-general',
+      sample: '10000',
+      rules: `custom:${id}`,
+    });
+    renderRoute(`/library?${query}#rulesSnapshot=${snapshot}`, {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    const name = 'Analyze Hands Down Promethium';
+    const title = await screen.findByRole('heading', { name: 'Hands Down Promethium', level: 3 });
+    const card = within(title.closest('article')!);
+    expect(card.queryByRole('link', { name })).not.toBeInTheDocument();
+    fireEvent.click(card.getByRole('button', { name }));
+    expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/choose a smaller custom rule set/i)]),
+    );
+  }, 60_000);
+
   it('keeps embedded custom rules when a Library analysis setting changes', async () => {
     const user = userEvent.setup();
     const sharedRules = {
