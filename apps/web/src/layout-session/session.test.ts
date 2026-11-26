@@ -87,6 +87,39 @@ const ids = async (storage: MemoryStorage) =>
   (await storage.list('layouts')).map((e) => e.id).sort();
 
 describe('Opening a layout', () => {
+  it('opens a deferred saved pick even if the previous draft is ready to write', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'colemak', 'mine', { name: 'Mine' });
+    const link = Object.assign(new MemoryLink('qwerty'), {
+      revision: () => link.writes.length,
+      openSaved: (_ref: string, snapshot: { ref: string }) => {
+        link.write(snapshot.ref, 'open');
+        return true;
+      },
+    });
+    const s = createLayoutSession(
+      { storage: () => storage, drafts: webDrafts(mapStore()), link },
+      { linkDelayMs: 0 },
+    );
+    const state = await opened(s);
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const get = storage.get.bind(storage);
+    vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
+      await held;
+      return get(collection, id);
+    });
+    s.edited(withCedilla(state.layout), true);
+    const picking = s.open('custom:mine');
+    await s.linkSnapshot();
+    release();
+    await picking;
+    expect(await opened(s)).toMatchObject({ storedId: 'mine' });
+    s.dispose();
+  });
+
   it('opens a bundled layout as a layout of its own, and writes nothing', async () => {
     const { s, link } = session('qwerty');
     const state = await opened(s);

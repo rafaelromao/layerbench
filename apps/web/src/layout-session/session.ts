@@ -220,6 +220,7 @@ export function createLayoutSession(
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
   let editor: { layout: Layout; unsaved: boolean } | null = null;
   let editorRevision = 0;
+  let deferredPick: { current: () => boolean; publishDraft?: () => void } | null = null;
   /** A draft waiting to be written, and the promise of its snapshot once it is. */
   let pending: {
     revision: number;
@@ -286,9 +287,15 @@ export function createLayoutSession(
     const { ref, tooLarge } = await layoutSnapshot(
       storedId === null ? rest : { ...rest, id: storedId },
     );
-    if (state.opening === opening && editorRevision === revision && !disposed) {
+    const publishDraft = () => {
+      if (state.opening !== opening || editorRevision !== revision || disposed) return;
       drafts.remember(ref, storedId, source, basedOn);
       write(ref, 'edit', undefined, tooLarge);
+    };
+    if (state.opening === opening && editorRevision === revision && !disposed) {
+      // A draft replacement must not invalidate a pick that is still reading its saved layout.
+      if (deferredPick?.current()) deferredPick.publishDraft = publishDraft;
+      else publishDraft();
     }
     return { ref, tooLarge };
   };
@@ -375,19 +382,28 @@ export function createLayoutSession(
         sequence === pick &&
         opening === state.opening &&
         revision === link.revision?.();
-      const result = await openLayout(ref, ports.storage());
-      if (!current()) return;
-      if (result.ok) {
-        const carried = await carriedLayout(ref, result);
+      const waiting = { current, publishDraft: deferredPick?.publishDraft };
+      deferredPick = waiting;
+      try {
+        const result = await openLayout(ref, ports.storage());
         if (!current()) return;
-        const previous = own;
-        own = new Set([...previous, ref, carried.ref]);
-        if (!link.openSaved(ref, carried)) {
-          own = previous;
+        if (result.ok) {
+          const carried = await carriedLayout(ref, result);
+          if (!current()) return;
+          const previous = own;
+          own = new Set([...previous, ref, carried.ref]);
+          if (!link.openSaved(ref, carried)) {
+            own = previous;
+            return;
+          }
+          await start(ref, { result, carried });
           return;
         }
-        await start(ref, { result, carried });
-        return;
+      } finally {
+        if (deferredPick === waiting) {
+          deferredPick = null;
+          if (current()) waiting.publishDraft?.();
+        }
       }
     }
     if (link.canOpen?.(ref) === false) return;
