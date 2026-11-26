@@ -1076,7 +1076,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it.each(['Heat', 'Layout', 'Saved layout'])(
+  it.each(['Heat', 'Layout', 'Saved layout', 'Layer', 'Draft'])(
     'keeps Analyze open when changing %s exceeds the URL limit',
     async (field) => {
       useToasts.setState({ toasts: [] });
@@ -1085,7 +1085,12 @@ describe('portable Analyze links', () => {
         baseHref: '/analyze',
         origin: window.location.origin,
         route: 'analyze' as const,
-        search: { layout: 'qwerty', corpus: 'en-general', sample: '10000', rules: 'custom:strict' },
+        search: {
+          layout: field === 'Layer' ? 'magic-romak' : 'qwerty',
+          corpus: 'en-general',
+          sample: '10000',
+          rules: 'custom:strict',
+        },
       };
       const baseline = await buildPortableTarget({
         ...target,
@@ -1117,11 +1122,47 @@ describe('portable Analyze links', () => {
       await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
       const picker = screen.getByRole('combobox', { name: field === 'Heat' ? 'Heat' : 'Layout' });
       const before = source.currentSearch();
+      if (field === 'Draft') {
+        const settings = await openSettings();
+        const description = within(settings).getByRole('textbox', { name: 'Description' });
+        fireEvent.change(description, { target: { value: 'Draft' } });
+        fireEvent.blur(description);
+        fireEvent.click(within(settings).getByRole('button', { name: 'Done' }));
+        await waitFor(
+          () => {
+            expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+              expect.arrayContaining([expect.stringMatching(/draft URL would be too long/i)]),
+            );
+          },
+          { container: document.createElement('div') },
+        );
+        expect(source.currentSearch()).toBe(before);
+        const rules = await openSettings();
+        fireEvent.change(within(rules).getByRole('combobox', { name: 'Rule set' }), {
+          target: { value: 'cyanophage' },
+        });
+        fireEvent.click(within(rules).getByRole('button', { name: 'Done' }));
+        await waitFor(
+          () => {
+            expect(new URLSearchParams(source.currentSearch()).get('layout')).toMatch(/^inline:/);
+          },
+          { container: document.createElement('div') },
+        );
+        const draft = new URLSearchParams(source.currentSearch()).get('layout')!;
+        expect(await decodeInline(draft.slice('inline:'.length))).toMatchObject({
+          ok: true,
+          layout: { description: 'Draft' },
+        });
+        expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
+        return;
+      }
       const next =
         field === 'Heat' ? 'effort' : field === 'Layout' ? 'magic-romak' : `custom:${id}`;
       if (field === 'Saved layout')
         await within(picker).findByRole('option', { name: 'Oversized saved Colemak' });
-      await userEvent.selectOptions(picker, next);
+      if (field === 'Layer')
+        await userEvent.click(screen.getByRole('button', { name: 'Next layer' }));
+      else await userEvent.selectOptions(picker, next);
       await waitFor(
         () =>
           expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
@@ -1130,7 +1171,19 @@ describe('portable Analyze links', () => {
         { container: document.createElement('div') },
       );
       expect(source.currentSearch()).toBe(before);
-      expect(picker).toHaveValue(field === 'Heat' ? 'usage' : 'qwerty');
+      if (field === 'Layer') {
+        expect(shownLayer()).toBe('Alpha 1');
+        const rules = await openSettings();
+        fireEvent.change(within(rules).getByRole('combobox', { name: 'Rule set' }), {
+          target: { value: 'cyanophage' },
+        });
+        fireEvent.click(within(rules).getByRole('button', { name: 'Done' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Next layer' }));
+        await waitFor(() => expect(shownLayer()).toBe('Alpha 2'));
+        expect(new URLSearchParams(source.currentSearch()).get('layer')).toBe('1');
+      } else {
+        expect(picker).toHaveValue(field === 'Heat' ? 'usage' : 'qwerty');
+      }
     },
     60_000,
   );

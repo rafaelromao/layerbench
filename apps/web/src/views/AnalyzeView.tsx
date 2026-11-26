@@ -66,15 +66,18 @@ function AnalyzeWorkbench({
   useRememberSelection(params, search.rulesSnapshot);
   const settings = useAnalysisSettings(settingsOf(params), search.rulesSnapshot);
   const session = useLayoutSession();
+  const { opening, retryDraft } = session;
   const carried = useCarried();
 
   // Settings are written onto whatever the link holds by then, so they never undo a layout the
   // session has just written into it.
   const setParams = useCallback(
-    (overrides: Partial<Params>) => {
-      navigate({
+    async (overrides: Partial<Params>) => {
+      let accepted = false;
+      await navigate({
         to: '/analyze',
         search: ((prev: RawSearch) => {
+          accepted = false;
           const previous = parseParams(prev);
           const next = toSearch(previous, overrides);
           const canStayPortable =
@@ -99,14 +102,17 @@ function AnalyzeWorkbench({
             );
             return prev;
           }
+          accepted = true;
           return next;
         }) as never,
         replace: true,
         // The same view, written again: the page stays where it was scrolled to.
         resetScroll: false,
       });
+      if (accepted && Object.keys(overrides).some((key) => key !== 'layer'))
+        await retryDraft(opening);
     },
-    [corpora, corporaLoaded, navigate],
+    [corpora, corporaLoaded, navigate, opening, retryDraft],
   );
 
   return session.status === 'open' ? (

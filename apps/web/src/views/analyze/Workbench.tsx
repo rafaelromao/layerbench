@@ -869,14 +869,14 @@ export function Workbench({
   /** A gesture on the board while a word plays acts on the layer the board shows, then stops it. */
   const stopPlaying = () => {
     if (!playing) return;
-    if (boardLayer !== state.layer) send({ type: 'selectLayer', layer: boardLayer });
+    if (boardLayer !== state.layer) setParams({ layer: boardLayer });
     setPlay(null);
   };
 
   /** Choosing a layer is looking at it: the word stops playing over it. */
   const selectLayer = (layer: number) => {
     setPlay(null);
-    send({ type: 'selectLayer', layer });
+    setParams({ layer });
   };
 
   const heat = useMemo(
@@ -946,7 +946,7 @@ export function Workbench({
     send({ type: 'setPanel', panel: 'board' });
     // The board turns to the layer the item happens on, so its keys are the ones drawn.
     const layer = itemLayer(item.layers);
-    if (layer !== null && layer !== state.layer) send({ type: 'selectLayer', layer });
+    if (layer !== null && layer !== state.layer) setParams({ layer });
     if (item.then?.length) setPressedFor({ rule: rule.label, item });
   };
 
