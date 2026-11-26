@@ -103,7 +103,7 @@ import {
   shownLayer,
 } from '../edit/reducer.js';
 import { charLabel, missingKeys, spoken } from '../edit/tray.js';
-import { initialUndoState, undoable } from '../edit/undo.js';
+import { initialUndoState, type UndoAction, undoable } from '../edit/undo.js';
 import { settingsSummary } from '../SettingsDialog.js';
 import { textLanguage, textName } from '../text-of.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
@@ -196,7 +196,7 @@ export function Workbench({
       previous = next;
     });
   }, [router]);
-  const [state, send] = useReducer(undoableEditReducer, null, () => {
+  const [state, dispatch] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made, or a custom layout's link with edits not saved in it, is still
     // unsaved: the layout stored, if any, is not this one yet.
@@ -204,6 +204,36 @@ export function Workbench({
   });
   const editorState = useRef(state);
   editorState.current = state;
+  const send = useCallback(
+    (action: UndoAction) => {
+      if (
+        (action.type === 'edit' && action.edit.kind === 'removeLayer') ||
+        action.type === 'undo' ||
+        action.type === 'redo'
+      ) {
+        const current = editorState.current;
+        const next = undoableEditReducer(current, action);
+        const search = router.state.location.search as RawSearch;
+        const params = parseParams(search);
+        // If the edit removes the layer named in the address, retaining the accepted selection
+        // is no longer possible. Keep the layout and its history if the replacement cannot fit.
+        if (
+          next.layout !== current.layout &&
+          params.layer >= next.compiled.layers.length &&
+          portableSearchTooLong(
+            'analyze',
+            retainPortableState(search, toSearch(params, { layer: next.layer })),
+            window.location.origin,
+          )
+        ) {
+          toast.error('This layer change would make the URL too long. Choose a smaller rule set.');
+          return;
+        }
+      }
+      dispatch(action);
+    },
+    [router],
+  );
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
@@ -402,7 +432,7 @@ export function Workbench({
         }
       });
     }
-  }, [params.layer, setParams, state.compiled.layers.length, state.layer, state.layout]);
+  }, [params.layer, send, setParams, state.compiled.layers.length, state.layer, state.layout]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -493,6 +523,7 @@ export function Workbench({
       customLayouts.refresh,
       refreshProposals,
       storage,
+      send,
     ],
   );
 
@@ -556,7 +587,7 @@ export function Workbench({
       refreshProposals();
       return sent;
     },
-    [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals],
+    [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals, send],
   );
 
   // A layout that is none of the custom layouts here, bundled or carried in a link whose id names
