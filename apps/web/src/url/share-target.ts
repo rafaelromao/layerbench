@@ -368,7 +368,7 @@ export function portableSearchTooLong(
   origin = 'https://portable.layerbench.invalid',
 ): boolean {
   const { url } = portableSearchAddress(route, input, origin);
-  return exceedsBrowserBudget(url) || (String(input.share) === '1' && exceedsRequestBudget(url));
+  return exceedsBrowserBudget(url) || exceedsRequestBudget(url);
 }
 
 function directorySlash(url: URL): number {

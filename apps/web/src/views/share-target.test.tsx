@@ -540,6 +540,41 @@ describe('portable Analyze links', () => {
     expect(writeText).not.toHaveBeenCalled();
   }, 60_000);
 
+  it.each(['Share link', 'Compare'])(
+    'cancels %s after analysis settings change',
+    async (action) => {
+      const user = userEvent.setup();
+      const writeText = vi.fn(async (_text: string) => {});
+      vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+      const source = renderRoute(
+        '/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000&layer=1',
+        { storage: new MemoryStorage() },
+      );
+      await waitFor(() => expect(shownLayer()).toBe('Alpha 2'), { timeout: 25_000 });
+      const compression = holdNextCompression();
+      await dragKey('LTR', 'LTM');
+      await compression.started;
+      try {
+        await user.click(screen.getByRole('button', { name: action }));
+        const settings = await openSettings();
+        await user.selectOptions(
+          within(settings).getByRole('combobox', { name: 'Corpus' }),
+          'en-general',
+        );
+        await user.click(within(settings).getByRole('button', { name: 'Done' }));
+        await user.click(screen.getByRole('button', { name: 'Next layer' }));
+      } finally {
+        compression.release();
+      }
+      await compression.finished;
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Share link' })).toBeEnabled());
+      expect(source.currentPath()).toBe('/analyze');
+      expect(new URLSearchParams(source.currentSearch()).get('corpus')).toBe('en-general');
+      expect(writeText).not.toHaveBeenCalled();
+    },
+    60_000,
+  );
+
   it('captures an edit made immediately before the share action', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async (_text: string) => {});
@@ -1696,7 +1731,7 @@ describe('portable Analyze links', () => {
     60_000,
   );
 
-  it.each(['fits', 'overflows'])(
+  it.each(['fits', 'overflows', 'request overflows'])(
     'keeps Compare rules when a private corpus %s',
     async (budget) => {
       useToasts.setState({ toasts: [] });
@@ -1709,7 +1744,7 @@ describe('portable Analyze links', () => {
       );
       const rule = {
         ...getPreset('cyanophage'),
-        id: 'strict',
+        id: budget === 'request overflows' ? 'x'.repeat(7_740) : 'strict',
         name: 'Shared Strict',
         description: '',
       };
@@ -1724,7 +1759,7 @@ describe('portable Analyze links', () => {
           corpus2: 'pt-br-general',
           mix: '60',
           sample: '10000',
-          rules: 'custom:strict',
+          rules: `custom:${rule.id}`,
         },
       };
       const baseline = await buildPortableTarget({
@@ -1739,8 +1774,7 @@ describe('portable Analyze links', () => {
       });
       const href = await buildPortableTarget({ ...input, rulesSnapshot: snapshot });
       const storage = new MemoryStorage();
-      const privateId =
-        budget === 'overflows' ? `private-notes-${'x'.repeat(128)}` : 'private-notes';
+      const privateId = budget !== 'fits' ? `private-notes-${'x'.repeat(128)}` : 'private-notes';
       await storage.put('corpora', privateId, await engine.corpusDocument(privateCorpus.id));
       await storage.put('rulesets', 'strict', {
         ...getPreset('layouts_doc'),
@@ -1771,7 +1805,9 @@ describe('portable Analyze links', () => {
         `custom:${privateId}`,
       );
 
-      if (budget === 'overflows') {
+      if (budget === 'request overflows')
+        expect(destination.pathname.length + destination.search.length).toBeGreaterThan(7_898);
+      if (budget !== 'fits') {
         await waitFor(
           () =>
             expect(

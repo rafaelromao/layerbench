@@ -72,7 +72,13 @@ import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
 import { portableCorpusError } from '../../url/corpus-share.js';
-import { type Params, type RawSearch, toSearch } from '../../url/params.js';
+import {
+  DEFAULT_PARAMS,
+  type Params,
+  parseParams,
+  type RawSearch,
+  toSearch,
+} from '../../url/params.js';
 import { encodeRuleSnapshot } from '../../url/rule-snapshot.js';
 import {
   buildPortableTarget,
@@ -168,13 +174,28 @@ export function Workbench({
 }: WorkbenchProps) {
   const router = useRouter();
   const historyRevision = useRef(0);
-  useEffect(
-    () =>
-      router.history.subscribe(({ action }) => {
-        if (action.type !== 'REPLACE') historyRevision.current += 1;
-      }),
-    [router],
-  );
+  useEffect(() => {
+    const signature = (search: RawSearch) => ({
+      settings: JSON.stringify(
+        toSearch(parseParams(search), {
+          layoutRef: DEFAULT_PARAMS.layoutRef,
+          layer: DEFAULT_PARAMS.layer,
+        }),
+      ),
+      rulesSnapshot: search.rulesSnapshot,
+    });
+    let previous = signature(router.state.location.search as RawSearch);
+    return router.history.subscribe(({ action }) => {
+      const next = signature(router.state.location.search as RawSearch);
+      if (
+        action.type !== 'REPLACE' ||
+        previous.settings !== next.settings ||
+        previous.rulesSnapshot !== next.rulesSnapshot
+      )
+        historyRevision.current += 1;
+      previous = next;
+    });
+  }, [router]);
   const [state, send] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made, or a custom layout's link with edits not saved in it, is still

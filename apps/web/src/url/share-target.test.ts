@@ -235,6 +235,10 @@ describe('portable share targets', () => {
     });
     const tooLong = { ...state, layout: 'qwertyx' };
     expect(portableSearchTooLong('analyze', tooLong, ORIGIN)).toBe(true);
+    const { share: _share, ...local } = state;
+    expect(
+      portableSearchTooLong('analyze', { ...local, corpus2: 'custom:private-notes' }, ORIGIN),
+    ).toBe(true);
     await expect(
       buildPortableTarget({ ...target, search: { ...target.search, layout: tooLong.layout } }),
     ).rejects.toThrow(/request is too large/i);
