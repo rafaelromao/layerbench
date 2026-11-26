@@ -1,3 +1,4 @@
+import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -7,7 +8,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { act, render, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MemoryLink } from '../test/memory-link.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import type { RawSearch } from '../url/params.js';
@@ -131,6 +132,61 @@ describe.each([
     await h.settled();
     expect(h.link.current()).toBe('colemak');
     expect(heard.filter((ref) => ref !== 'colemak')).toEqual([]);
+  });
+
+  it.each([true, false])('settles a deferred saved pick (accepted: %s)', async (accept) => {
+    const h = await harness('qwerty');
+    const storage = new MemoryStorage();
+    await storage.put(
+      'layouts',
+      'mine',
+      toCanonicalJson({ ...bundledLayout('colemak')!, id: 'mine' }),
+    );
+    let writes = 0;
+    const session = createLayoutSession({
+      storage: () => storage,
+      drafts: webDrafts(null),
+      link: {
+        current: () => h.link.current(),
+        subscribe: (listener) => h.link.subscribe(listener),
+        revision: () => h.link.revision?.() ?? writes,
+        write: (...args) => {
+          writes += 1;
+          h.link.write(...args);
+        },
+        openSaved: (ref, snapshot) => {
+          if (!accept) return false;
+          if (h.link.openSaved) return h.link.openSaved(ref, snapshot);
+          h.link.write(snapshot.ref, 'open');
+          return true;
+        },
+      },
+    });
+    try {
+      await waitFor(() => expect(session.getState().status).toBe('open'));
+      const state = session.getState();
+      if (state.status !== 'open') throw new Error('Expected the bundled layout to be open');
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const get = storage.get.bind(storage);
+      vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
+        await held;
+        return get(collection, id);
+      });
+      session.edited({ ...state.layout, description: 'Draft edit' }, true);
+      const picking = session.open('custom:mine');
+      const draft = await session.linkSnapshot();
+      await h.settled();
+      release();
+      await act(() => picking);
+      expect(session.getState()).toMatchObject({ storedId: accept ? 'mine' : null });
+      if (!accept) expect(h.link.current()).toBe(draft?.ref);
+      await h.settled();
+    } finally {
+      session.dispose();
+    }
   });
 
   it('is heard when anything else changes it: a link followed, and Back', async () => {
