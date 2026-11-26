@@ -161,7 +161,7 @@ function targetError(
     return { ok: false, error: 'This share link is not canonical. Create a new link.' };
   if (url.hash.slice(1) !== canonicalParams(fragmentEntries))
     return { ok: false, error: 'This share link is not canonical. Create a new link.' };
-  if ((url.pathname + url.search).length >= MAX_REQUEST_CHARS)
+  if (exceedsRequestBudget(url))
     return {
       ok: false,
       error: 'The share link request is too large. Remove some state and retry.',
@@ -361,18 +361,27 @@ export function parsePortableSearch(
   );
 }
 
-/** Measure the complete URL the router would write for this state, without validating its meaning. */
+/** Measure the router's destination without validating its meaning. */
 export function portableSearchTooLong(
   route: PortableRoute,
   input: RawSearch,
   origin = 'https://portable.layerbench.invalid',
 ): boolean {
-  return exceedsBrowserBudget(portableSearchAddress(route, input, origin).url);
+  const { url } = portableSearchAddress(route, input, origin);
+  return exceedsBrowserBudget(url) || (String(input.share) === '1' && exceedsRequestBudget(url));
+}
+
+function directorySlash(url: URL): number {
+  // GitHub Pages can append a slash when serving the route's directory index.
+  return url.pathname.endsWith('/') ? 0 : 1;
+}
+
+function exceedsRequestBudget(url: URL): boolean {
+  return url.pathname.length + url.search.length + directorySlash(url) >= MAX_REQUEST_CHARS;
 }
 
 function exceedsBrowserBudget(url: URL): boolean {
-  // GitHub Pages can append a slash when serving the route's directory index.
-  return url.href.length + (url.pathname.endsWith('/') ? 0 : 1) >= MAX_URL_CHARS;
+  return url.href.length + directorySlash(url) >= MAX_URL_CHARS;
 }
 
 function portableSearchAddress(

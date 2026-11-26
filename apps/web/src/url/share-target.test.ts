@@ -210,6 +210,36 @@ describe('portable share targets', () => {
     ).rejects.toThrow(/too long for browsers to open/i);
   });
 
+  it('budgets the directory request for both copied and in-app links', async () => {
+    const search = { layout: 'qwerty', corpus: 'en-general', rules: 'custom:x', share: '1' };
+    const request = new URL('/analyze', ORIGIN);
+    request.search = new URLSearchParams({
+      corpus: search.corpus,
+      layout: search.layout,
+      rules: search.rules,
+      share: search.share,
+    }).toString();
+    const id = 'x'.repeat(7899 - (request.pathname + request.search).length);
+    const rulesSnapshot = encodeRuleSnapshot({ ...getPreset('cyanophage'), id });
+    const state = { ...search, rules: `custom:${id}`, rulesSnapshot };
+    const target = {
+      route: 'analyze' as const,
+      baseHref: '/analyze',
+      origin: ORIGIN,
+      search: { ...search, rules: state.rules },
+      rulesSnapshot,
+    };
+    const href = await buildPortableTarget(target);
+    expect(parsePortableTarget(href.replace('/analyze?', '/analyze/?'), ORIGIN)).toMatchObject({
+      ok: true,
+    });
+    const tooLong = { ...state, layout: 'qwertyx' };
+    expect(portableSearchTooLong('analyze', tooLong, ORIGIN)).toBe(true);
+    await expect(
+      buildPortableTarget({ ...target, search: { ...target.search, layout: tooLong.layout } }),
+    ).rejects.toThrow(/request is too large/i);
+  });
+
   it('validates the original route and keeps query-only state out of the fragment', async () => {
     const misplaced = `${ORIGIN}/analyze?corpus=en-general&layout=qwerty&share=1#corpus2=pt-general`;
     const effectiveSearch = {
