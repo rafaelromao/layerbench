@@ -14,6 +14,7 @@ import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
 import { type Drafts, webDrafts } from './drafts.js';
+import { RouterLink } from './router-link.js';
 import { createLayoutSession, type LayoutSession, type SessionState } from './session.js';
 
 function mapStore() {
@@ -87,14 +88,40 @@ const ids = async (storage: MemoryStorage) =>
   (await storage.list('layouts')).map((e) => e.id).sort();
 
 describe('Opening a layout', () => {
-  it('opens a deferred saved pick even if the previous draft is ready to write', async () => {
+  it('keeps a compact saved layout readable when its renamed reference cannot fit', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'mine', {
+      name: 'Mine',
+      description: 'x'.repeat(2_000_001),
+    });
+    const search = { layout: 'custom:mine', rulesSnapshot: 'x'.repeat(2_097_070) };
+    let address = search;
+    const link = new RouterLink('custom:mine', search, (opts) => {
+      const update = opts.search as unknown as (prev: typeof search) => typeof search;
+      address = update(address);
+      link.follow(address.layout, '/analyze', address);
+    });
+    const drafts = webDrafts(mapStore());
+    const s = createLayoutSession({ storage: () => storage, drafts, link });
+    const state = await opened(s);
+    expect(await s.save({ ...state.layout, name: `Renamed ${'x'.repeat(120)}` })).toMatchObject({
+      ok: false,
+      error: expect.stringMatching(/shorter name|smaller custom rule set/i),
+    });
+    expect(address).toEqual(search);
+    expect((await opened(session(address.layout, { storage }).s)).layout.name).toBe('Mine');
+    expect(await ids(storage)).toEqual(['mine']);
+    s.dispose();
+  });
+
+  it.each([true, false])('settles a deferred saved pick with acceptance %s', async (accept) => {
     const storage = new MemoryStorage();
     await seed(storage, 'colemak', 'mine', { name: 'Mine' });
     const link = Object.assign(new MemoryLink('qwerty'), {
       revision: () => link.writes.length,
       openSaved: (_ref: string, snapshot: { ref: string }) => {
-        link.write(snapshot.ref, 'open');
-        return true;
+        if (accept) link.write(snapshot.ref, 'open');
+        return accept;
       },
     });
     const s = createLayoutSession(
@@ -113,10 +140,11 @@ describe('Opening a layout', () => {
     });
     s.edited(withCedilla(state.layout), true);
     const picking = s.open('custom:mine');
-    await s.linkSnapshot();
+    const draft = await s.linkSnapshot();
     release();
     await picking;
-    expect(await opened(s)).toMatchObject({ storedId: 'mine' });
+    expect(await opened(s)).toMatchObject({ storedId: accept ? 'mine' : null });
+    if (!accept) expect(link.current()).toBe(draft?.ref);
     s.dispose();
   });
 

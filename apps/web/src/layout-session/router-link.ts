@@ -84,6 +84,15 @@ export class RouterLink implements LinkPort {
     return true;
   }
 
+  canRename(from: string, to: string, snapshot: { ref: string; tooLarge: boolean }): boolean {
+    if (customId(parseParams(this.search).layoutRef) !== customId(from)) return true;
+    const inline = { ...this.search, layout: snapshot.ref };
+    if (!snapshot.tooLarge && !this.tooLong(inline)) return true;
+    const compact: RawSearch = { ...this.search, layout: to };
+    delete compact.share;
+    return !this.tooLong(compact);
+  }
+
   private openSearch(search: RawSearch, ref: string): RawSearch {
     const next = toSearch(parseParams(search), {
       layoutRef: ref,
