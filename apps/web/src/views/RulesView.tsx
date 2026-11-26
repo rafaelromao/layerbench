@@ -6,7 +6,7 @@ import {
   slug,
   stableStringify,
 } from '@layerbench/core';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert.js';
 import { HelpLink } from '../components/HelpLink.js';
@@ -19,6 +19,7 @@ import { toast } from '../state/toasts.js';
 import { useCollection, useStorage } from '../storage/use-storage.js';
 import { parseParams, type RawSearch } from '../url/params.js';
 import { RuleSetSelect } from './AnalysisSelects.js';
+import { AnalyzeDestination } from './AnalyzeDestination.js';
 import {
   boundsText,
   COMPOSER_AGGREGATES,
@@ -309,13 +310,12 @@ export function RulesView() {
               </button>
             </form>
 
-            <Link
-              to="/analyze"
-              search={carried({ rules: ref }) as never}
+            <AnalyzeDestination
+              search={carried({ rules: ref, rulesSnapshot: undefined })}
               className="lb-wide btn btn-sm btn-primary"
             >
               Analyze with this set
-            </Link>
+            </AnalyzeDestination>
           </div>
 
           <div className="lb-toolbar flex flex-wrap items-end gap-3 border-t border-base-300 pt-3">

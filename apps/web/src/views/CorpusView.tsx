@@ -1,5 +1,5 @@
 import { type CorpusManifest, slug } from '@layerbench/core';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HelpLink } from '../components/HelpLink.js';
 import { customRef } from '../custom/ref.js';
@@ -10,6 +10,7 @@ import { useCarried } from '../state/selection.js';
 import { toast } from '../state/toasts.js';
 import { useStorage } from '../storage/use-storage.js';
 import type { RawSearch } from '../url/params.js';
+import { AnalyzeDestination } from './AnalyzeDestination.js';
 import { CUSTOM_TEXTS, firstCorpus, isTransient, orderCorpora } from './corpus-groups.js';
 
 const MIN_CUSTOM_CHARS = 1_000;
@@ -211,13 +212,12 @@ export function CorpusView() {
           </>
         )}
         {selectedId && (
-          <Link
-            to="/analyze"
-            search={carried({ corpus: selectedId, corpus2: undefined, mix: undefined }) as never}
+          <AnalyzeDestination
+            search={carried({ corpus: selectedId, corpus2: undefined, mix: undefined })}
             className="btn btn-primary btn-sm w-full"
           >
             Analyze with this corpus
-          </Link>
+          </AnalyzeDestination>
         )}
       </aside>
 
@@ -348,15 +348,12 @@ export function CorpusView() {
                     <button type="button" className="btn btn-sm" onClick={save}>
                       Save to library
                     </button>
-                    <Link
-                      to="/analyze"
-                      search={
-                        carried({ corpus: custom.id, corpus2: undefined, mix: undefined }) as never
-                      }
+                    <AnalyzeDestination
+                      search={carried({ corpus: custom.id, corpus2: undefined, mix: undefined })}
                       className="btn btn-sm btn-ghost"
                     >
                       Analyze with it
-                    </Link>
+                    </AnalyzeDestination>
                   </>
                 )}
               </div>

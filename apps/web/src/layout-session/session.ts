@@ -10,7 +10,7 @@ import {
   sameName,
   toCanonicalJson,
 } from '@layerbench/core';
-import { customRef } from '../custom/ref.js';
+import { customId, customRef } from '../custom/ref.js';
 import {
   retryingSaver,
   type SaveOptions,
@@ -19,23 +19,50 @@ import {
 } from '../custom/save-new.js';
 import { forgetProposal } from '../proposals/proposals.js';
 import { CompositeStorage } from '../storage/composite.js';
-import { encodeInline } from '../url/inline.js';
-import { inlineRef } from '../url/params.js';
 import type { Drafts } from './drafts.js';
-import { carriedRef, type LayoutSource, openLayout, snapshotRef } from './open.js';
+import { carriedLayout, type LayoutSource, layoutSnapshot, openLayout } from './open.js';
+
+/** A selection that needs to land with its draft, rather than against the old layout. */
+export interface DraftLayer {
+  layer: number;
+  count: number;
+  current(): boolean;
+  settled(layer: number, published: boolean): void;
+}
 
 /**
  * The link, as the layout session reaches it: the router in the app, an array in tests. The session
  * is the only writer of the layout in it (ADR 0002).
  */
 export interface LinkPort {
+  /** Refuse a layout pick before the session leaves the current opening. */
+  canOpen?(ref: string): boolean;
+  /** Commit a resolved saved pick, or leave the current address unchanged. */
+  openSaved?(ref: string, snapshot: { ref: string; tooLarge: boolean }): boolean;
+  /** Whether renaming can replace an address that still needs the old saved ID. */
+  canRename?(from: string, to: string, snapshot: { ref: string; tooLarge: boolean }): boolean;
+  commitRename?(
+    from: string,
+    to: string,
+    snapshot: { ref: string; tooLarge: boolean },
+  ): Promise<boolean>;
+  /** Changes when navigation supersedes a pending pick, even with the same layout reference. */
+  revision?(): number;
   /** The layout reference the link holds now. */
   current(): string;
   /**
    * Put `ref` in the link in place of the one there. `edit` leaves the rest of the page as it is;
-   * `open` is a layout picked, which starts on its first layer.
+   * `open` is a layout picked, which starts on its first layer. `localRef`, when supplied, keeps
+   * a compact saved-layout reference current while an oversized snapshot is local-only.
    */
-  write(ref: string, how: 'edit' | 'open'): void;
+  write(
+    ref: string,
+    how: 'edit' | 'open',
+    localRef?: string,
+    tooLarge?: boolean,
+    selection?: DraftLayer,
+  ): void;
+  restore?(snapshot: { ref: string; tooLarge: boolean }, layer: number, localRef?: string): boolean;
   /** Hear every reference the link takes, whoever wrote it. */
   subscribe(listener: (ref: string) => void): () => void;
 }
@@ -84,7 +111,8 @@ export interface LayoutSession {
    * the first render included. With nothing unsaved the link holds the layout's clean reference at
    * once; unsaved, a draft follows a moment after the last edit.
    */
-  edited(layout: Layout, unsaved: boolean): void;
+  edited(layout: Layout, unsaved: boolean, selection?: DraftLayer): void;
+  restoreClean(layout: Layout, layer: number): boolean;
   /**
    * Store the layout, under the id its name gives, in place of the one this is, if any. Saves run one
    * after another. Once it resolves, the editor marks the layout saved, and reports it so. Where
@@ -101,8 +129,17 @@ export interface LayoutSession {
   duplicate(layout: Layout): Promise<DuplicateResult>;
   /** Open another layout, or the same one afresh: a layout picked. */
   open(ref: string): Promise<void>;
-  /** The link as it is about to be: a draft still waiting to be written is written now. */
-  link(): Promise<string>;
+  /** Whether `opening` is still the layout currently open in this session. */
+  isCurrentOpening(opening: number): boolean;
+  /**
+   * The link as it is about to be: a draft still waiting to be written is written now. Returns
+   * null if this opening is left while the draft is being prepared.
+   */
+  link(opening?: number): Promise<string | null>;
+  /** The current link and whether its snapshot exceeds the reader's inflated limit. */
+  linkSnapshot(opening?: number): Promise<{ ref: string; tooLarge: boolean } | null>;
+  /** Retry a prepared draft after an in-place settings change made room in the address. */
+  retryDraft(opening: number): Promise<void>;
   /** Write nothing more, and stop listening to the link. */
   dispose(): void;
 }
@@ -133,6 +170,7 @@ async function store(
   opts: SaveOptions,
   /** The version of this layout the editor opened it at, which this save is an edit of. */
   basedOn: string | null,
+  checkRename: (from: string, to: string) => Promise<() => Promise<boolean>>,
 ): Promise<{ id: string; leftBehind: boolean; sha: string | null }> {
   if (storedId === null) {
     const { id, sha } = await saveNewLayout(
@@ -153,6 +191,7 @@ async function store(
     if (taken) throw new NameTakenError(taken);
     id = idForName(layout.name, storedId, new Set(entries.map((e) => e.id)));
   }
+  const canRetire = id === storedId ? null : await checkRename(storedId, id);
   const written = await storage.put('layouts', id, toCanonicalJson({ ...layout, id }), {
     message: `Save layout ${layout.name}`,
     // Its old copy, deleted below, may go by the name too: one only the browser has, beside the
@@ -168,7 +207,10 @@ async function store(
     // The old copy goes only once the new one is safely stored: signed in, a save that was only
     // kept here (the account could not be reached, or held something at that id or name to ask
     // about) leaves the old copy where it is, in the account and here, until the user has dealt with it.
-    if (storage instanceof CompositeStorage && storage.unsentToAccount('layouts', id)) {
+    if (
+      (storage instanceof CompositeStorage && storage.unsentToAccount('layouts', id)) ||
+      (canRetire && !(await canRetire()))
+    ) {
       leftBehind = true;
     } else {
       try {
@@ -200,15 +242,21 @@ export function createLayoutSession(
   /** The reference this opening opened, and every one it has written since. */
   let own = new Set<string>();
   /** What the link holds when nothing is unsaved. */
-  let cleanRef = '';
+  let clean = { ref: '', tooLarge: false };
   let storedId: string | null = null;
   /** The version of the custom layout the editor was opened at, or last saved: what an edit is made on. */
   let basedOn: string | null = null;
   let source: LayoutSource | null = null;
   let opened: { layout: Layout; startsUnsaved: boolean } | null = null;
-  let editor: { layout: Layout; unsaved: boolean } | null = null;
-  /** A draft waiting to be written, and the promise of its reference once it is. */
-  let pending: { timer: ReturnType<typeof setTimeout> | null; ref: Promise<string> } | null = null;
+  let editor: { layout: Layout; unsaved: boolean; selection?: DraftLayer } | null = null;
+  let editorRevision = 0;
+  let deferredPick: { current: () => boolean; publishDraft?: () => void } | null = null;
+  /** A draft waiting to be written, and the promise of its snapshot once it is. */
+  let pending: {
+    revision: number;
+    timer: ReturnType<typeof setTimeout> | null;
+    snapshot: Promise<{ ref: string; tooLarge: boolean }> | null;
+  } | null = null;
   let saves: Promise<unknown> = Promise.resolve();
   let saving = false;
   /**
@@ -238,17 +286,42 @@ export function createLayoutSession(
     for (const listener of listeners) listener();
   };
 
-  const write = (ref: string, how: 'edit' | 'open' = 'edit') => {
+  const write = (
+    ref: string,
+    how: 'edit' | 'open' = 'edit',
+    localRef?: string,
+    tooLarge = false,
+    selection?: DraftLayer,
+  ) => {
     if (disposed) return;
     own.add(ref);
-    if (link.current() === ref && how === 'edit') return;
-    link.write(ref, how);
+    if (link.current() === ref && how === 'edit' && !selection) return;
+    if (selection) link.write(ref, how, localRef, tooLarge, selection);
+    else if (tooLarge) link.write(ref, how, localRef, true);
+    else link.write(ref, how, localRef);
     publish();
   };
 
   const cancelPending = () => {
     if (pending?.timer) clearTimeout(pending.timer);
     pending = null;
+  };
+
+  const publishDraftSnapshot = (
+    { ref, tooLarge }: { ref: string; tooLarge: boolean },
+    opening: number,
+    revision: number,
+  ) => {
+    const publishDraft = () => {
+      if (state.opening !== opening || editorRevision !== revision || disposed) return;
+      drafts.remember(ref, storedId, source, basedOn);
+      write(ref, 'edit', undefined, tooLarge, editor?.selection);
+    };
+    if (state.opening === opening && editorRevision === revision && !disposed) {
+      // A draft replacement must not invalidate a pick that is still reading its saved layout.
+      if (deferredPick?.current()) deferredPick.publishDraft = publishDraft;
+      else publishDraft();
+    }
   };
 
   /**
@@ -258,27 +331,31 @@ export function createLayoutSession(
    * first save or a rename has since changed, or a bundled or community layout's, which a custom
    * layout may have too, so a layout never saved here carries none.
    */
-  const writeDraft = async (layout: Layout, opening: number): Promise<string> => {
+  const writeDraft = async (layout: Layout, opening: number, revision: number) => {
     const { id: _own, ...rest } = layout;
-    const ref = inlineRef(await encodeInline(storedId === null ? rest : { ...rest, id: storedId }));
-    if (state.opening === opening && !disposed) {
-      drafts.remember(ref, storedId, source, basedOn);
-      write(ref);
-    }
-    return ref;
+    const snapshot = await layoutSnapshot(storedId === null ? rest : { ...rest, id: storedId });
+    publishDraftSnapshot(snapshot, opening, revision);
+    return snapshot;
   };
 
-  const start = async (ref: string) => {
+  const start = async (
+    ref: string,
+    prepared?: {
+      result: Awaited<ReturnType<typeof openLayout>>;
+      carried: { ref: string; tooLarge: boolean };
+    },
+  ) => {
     cancelPending();
     const opening = state.opening + 1;
     state = { status: 'opening', opening };
-    own = new Set([ref]);
+    own = new Set([ref, ...(prepared ? [link.current()] : [])]);
     editor = null;
+    editorRevision += 1;
     opened = null;
     publish();
 
     const origin = drafts.originOf(ref);
-    const result = await openLayout(ref, ports.storage());
+    const result = prepared?.result ?? (await openLayout(ref, ports.storage()));
     if (state.opening !== opening || disposed) return;
     if (!result.ok) {
       state = { status: 'failed', opening, error: result.error };
@@ -302,8 +379,11 @@ export function createLayoutSession(
     source = draft ? drafts.sourceOf(ref) : result.source;
     attempted = null;
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
-    cleanRef = startsUnsaved ? ref : await carriedRef(ref, { layout: result.layout, storedId });
+    const carried = startsUnsaved
+      ? { ref, tooLarge: false }
+      : (prepared?.carried ?? (await carriedLayout(ref, { layout: result.layout, storedId })));
     if (state.opening !== opening || disposed) return;
+    clean = carried;
     opened = { layout: result.layout, startsUnsaved };
     saving = false;
     state = {
@@ -317,7 +397,7 @@ export function createLayoutSession(
       pickedRef: '',
       saving,
     };
-    if (!startsUnsaved) write(cleanRef);
+    if (!startsUnsaved && !prepared) write(clean.ref, 'edit', undefined, clean.tooLarge);
     state = { ...state, pickedRef: pickedRef() };
     publish();
   };
@@ -329,7 +409,42 @@ export function createLayoutSession(
   void start(link.current());
 
   /** A layout picked: written to the link as one, and opened. */
+  let pick = 0;
   const openRef = async (ref: string) => {
+    const sequence = ++pick;
+    if (link.openSaved && customId(ref) !== null) {
+      const opening = state.opening;
+      const revision = link.revision?.();
+      const current = () =>
+        !disposed &&
+        sequence === pick &&
+        opening === state.opening &&
+        revision === link.revision?.();
+      const waiting = { current, publishDraft: deferredPick?.publishDraft };
+      deferredPick = waiting;
+      try {
+        const result = await openLayout(ref, ports.storage());
+        if (!current()) return;
+        if (result.ok) {
+          const carried = await carriedLayout(ref, result);
+          if (!current()) return;
+          const previous = own;
+          own = new Set([...previous, ref, carried.ref]);
+          if (!link.openSaved(ref, carried)) {
+            own = previous;
+            return;
+          }
+          await start(ref, { result, carried });
+          return;
+        }
+      } finally {
+        if (deferredPick === waiting) {
+          deferredPick = null;
+          if (current()) waiting.publishDraft?.();
+        }
+      }
+    }
+    if (link.canOpen?.(ref) === false) return;
     own = new Set([ref]);
     write(ref, 'open');
     await start(ref);
@@ -342,33 +457,86 @@ export function createLayoutSession(
    */
   const duplicates = retryingSaver();
 
+  const linkSnapshot: LayoutSession['linkSnapshot'] = async (expectedOpening = state.opening) => {
+    for (;;) {
+      if (disposed || state.status !== 'open' || state.opening !== expectedOpening) return null;
+      const current = editor;
+      const revision = editorRevision;
+      if (!current?.unsaved || (opened?.startsUnsaved && current.layout === opened.layout)) {
+        return clean.ref ? clean : { ref: link.current(), tooLarge: false };
+      }
+
+      let request = pending?.revision === revision ? pending : null;
+      if (!request) {
+        request = { revision, timer: null, snapshot: null };
+        pending = request;
+      }
+      if (request.timer !== null) {
+        clearTimeout(request.timer);
+        request.timer = null;
+      }
+      request.snapshot ??= writeDraft(current.layout, expectedOpening, revision);
+      const snapshot = await request.snapshot;
+      if (disposed || state.opening !== expectedOpening || state.status !== 'open') return null;
+      if (editorRevision === revision) return snapshot;
+    }
+  };
+
   return {
     getState: () => state,
+
+    restoreClean(layout, layer) {
+      if (disposed || state.status !== 'open') return false;
+      if (!link.restore) return true;
+      const localRef = storedId === null ? undefined : customRef(storedId);
+      own.add(clean.ref);
+      if (localRef) own.add(localRef);
+      if (!link.restore(clean, layer, localRef)) return false;
+      editor = { layout, unsaved: false };
+      ++editorRevision;
+      cancelPending();
+      publish();
+      return true;
+    },
 
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
 
-    edited(layout, unsaved) {
+    edited(layout, unsaved, selection) {
       if (state.status !== 'open' || disposed) return;
-      if (editor && editor.layout === layout && editor.unsaved === unsaved) return;
-      editor = { layout, unsaved };
+      if (
+        editor &&
+        editor.layout === layout &&
+        editor.unsaved === unsaved &&
+        editor.selection?.layer === selection?.layer
+      )
+        return;
+      editor = { layout, unsaved, selection };
+      const revision = ++editorRevision;
       cancelPending();
       if (!unsaved) {
-        write(cleanRef);
-      } else if (!(opened?.startsUnsaved && layout === opened.layout)) {
+        write(
+          clean.ref,
+          'edit',
+          storedId === null ? undefined : customRef(storedId),
+          clean.tooLarge,
+        );
+      } else if (selection || !(opened?.startsUnsaved && layout === opened.layout)) {
         // A draft opened from its own link is in the link already.
         const opening = state.opening;
-        let resolve: (ref: string) => void = () => {};
-        const ref = new Promise<string>((r) => {
-          resolve = r;
-        });
-        const timer = setTimeout(() => {
-          if (pending?.ref === ref) pending.timer = null;
-          void writeDraft(layout, opening).then(resolve);
+        const request: NonNullable<typeof pending> = {
+          revision,
+          timer: null,
+          snapshot: null,
+        };
+        request.timer = setTimeout(() => {
+          if (pending !== request) return;
+          request.timer = null;
+          request.snapshot = writeDraft(layout, opening, revision);
         }, delay);
-        pending = { timer, ref };
+        pending = request;
       }
       publish();
     },
@@ -400,14 +568,35 @@ export function createLayoutSession(
             },
             opts,
             basedOn,
+            async (fromId, toId) => {
+              if (!link.canRename) return async () => true;
+              const saved = await layoutSnapshot({ ...layout, id: toId });
+              const from = customRef(fromId);
+              const to = customRef(toId);
+              const fits = () => link.canRename?.(from, to, saved) !== false;
+              if (!fits()) {
+                throw new Error(
+                  'The renamed layout would make the analysis URL too long. Use a shorter name or choose a smaller custom rule set, then retry.',
+                );
+              }
+              const revision = link.revision?.();
+              return async () => {
+                if (disposed || state.opening !== opening || revision !== link.revision?.())
+                  return false;
+                if (!link.commitRename) return fits();
+                own.add(saved.ref);
+                own.add(to);
+                return link.commitRename(from, to, saved);
+              };
+            },
           );
           if (state.opening === opening) attempted = null;
           // Its link from now on carries it whole, so it can still be sent. A moment ago that may
           // have been the link of a draft of it, which it no longer is.
-          const ref = await snapshotRef(layout, id);
+          const saved = await layoutSnapshot({ ...layout, id });
           if (state.opening === opening) {
-            drafts.forget(ref);
-            cleanRef = ref;
+            drafts.forget(saved.ref);
+            clean = saved;
             storedId = id;
             // What was saved is what the next edit is an edit of.
             basedOn = sha;
@@ -415,7 +604,7 @@ export function createLayoutSession(
             source = null;
             // Saved with nothing unsaved, it is in the link at once; otherwise once the editor says
             // the layout saved is the one it has.
-            if (editor && !editor.unsaved) write(cleanRef);
+            if (editor && !editor.unsaved) write(clean.ref, 'edit', customRef(id), clean.tooLarge);
           }
           return { ok: true, id, leftBehind };
         } catch (e) {
@@ -477,12 +666,24 @@ export function createLayoutSession(
 
     open: openRef,
 
-    async link() {
-      if (pending?.timer && editor) {
-        clearTimeout(pending.timer);
-        pending = { timer: null, ref: writeDraft(editor.layout, state.opening) };
-      }
-      return pending ? pending.ref : link.current();
+    isCurrentOpening(opening) {
+      return !disposed && state.status === 'open' && state.opening === opening;
+    },
+
+    linkSnapshot,
+    async retryDraft(opening) {
+      const request = pending;
+      if (state.opening !== opening || !request?.snapshot) return;
+      const navigation = link.revision?.();
+      const snapshot = await request.snapshot;
+      if (pending !== request || navigation !== link.revision?.()) return;
+      // Encoding the snapshot does not imply that the address had room for it.
+      if (!snapshot.tooLarge && link.current() !== snapshot.ref)
+        publishDraftSnapshot(snapshot, opening, request.revision);
+    },
+
+    async link(opening) {
+      return (await linkSnapshot(opening))?.ref ?? null;
     },
 
     dispose() {

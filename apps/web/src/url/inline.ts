@@ -33,12 +33,12 @@ async function collect(stream: ReadableStream<Uint8Array>, max = Infinity): Prom
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    chunks.push(value);
-    total += value.length;
-    if (total > max) {
+    if (total + value.length > max) {
       await reader.cancel().catch(() => {});
       throw new Error('inline layout too large');
     }
+    total += value.length;
+    chunks.push(value);
   }
   const out = new Uint8Array(total);
   let at = 0;
@@ -66,9 +66,16 @@ async function pipe(data: Uint8Array, transform: 'deflate' | 'inflate'): Promise
 
 /** Compress a layout into the blob used by `?layout=inline:…`. */
 export async function encodeInline(layout: Layout): Promise<string> {
-  const json = JSON.stringify(toCanonicalJson(layout));
-  const deflated = await pipe(new TextEncoder().encode(json), 'deflate');
-  return bytesToBase64Url(deflated);
+  return (await encodeInlineSnapshot(layout)).blob;
+}
+
+/** Measure the same canonical UTF-8 bytes the reader will inflate. */
+export async function encodeInlineSnapshot(
+  layout: Layout,
+): Promise<{ blob: string; tooLarge: boolean }> {
+  const bytes = new TextEncoder().encode(JSON.stringify(toCanonicalJson(layout)));
+  const deflated = await pipe(bytes, 'deflate');
+  return { blob: bytesToBase64Url(deflated), tooLarge: bytes.length > MAX_INLINE_BYTES };
 }
 
 /** Read a layout back out of an inline blob. */
@@ -80,7 +87,13 @@ export async function decodeInline(
     const parsed = safeParseLayout(JSON.parse(new TextDecoder().decode(inflated)));
     if (!parsed.ok) return { ok: false, error: parsed.error };
     return { ok: true, layout: parsed.layout };
-  } catch {
-    return { ok: false, error: 'invalid inline layout' };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error && error.message === 'inline layout too large'
+          ? 'inline layout too large'
+          : 'invalid inline layout',
+    };
   }
 }

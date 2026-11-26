@@ -14,6 +14,7 @@ import { memoryMarks } from '../test/memory-marks.js';
 import { MemoryStorage } from '../test/memory-storage.js';
 import { decodeInline } from '../url/inline.js';
 import { type Drafts, webDrafts } from './drafts.js';
+import { RouterLink } from './router-link.js';
 import { createLayoutSession, type LayoutSession, type SessionState } from './session.js';
 
 function mapStore() {
@@ -87,6 +88,75 @@ const ids = async (storage: MemoryStorage) =>
   (await storage.list('layouts')).map((e) => e.id).sort();
 
 describe('Opening a layout', () => {
+  it.each(['mine', 'custom:mine'])(
+    'keeps %s readable when the renamed reference cannot fit',
+    async (ref) => {
+      const storage = new MemoryStorage();
+      await seed(storage, 'qwerty', 'mine', {
+        name: 'Mine',
+        description: 'x'.repeat(2_000_001),
+      });
+      const prefix = `${window.location.origin}/analyze?layout=${encodeURIComponent(ref)}#rulesSnapshot=`;
+      const search = { layout: ref, rulesSnapshot: 'x'.repeat(2_097_147 - prefix.length) };
+      let address = search;
+      const link = new RouterLink(ref, search, (opts) => {
+        const update = opts.search as unknown as (prev: typeof search) => typeof search;
+        address = update(address);
+        link.follow(address.layout, '/analyze', address);
+      });
+      const drafts = webDrafts(mapStore());
+      const s = createLayoutSession({ storage: () => storage, drafts, link });
+      const state = await opened(s);
+      expect(await s.save({ ...state.layout, name: `Renamed ${'x'.repeat(120)}` })).toMatchObject({
+        ok: false,
+        error: expect.stringMatching(/shorter name|smaller custom rule set/i),
+      });
+      expect(address.rulesSnapshot).toBe(search.rulesSnapshot);
+      expect((await opened(session(address.layout, { storage }).s)).layout.name).toBe('Mine');
+      expect(await ids(storage)).toEqual(['mine']);
+      s.dispose();
+    },
+  );
+
+  it.each([false, true])(
+    'retires a saved ID only after a replacement lands (interrupted: %s)',
+    async (interrupted) => {
+      const storage = new MemoryStorage();
+      await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'x'.repeat(2_000_001) });
+      let address = { layout: 'custom:mine', rulesSnapshot: 'embedded' };
+      const link = new RouterLink(address.layout, address, (opts) => {
+        const update = opts.search as unknown as (prev: typeof address) => typeof address;
+        address = update(address);
+        link.follow(address.layout, '/analyze', address, true);
+      });
+      const s = createLayoutSession({ storage: () => storage, drafts: webDrafts(null), link });
+      const state = await opened(s);
+      const put = storage.put.bind(storage);
+      vi.spyOn(storage, 'put').mockImplementation(async (...args) => {
+        if (interrupted) {
+          address = { ...address, rulesSnapshot: 'new-embedded' };
+          link.follow(address.layout, '/analyze', address, true);
+        }
+        return put(...args);
+      });
+      const remove = storage.delete.bind(storage);
+      const deleting = vi.spyOn(storage, 'delete').mockImplementation(async (...args) => {
+        expect(address.layout).toBe('custom:renamed');
+        return remove(...args);
+      });
+      expect(await s.save({ ...state.layout, name: 'Renamed' })).toMatchObject({
+        ok: true,
+        leftBehind: interrupted,
+      });
+      expect(deleting).toHaveBeenCalledTimes(interrupted ? 0 : 1);
+      expect(address.rulesSnapshot).toBe(interrupted ? 'new-embedded' : 'embedded');
+      const reload = session(address.layout, { storage }).s;
+      expect((await opened(reload)).layout.name).toBe(interrupted ? 'Mine' : 'Renamed');
+      reload.dispose();
+      s.dispose();
+    },
+  );
+
   it('opens a bundled layout as a layout of its own, and writes nothing', async () => {
     const { s, link } = session('qwerty');
     const state = await opened(s);
@@ -160,7 +230,7 @@ describe('The link', () => {
     const { s, link } = session('qwerty');
     const state = await opened(s);
     s.edited(withCedilla(state.layout), true);
-    const ref = await s.link();
+    const ref = (await s.link())!;
     expect(JSON.stringify(await carried(ref))).toContain('ç');
     expect(link.current()).toBe(ref);
   });
@@ -174,7 +244,7 @@ describe('Drafts', () => {
     const first = session('custom:qwerty-copy', { storage, drafts });
     const state = await opened(first.s);
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     // The same link, opened again in this tab: a reload, Back.
@@ -204,7 +274,7 @@ describe('Drafts', () => {
     const state = await opened(first.s);
     expect(state.source).toEqual({ kind: 'bundled', id: 'qwerty' });
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     const again = session(draft, { storage, drafts });
@@ -224,7 +294,7 @@ describe('Drafts', () => {
     await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
     const first = session('custom:qwerty-copy', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
 
     const other = session(draft, { storage });
     const elsewhere = await opened(other.s);
@@ -283,7 +353,7 @@ describe('A custom layout sent by its link', () => {
     });
     // The editor's layout still carries the bundled id; the draft carries the saved one.
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     expect((await carried(draft))?.id).toBe('qwerty-copy');
     const elsewhere = await opened(session(draft, { storage }).s);
     expect(elsewhere).toMatchObject({ storedId: 'qwerty-copy', startsUnsaved: true });
@@ -295,7 +365,7 @@ describe('A custom layout sent by its link', () => {
     await seed(storage, 'qwerty', 'qwerty', { name: 'QWERTY!', description: 'mine' });
     const first = session('qwerty', { storage });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     expect((await carried(draft))?.id).toBeUndefined();
     const elsewhere = await opened(session(draft, { storage }).s);
     expect(elsewhere).toMatchObject({ storedId: null, source: null });
@@ -453,7 +523,7 @@ describe('Saving what was read', () => {
     const first = session('custom:mine', { storage, drafts });
     const state = await opened(first.s);
     first.s.edited(withCedilla(state.layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
     expect(drafts.shaOf(draft)).toBe(readAt);
 
@@ -678,6 +748,22 @@ describe('Saving', () => {
     expect(await s.save(again)).toMatchObject({ ok: true, id: 'qwerty-plus' });
     expect(await ids(storage)).toEqual(['qwerty-plus']);
     expect((await storage.get('layouts', 'qwerty-plus'))?.doc.description).toBe('more');
+  });
+
+  it('keeps the compact reference current as a saved layout is renamed', async () => {
+    const storage = new MemoryStorage();
+    await seed(storage, 'qwerty', 'qwerty-copy', { name: 'Qwerty copy' });
+    const { s, link } = session('custom:qwerty-copy', { storage });
+    const state = await opened(s);
+    const renamed = { ...state.layout, name: 'Renamed layout' };
+    const beforeDraft = link.current();
+    s.edited(renamed, true);
+    await vi.waitFor(() => expect(link.current()).not.toBe(beforeDraft));
+    expect(await s.save(renamed)).toMatchObject({ ok: true, id: 'renamed-layout' });
+    s.edited(renamed, false);
+
+    expect(link.compactRef).toBe('custom:renamed-layout');
+    expect((await carried(link.current()))?.name).toBe('Renamed layout');
   });
 
   it("moves a renamed layout to its new name's id, or beside one already there", async () => {
@@ -949,7 +1035,7 @@ describe('Duplicating', () => {
     const drafts = webDrafts(mapStore());
     const first = session('custom:mine', { storage, drafts });
     first.s.edited(withCedilla((await opened(first.s)).layout), true);
-    const draft = await first.s.link();
+    const draft = (await first.s.link())!;
     first.s.dispose();
 
     const { s } = session(draft, { storage, drafts });
@@ -1322,7 +1408,7 @@ describe('A draft reloaded after a send failed', () => {
     // Save E1: the send fails, the save is kept. Then more edits, unsaved, as a draft.
     expect(await first.save({ ...state.layout, description: 'E1' })).toMatchObject({ ok: true });
     first.edited({ ...state.layout, description: 'E1 and more' }, true);
-    const draft = await first.link();
+    const draft = (await first.link())!;
     first.dispose();
 
     // The tab is reloaded onto the draft, and the draft is saved.

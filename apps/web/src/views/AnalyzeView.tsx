@@ -1,9 +1,13 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useMemo } from 'react';
+import { ErrorAlert } from '../components/ErrorAlert.js';
 import { StillWorking } from '../components/StillWorking.js';
+import { customId } from '../custom/ref.js';
 import { useAnalysisClient } from '../engine/client-context.js';
 import { useLayoutSession } from '../layout-session/use-layout-session.js';
 import { useCarried, useRememberSelection } from '../state/selection.js';
+import { toast } from '../state/toasts.js';
+import { portableCorpusError } from '../url/corpus-share.js';
 import {
   DEFAULT_PARAMS,
   type Params,
@@ -12,9 +16,10 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
+import { parsePortableSearch, portableSearchTooLong } from '../url/share-target.js';
 import { Workbench } from './analyze/Workbench.js';
 import { useAnalysisSettings } from './useAnalysisSettings.js';
-import { useCorpora } from './useCorpora.js';
+import { useCorporaState } from './useCorpora.js';
 
 /**
  * Analyze, where a layout is also edited. The link names the layout; the layout session opens it and
@@ -24,28 +29,91 @@ import { useCorpora } from './useCorpora.js';
  */
 export function AnalyzeView() {
   const search = useSearch({ strict: false }) as RawSearch;
+  const portable = parsePortableSearch('analyze', search, window.location.href);
+  if (portable && !portable.ok) return <ErrorAlert message={portable.error} />;
+  return <AnalyzePage search={portable?.ok ? portable.search : search} />;
+}
+
+function AnalyzePage({ search }: { search: RawSearch }) {
+  const { corpora, loaded } = useCorporaState();
+  const params = useMemo(() => parseParams(search), [search]);
+  if (search.share === '1') {
+    if (!loaded)
+      return (
+        <div role="status" className="flex items-center gap-2 py-4 text-sm">
+          <span className="loading loading-dots loading-xs" />
+          Checking the shared corpus…
+        </div>
+      );
+    const error = portableCorpusError(params.corpus, params.corpus2, corpora);
+    if (error) return <ErrorAlert message={error} />;
+  }
+  return <AnalyzeWorkbench search={search} corpora={corpora} corporaLoaded={loaded} />;
+}
+
+function AnalyzeWorkbench({
+  search,
+  corpora,
+  corporaLoaded,
+}: {
+  search: RawSearch;
+  corpora: ReturnType<typeof useCorporaState>['corpora'];
+  corporaLoaded: boolean;
+}) {
   const navigate = useNavigate();
   const client = useAnalysisClient();
-  const corpora = useCorpora();
   const params = useMemo(() => parseParams(search), [search]);
-  useRememberSelection(params);
-  const settings = useAnalysisSettings(settingsOf(params));
+  useRememberSelection(params, search.rulesSnapshot);
+  const settings = useAnalysisSettings(settingsOf(params), search.rulesSnapshot);
   const session = useLayoutSession();
+  const { opening, retryDraft } = session;
   const carried = useCarried();
 
   // Settings are written onto whatever the link holds by then, so they never undo a layout the
   // session has just written into it.
   const setParams = useCallback(
-    (overrides: Partial<Params>) => {
-      navigate({
+    async (overrides: Partial<Params>) => {
+      let accepted = false;
+      await navigate({
         to: '/analyze',
-        search: ((prev: RawSearch) => toSearch(parseParams(prev), overrides)) as never,
+        search: ((prev: RawSearch) => {
+          accepted = false;
+          const previous = parseParams(prev);
+          const next = toSearch(previous, overrides);
+          const canStayPortable =
+            customId(next.layout ?? '') === null &&
+            customId(next.corpus ?? '') === null &&
+            customId(next.corpus2 ?? '') === null &&
+            (!corporaLoaded ||
+              portableCorpusError(next.corpus ?? previous.corpus, next.corpus2 ?? null, corpora) ===
+                null);
+          const rulesUnchanged =
+            overrides.preset === undefined || overrides.preset === previous.preset;
+          const keepSnapshot =
+            prev.rulesSnapshot && rulesUnchanged && customId(next.rules ?? '') !== null;
+          if (prev.share === '1' && canStayPortable && rulesUnchanged) next.share = '1';
+          if (keepSnapshot) next.rulesSnapshot = prev.rulesSnapshot;
+          if (portableSearchTooLong('analyze', next, window.location.origin)) {
+            toast.error(
+              [
+                'This change would make the analysis URL too long. Shorten the layout description',
+                'or choose a smaller custom rule set; the current URL is unchanged.',
+              ].join(' '),
+            );
+            return prev;
+          }
+          accepted = true;
+          return next;
+        }) as never,
         replace: true,
         // The same view, written again: the page stays where it was scrolled to.
         resetScroll: false,
       });
+      if (accepted && Object.keys(overrides).some((key) => key !== 'layer'))
+        await retryDraft(opening);
+      return accepted;
     },
-    [navigate],
+    [corpora, corporaLoaded, navigate, opening, retryDraft],
   );
 
   return session.status === 'open' ? (
@@ -53,9 +121,11 @@ export function AnalyzeView() {
       key={session.opening}
       session={session}
       params={params}
+      rawSearch={search}
       setParams={setParams}
       settings={settings}
       corpora={corpora}
+      corporaLoaded={corporaLoaded}
       client={client}
       navigate={navigate}
     />

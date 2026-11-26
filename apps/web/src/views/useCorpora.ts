@@ -4,8 +4,13 @@ import { useAnalysisClient } from '../engine/client-context.js';
 
 /** The corpora the engine can analyze on, for a picker: empty until listed, or if they cannot be. */
 export function useCorpora(): CorpusManifest[] {
+  return useCorporaState().corpora;
+}
+
+export function useCorporaState(): { corpora: CorpusManifest[]; loaded: boolean } {
   const client = useAnalysisClient();
   const [corpora, setCorpora] = useState<CorpusManifest[]>([]);
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     // A list that comes back after the picker is gone, as when a test ends first, is let go.
     let cancelled = false;
@@ -16,10 +21,13 @@ export function useCorpora(): CorpusManifest[] {
       })
       .catch(() => {
         if (!cancelled) setCorpora([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
       });
     return () => {
       cancelled = true;
     };
   }, [client]);
-  return corpora;
+  return { corpora, loaded };
 }

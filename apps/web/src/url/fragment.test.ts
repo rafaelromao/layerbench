@@ -1,10 +1,13 @@
 import { BUNDLED_LAYOUTS } from '@layerbench/core';
+import { getPreset } from '@layerbench/core/rules';
 import { createMemoryHistory } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from '../router.js';
 import { fromFragment, toFragment } from './fragment.js';
 import { encodeInline } from './inline.js';
 import { inlineRef } from './params.js';
+import { encodeRuleSnapshot } from './rule-snapshot.js';
+import { buildPortableTarget } from './share-target.js';
 
 const ORIGIN = 'https://app.example';
 
@@ -37,6 +40,77 @@ describe('layouts never saved, in the address', () => {
   it('leaves an address with an anchor of its own alone', () => {
     expect(outgoing('/guide/metrics#sfb')).toBe('/guide/metrics#sfb');
     expect(outgoing('/analyze?layout=inline%3Aaaa#main')).toBe('/analyze?layout=inline%3Aaaa#main');
+  });
+
+  it('keeps portable layout and rule snapshots after the hash, not in the request', () => {
+    const rulesSnapshot = encodeRuleSnapshot({
+      ...getPreset('cyanophage'),
+      id: 'strict',
+      name: 'Strict',
+    });
+    const path = `/analyze?corpus=en-general&layout=inline%3Aaaa&rules=custom%3Astrict&rulesSnapshot=${rulesSnapshot}&share=1`;
+    expect(outgoing(path)).toBe(
+      `/analyze?corpus=en-general&rules=custom%3Astrict&share=1#layout=inline%3Aaaa&rulesSnapshot=${rulesSnapshot}`,
+    );
+    const restored = new URL(incoming(outgoing(path)), ORIGIN);
+    expect(Object.fromEntries(restored.searchParams)).toEqual({
+      corpus: 'en-general',
+      layout: 'inline:aaa',
+      rules: 'custom:strict',
+      rulesSnapshot,
+      share: '1',
+    });
+    expect(restored.hash).toBe('');
+  });
+
+  it('keeps a local rule snapshot in the fragment after portability ends', () => {
+    const path =
+      '/analyze?corpus=custom%3Anotes&layout=qwerty&rules=custom%3Astrict&rulesSnapshot=v1.local';
+    const written =
+      '/analyze?corpus=custom%3Anotes&layout=qwerty&rules=custom%3Astrict#rulesSnapshot=v1.local';
+    expect(outgoing(path)).toBe(written);
+    expect(incoming(written)).toBe(path);
+    expect(incoming('/guide#rulesSnapshot=v1.anchor')).toBe('/guide#rulesSnapshot=v1.anchor');
+  });
+
+  it('canonicalizes portable router output and flags snapshot data in the request query', () => {
+    expect(outgoing('/analyze?share=1&layout=qwerty&corpus=en-general')).toBe(
+      '/analyze?corpus=en-general&layout=qwerty&share=1',
+    );
+
+    const queryLayout = new URL(
+      incoming('/analyze?corpus=en-general&layout=inline%3Aaaa&share=1'),
+      ORIGIN,
+    );
+    expect(queryLayout.searchParams.get('__portableTargetError')).toMatch(/fragment/i);
+
+    const queryRules = new URL(
+      incoming('/analyze?corpus=en-general&rulesSnapshot=v1.abc&share=1'),
+      ORIGIN,
+    );
+    expect(queryRules.searchParams.get('__portableTargetError')).toMatch(/unknown state/i);
+  });
+
+  it('flags duplicate and noncanonical portable query or fragment state', () => {
+    const duplicateQuery = new URL(
+      incoming('/analyze?corpus=en-general&corpus=pt-br-general&layout=qwerty&share=1'),
+      ORIGIN,
+    );
+    expect(duplicateQuery.searchParams.get('__portableTargetError')).toMatch(/repeats a state/i);
+
+    const duplicateParts = new URL(
+      incoming(
+        '/compare?b=inline%3Abbb&corpus=en-general&layout=inline%3Aquery&share=1#layout=inline%3Afragment',
+      ),
+      ORIGIN,
+    );
+    expect(duplicateParts.searchParams.get('__portableTargetError')).toMatch(/repeats a layout/i);
+
+    const noncanonical = new URL(
+      incoming('/analyze?share=1&layout=qwerty&corpus=en-general'),
+      ORIGIN,
+    );
+    expect(noncanonical.searchParams.get('__portableTargetError')).toMatch(/canonical/i);
   });
 
   it('come back from the fragment into the search', () => {
@@ -108,4 +182,45 @@ describe('the router', () => {
       expect(new URLSearchParams(fragment).get('b')).toBe(ref);
     }
   });
+
+  it('marks portable state moved from a query-only fragment field as invalid', () => {
+    const url = new URL(
+      '/analyze?corpus=en-general&layout=qwerty&share=1#corpus2=pt-general',
+      ORIGIN,
+    );
+
+    const rewritten = fromFragment(url);
+
+    expect(rewritten.searchParams.get('__portableTargetError')).toMatch(/unsupported snapshot/i);
+    expect(rewritten.searchParams.get('corpus2')).toBe('pt-general');
+  });
+
+  it.each(['analyze', 'compare'] as const)(
+    'accepts a portable %s link at router ingress under a non-root base',
+    async (route) => {
+      vi.stubEnv('BASE_URL', '/fork/');
+      try {
+        const href = await buildPortableTarget({
+          baseHref: `/fork/${route}`,
+          origin: ORIGIN,
+          route,
+          search:
+            route === 'analyze'
+              ? { layout: 'qwerty', corpus: 'en-general' }
+              : { layout: 'qwerty', b: 'colemak', corpus: 'en-general' },
+        });
+        const target = new URL(href);
+        const router = createAppRouter({
+          history: createMemoryHistory({
+            initialEntries: [`${target.pathname}${target.search}${target.hash}`],
+          }),
+        });
+        await router.load();
+
+        expect(router.state.location.search.__portableTargetError).toBeUndefined();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 });

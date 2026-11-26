@@ -61,7 +61,7 @@ describe('inline layout links', () => {
     const decoded = await decodeInline(blob);
     expect(decoded.ok).toBe(false);
     if (decoded.ok) return;
-    expect(decoded.error).toBe('invalid inline layout');
+    expect(decoded.error).toBe('inline layout too large');
   });
 
   it('reports a corrupt blob instead of throwing', async () => {

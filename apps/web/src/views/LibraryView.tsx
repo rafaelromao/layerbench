@@ -28,7 +28,7 @@ import {
   toCanonicalJson,
   typedLayout,
 } from '@layerbench/core';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type LibraryTarget,
@@ -76,6 +76,8 @@ import {
   settingsOf,
   toSearch,
 } from '../url/params.js';
+import { portableSearchTooLong, retainPortableState } from '../url/share-target.js';
+import { AnalyzeDestination } from './AnalyzeDestination.js';
 import { ChangeDialog } from './library/ChangeDialog.js';
 import { HeatControls } from './library/HeatControls.js';
 import { useHoldPlace } from './library/hold-place.js';
@@ -506,6 +508,10 @@ function NewLayoutDialog({
   );
 }
 
+function reportLongAddress() {
+  toast.error('This URL would be too long. Choose a smaller custom rule set or layout.');
+}
+
 export function LibraryView() {
   const storage = useStorage();
   const navigate = useNavigate();
@@ -548,8 +554,8 @@ export function LibraryView() {
   const search = useSearch({ strict: false }) as RawSearch;
   const params = useMemo(() => parseParams(search, ENGLISH_CORPUS), [search]);
   const ranking = useMemo(() => forRanking(settingsOf(params)), [params]);
-  useRememberSelection(params);
-  const settings = useAnalysisSettings(ranking);
+  useRememberSelection(params, search.rulesSnapshot);
+  const settings = useAnalysisSettings(ranking, search.rulesSnapshot);
   const corpora = useCorpora();
   const corpusName = textName(ranking, corpora);
   const corpusLanguage = textLanguage(ranking, corpora);
@@ -558,11 +564,16 @@ export function LibraryView() {
   const setParams = useCallback(
     (overrides: Partial<Params>) => {
       // No layout is being looked at here; the one `toSearch` always writes would only be noise.
-      const { layout: _layout, ...rest } = toSearch(params, overrides);
+      const next = retainPortableState(search, toSearch(params, overrides));
+      const { layout: _layout, ...rest } = next;
+      if (portableSearchTooLong('library', rest, window.location.origin)) {
+        reportLongAddress();
+        return;
+      }
       // The same view, written again: the page stays where it was scrolled to.
       navigate({ to: '/library', search: rest as never, replace: true, resetScroll: false });
     },
-    [navigate, params],
+    [navigate, params, search],
   );
   /** A language chip ranks the whole list on its language's text, alone. */
   const rankOn = useCallback((corpus: string) => setParams({ corpus, corpus2: null }), [setParams]);
@@ -576,9 +587,30 @@ export function LibraryView() {
    * from here shows the numbers its card showed.
    */
   const analyzeSearch = useCallback(
-    (layoutRef: string) => toSearch(params, { layoutRef, sample: ranking.sample }) as never,
-    [params, ranking.sample],
+    (layoutRef: string) =>
+      retainPortableState(search, toSearch(params, { layoutRef, sample: ranking.sample })),
+    [params, ranking.sample, search],
   );
+  const openInAnalyze = useCallback(
+    (ref: string) => {
+      const destination = analyzeSearch(ref);
+      if (portableSearchTooLong('analyze', destination, window.location.origin)) {
+        reportLongAddress();
+        return;
+      }
+      navigate({ to: '/analyze', search: destination as never });
+    },
+    [analyzeSearch, navigate],
+  );
+  const analyzeCard = (ref: string, name: string) => {
+    const destination = analyzeSearch(ref);
+    const label = `Analyze ${name}`;
+    return (
+      <AnalyzeDestination search={destination} label={label} className="btn btn-primary btn-xs">
+        Analyze
+      </AnalyzeDestination>
+    );
+  };
   const sortBy = useSession((s) => s.librarySort);
   const setSortBy = useSession((s) => s.setLibrarySort);
 
@@ -887,9 +919,9 @@ export function LibraryView() {
   const openInAnalyzer = useCallback(
     async (layout: Layout) => {
       const blob = await encodeInline(layout);
-      navigate({ to: '/analyze', search: analyzeSearch(inlineRef(blob)) });
+      openInAnalyze(inlineRef(blob));
     },
-    [navigate, analyzeSearch],
+    [openInAnalyze],
   );
 
   /**
@@ -953,18 +985,18 @@ export function LibraryView() {
     async (spec: NewLayoutSpec, opts?: SaveOptions) => {
       const layout = newLayout(spec);
       const id = await saveNew(layout, `Create layout ${spec.name}`, opts);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
+      if (id) openInAnalyze(customRef(id));
     },
-    [saveNew, navigate, analyzeSearch],
+    [saveNew, openInAnalyze],
   );
 
   /** A keymap read from a file goes straight to Analyze, saved, so nothing about it is lost. */
   const importKeymap = useCallback(
     async (layout: Layout) => {
       const id = await saveNew(layout, `Import keymap-drawer layout ${layout.name}`);
-      if (id) navigate({ to: '/analyze', search: analyzeSearch(customRef(id)) });
+      if (id) openInAnalyze(customRef(id));
     },
-    [saveNew, navigate, analyzeSearch],
+    [saveNew, openInAnalyze],
   );
 
   // A change proposed from a custom layout stays with it until its pull request is done: merged,
@@ -1240,14 +1272,7 @@ export function LibraryView() {
                       Delete
                     </button>
                   )}
-                  <Link
-                    to="/analyze"
-                    search={analyzeSearch(item.ref)}
-                    aria-label={`Analyze ${item.name}`}
-                    className="btn btn-primary btn-xs"
-                  >
-                    Analyze
-                  </Link>
+                  {analyzeCard(item.ref, item.name)}
                 </>
               }
             />

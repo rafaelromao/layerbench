@@ -231,10 +231,15 @@ export function ellipsize(text: string, width: number, size: number): string {
 export function wrapLines(text: string, width: number, size: number, max: number): string[] {
   const lines: string[] = [];
   let line = '';
-  for (const word of text.split(/\s+/).filter(Boolean)) {
+  for (const match of text.matchAll(/\S+/g)) {
+    const word = match[0];
     const next = line ? `${line} ${word}` : word;
     if (line && textWidth(next, size) > width) {
       lines.push(line);
+      if (max > 0 && lines.length === max) {
+        lines[max - 1] = `${line} …`;
+        return lines.map((value) => ellipsize(value, width, size));
+      }
       line = word;
     } else {
       line = next;

@@ -1,3 +1,4 @@
+import { bundledLayout, toCanonicalJson } from '@layerbench/core';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -7,11 +8,14 @@ import {
   RouterProvider,
 } from '@tanstack/react-router';
 import { act, render, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MemoryLink } from '../test/memory-link.js';
+import { MemoryStorage } from '../test/memory-storage.js';
 import type { RawSearch } from '../url/params.js';
+import { isPortableLayoutRef } from '../url/share-target.js';
+import { webDrafts } from './drafts.js';
 import { useRouterLink } from './router-link.js';
-import type { LinkPort } from './session.js';
+import { createLayoutSession, type LinkPort } from './session.js';
 
 /** A link to test, and how the world changes it: a link followed, then Back. */
 interface Harness {
@@ -42,7 +46,10 @@ function memoryHarness(start: string): Harness {
 }
 
 /** The router's link, on Analyze in a router of its own with a memory history. */
-async function routerHarness(start: string): Promise<Harness & { search(): RawSearch }> {
+async function routerHarness(
+  start: string,
+  extraQuery = '',
+): Promise<Harness & { search(): RawSearch }> {
   let link: LinkPort | null = null;
   function Probe() {
     link = useRouterLink();
@@ -57,7 +64,9 @@ async function routerHarness(start: string): Promise<Harness & { search(): RawSe
   });
   const router = createRouter({
     routeTree: root.addChildren([analyze]),
-    history: createMemoryHistory({ initialEntries: [`/analyze?layout=${start}&layer=2`] }),
+    history: createMemoryHistory({
+      initialEntries: [`/analyze?layout=${start}&layer=2${extraQuery ? `&${extraQuery}` : ''}`],
+    }),
   });
   render(<RouterProvider router={router} />);
   await waitFor(() => expect(link).not.toBeNull());
@@ -89,6 +98,31 @@ describe.each([
     expect(h.link.current()).toBe('qwerty');
   });
 
+  it('keeps the current opening and link when a layout pick is refused', async () => {
+    const h = await harness('qwerty');
+    const storage = new MemoryStorage();
+    const session = createLayoutSession({
+      storage: () => storage,
+      drafts: webDrafts(null),
+      link: {
+        canOpen: (ref) => ref !== 'colemak',
+        current: () => h.link.current(),
+        subscribe: (listener) => h.link.subscribe(listener),
+        write: (...args) => h.link.write(...args),
+      },
+    });
+    try {
+      await waitFor(() => expect(session.getState().status).toBe('open'));
+      const before = session.getState();
+      await session.open('colemak');
+      expect(session.getState()).toBe(before);
+      expect(h.link.current()).toBe('qwerty');
+      await h.settled();
+    } finally {
+      session.dispose();
+    }
+  });
+
   it('holds what was written, at once and once it lands, and is not heard to change for it', async () => {
     const h = await harness('qwerty');
     const heard: string[] = [];
@@ -98,6 +132,61 @@ describe.each([
     await h.settled();
     expect(h.link.current()).toBe('colemak');
     expect(heard.filter((ref) => ref !== 'colemak')).toEqual([]);
+  });
+
+  it.each([true, false])('settles a deferred saved pick (accepted: %s)', async (accept) => {
+    const h = await harness('qwerty');
+    const storage = new MemoryStorage();
+    await storage.put(
+      'layouts',
+      'mine',
+      toCanonicalJson({ ...bundledLayout('colemak')!, id: 'mine' }),
+    );
+    let writes = 0;
+    const session = createLayoutSession({
+      storage: () => storage,
+      drafts: webDrafts(null),
+      link: {
+        current: () => h.link.current(),
+        subscribe: (listener) => h.link.subscribe(listener),
+        revision: () => h.link.revision?.() ?? writes,
+        write: (...args) => {
+          writes += 1;
+          h.link.write(...args);
+        },
+        openSaved: (ref, snapshot) => {
+          if (!accept) return false;
+          if (h.link.openSaved) return h.link.openSaved(ref, snapshot);
+          h.link.write(snapshot.ref, 'open');
+          return true;
+        },
+      },
+    });
+    try {
+      await waitFor(() => expect(session.getState().status).toBe('open'));
+      const state = session.getState();
+      if (state.status !== 'open') throw new Error('Expected the bundled layout to be open');
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const get = storage.get.bind(storage);
+      vi.spyOn(storage, 'get').mockImplementation(async (collection, id) => {
+        await held;
+        return get(collection, id);
+      });
+      session.edited({ ...state.layout, description: 'Draft edit' }, true);
+      const picking = session.open('custom:mine');
+      const draft = await session.linkSnapshot();
+      await h.settled();
+      release();
+      await act(() => picking);
+      expect(session.getState()).toMatchObject({ storedId: accept ? 'mine' : null });
+      if (!accept) expect(h.link.current()).toBe(draft?.ref);
+      await h.settled();
+    } finally {
+      session.dispose();
+    }
   });
 
   it('is heard when anything else changes it: a link followed, and Back', async () => {
@@ -123,5 +212,25 @@ describe('The link through the router', () => {
     h.link.write('dvorak', 'open');
     await h.settled();
     expect(h.search().layer).toBeUndefined();
+  });
+
+  it('keeps portable rule snapshots when a public layout is opened', async () => {
+    const h = await routerHarness(
+      'qwerty',
+      'share=1&rules=custom%3Astrict&rulesSnapshot=v1.encoded',
+    );
+    expect(String(h.search().share)).toBe('1');
+    expect(h.search().rulesSnapshot).toBe('v1.encoded');
+    expect(isPortableLayoutRef('qwerty')).toBe(true);
+
+    h.link.write('qwerty', 'open');
+    await h.settled();
+
+    expect(h.search()).toMatchObject({
+      layout: 'qwerty',
+      share: '1',
+      rules: 'custom:strict',
+      rulesSnapshot: 'v1.encoded',
+    });
   });
 });

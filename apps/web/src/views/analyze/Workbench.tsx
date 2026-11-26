@@ -17,7 +17,7 @@ import {
   toCanonicalJson,
   withAddedLanguages,
 } from '@layerbench/core';
-import type { useNavigate } from '@tanstack/react-router';
+import { type useNavigate, useRouter } from '@tanstack/react-router';
 import {
   memo,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -46,6 +46,7 @@ import { MetricCard, SummaryStrip } from '../../components/Metrics.js';
 import { NameDialog, type TakenLayout } from '../../components/NameDialog.js';
 import { PairBreakdown } from '../../components/PairBreakdown.js';
 import { Tabs, tabId, tabPanelId } from '../../components/Tabs.js';
+import { customId, customRef } from '../../custom/ref.js';
 import { freeCopyName, type SaveOptions } from '../../custom/save-new.js';
 import type { useAnalysisClient } from '../../engine/client-context.js';
 import { expandPositions, heatMap, layerShare } from '../../engine/heat.js';
@@ -70,7 +71,20 @@ import { libraryLayoutNamed } from '../../proposals/target.js';
 import { useProposalUrl } from '../../proposals/use-proposal.js';
 import { toast } from '../../state/toasts.js';
 import { useCollection, useStorage } from '../../storage/use-storage.js';
-import { type Params, toSearch } from '../../url/params.js';
+import { portableCorpusError } from '../../url/corpus-share.js';
+import {
+  DEFAULT_PARAMS,
+  type Params,
+  parseParams,
+  type RawSearch,
+  toSearch,
+} from '../../url/params.js';
+import { encodeRuleSnapshot } from '../../url/rule-snapshot.js';
+import {
+  buildPortableTarget,
+  portableSearchTooLong,
+  retainPortableState,
+} from '../../url/share-target.js';
 import { ComboInspector } from '../edit/inspector/ComboInspector.js';
 import { KeyHint, KeyInspector } from '../edit/inspector/KeyInspector.js';
 import {
@@ -81,15 +95,9 @@ import {
   LayersPanel,
   PathsPanel,
 } from '../edit/panels.js';
-import {
-  editReducer,
-  type Panel,
-  refusalShownIn,
-  selectionOf,
-  shownLayer,
-} from '../edit/reducer.js';
+import { editReducer, type Panel, refusalShownIn, selectionOf } from '../edit/reducer.js';
 import { charLabel, missingKeys, spoken } from '../edit/tray.js';
-import { initialUndoState, undoable } from '../edit/undo.js';
+import { initialUndoState, type UndoAction, undoable } from '../edit/undo.js';
 import { settingsSummary } from '../SettingsDialog.js';
 import { textLanguage, textName } from '../text-of.js';
 import type { AnalysisSettingsState } from '../useAnalysisSettings.js';
@@ -130,11 +138,13 @@ export interface WorkbenchProps {
   /** The layout session, open: the layout as opened, and what is done with it. */
   session: OpenSession;
   params: Params;
-  setParams: (overrides: Partial<Params>) => void;
+  rawSearch: RawSearch;
+  setParams: (overrides: Partial<Params>) => Promise<boolean>;
   /** What the layout is analyzed on, the rule set read. */
   /** What the numbers are made on, as far as their rule set is read. */
   settings: AnalysisSettingsState;
   corpora: CorpusManifest[];
+  corporaLoaded: boolean;
   client: ReturnType<typeof useAnalysisClient>;
   navigate: ReturnType<typeof useNavigate>;
 }
@@ -148,18 +158,76 @@ export interface WorkbenchProps {
 export function Workbench({
   session,
   params,
+  rawSearch,
   setParams,
   settings,
   corpora,
+  corporaLoaded,
   client,
   navigate,
 }: WorkbenchProps) {
-  const [state, send] = useReducer(undoableEditReducer, null, () => {
+  const router = useRouter();
+  const historyRevision = useRef(0);
+  useEffect(() => {
+    const signature = (search: RawSearch) => ({
+      settings: JSON.stringify(
+        toSearch(parseParams(search), {
+          layoutRef: DEFAULT_PARAMS.layoutRef,
+          layer: DEFAULT_PARAMS.layer,
+        }),
+      ),
+      rulesSnapshot: search.rulesSnapshot,
+    });
+    let previous = signature(router.state.location.search as RawSearch);
+    return router.history.subscribe(({ action }) => {
+      const next = signature(router.state.location.search as RawSearch);
+      if (
+        action.type !== 'REPLACE' ||
+        previous.settings !== next.settings ||
+        previous.rulesSnapshot !== next.rulesSnapshot
+      )
+        historyRevision.current += 1;
+      previous = next;
+    });
+  }, [router]);
+  const [state, dispatch] = useReducer(undoableEditReducer, null, () => {
     const start = initialUndoState(session.layout, session.compiled, params.layer);
     // A draft this tab made, or a custom layout's link with edits not saved in it, is still
     // unsaved: the layout stored, if any, is not this one yet.
     return session.startsUnsaved ? { ...start, dirty: true, saved: null } : start;
   });
+  const editorState = useRef(state);
+  editorState.current = state;
+  const send = useCallback(
+    (action: UndoAction) => {
+      if (
+        (action.type === 'edit' && action.edit.kind === 'removeLayer') ||
+        action.type === 'undo' ||
+        action.type === 'redo'
+      ) {
+        const current = editorState.current;
+        const next = undoableEditReducer(current, action);
+        const search = router.state.location.search as RawSearch;
+        const params = parseParams(search);
+        // If the edit removes the layer named in the address, retaining the accepted selection
+        // is no longer possible. Keep the layout and its history if the replacement cannot fit.
+        if (
+          next.layout !== current.layout &&
+          params.layer >= next.compiled.layers.length &&
+          portableSearchTooLong(
+            'analyze',
+            retainPortableState(search, toSearch(params, { layer: next.layer })),
+            window.location.origin,
+          )
+        ) {
+          toast.error('This layer change would make the URL too long. Choose a smaller rule set.');
+          return;
+        }
+      }
+      dispatch(action);
+    },
+    [router],
+  );
   const keyboard = useRef<KeyboardHandle>(null);
   /** What to tell a screen reader: a key's changed legend is not announced on its own. */
   const [message, setMessage] = useState('');
@@ -294,7 +362,61 @@ export function Workbench({
   // The link carries the layout as it is: the session is told each change, and writes a draft of
   // unsaved edits a moment after the last one, or the layout's clean reference once nothing is.
   const { edited } = session;
-  useEffect(() => edited(state.layout, state.dirty), [edited, state.layout, state.dirty]);
+  const editedLayout = useRef(state.layout);
+  const pairedLayer = useRef<{ layout: Layout; layer: number } | null>(null);
+  const localLayer = useRef<{ layout: Layout; layer: number } | null>(null);
+  const publishedLayerCount = useRef(session.layout.layers.length);
+  useEffect(() => {
+    const changed = editedLayout.current !== state.layout;
+    editedLayout.current = state.layout;
+    if (!state.dirty) {
+      pairedLayer.current = null;
+      localLayer.current = null;
+      publishedLayerCount.current = state.compiled.layers.length;
+    }
+    if (
+      state.dirty &&
+      changed &&
+      (pairedLayer.current ||
+        params.layer !== state.layer ||
+        publishedLayerCount.current !== state.compiled.layers.length)
+    ) {
+      const pair = { layout: state.layout, layer: state.layer };
+      pairedLayer.current = pair;
+      edited(state.layout, true, {
+        layer: state.layer,
+        count: state.compiled.layers.length,
+        current: () => pairedLayer.current === pair,
+        settled(layer, published) {
+          const current = editorState.current;
+          if (published && current.layout === pair.layout)
+            publishedLayerCount.current = state.compiled.layers.length;
+          if (pairedLayer.current !== pair) return;
+          pairedLayer.current = null;
+          if (current.layout !== pair.layout || current.layer !== pair.layer) return;
+          if (layer !== pair.layer) {
+            const visible = Math.min(layer, current.compiled.layers.length - 1);
+            if (visible !== layer) localLayer.current = { layout: current.layout, layer: visible };
+            send({ type: 'selectLayer', layer: visible });
+          }
+        },
+      });
+    } else if (
+      !pairedLayer.current &&
+      (changed || !state.dirty || state.layout === session.layout)
+    ) {
+      edited(state.layout, state.dirty);
+    }
+  }, [
+    edited,
+    params.layer,
+    send,
+    session.layout,
+    state.compiled.layers.length,
+    state.dirty,
+    state.layer,
+    state.layout,
+  ]);
 
   // On a phone the tabs and the board fill the screen, so the editor of a key just selected opens
   // below it: bring it into view, as little as it takes. Undo and Redo bring the selection of a
@@ -334,11 +456,40 @@ export function Workbench({
     });
   }, [boardAsked]);
 
-  // The layer edited is the one the link names, so a link opens on it.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only the editor moves the layer; the link follows it
+  // The URL opens on a layer, but browser history can change it without an editor action. Restore
+  // that selection into the existing reducer (which keeps layout undo history), and write editor
+  // selections back only when the URL itself did not just change.
+  const urlLayer = useRef(params.layer);
   useEffect(() => {
-    if (params.layer !== state.layer) setParams({ layer: state.layer });
-  }, [state.layer]);
+    if (urlLayer.current !== params.layer) {
+      urlLayer.current = params.layer;
+      pairedLayer.current = null;
+      localLayer.current = null;
+      const layer = Math.min(params.layer, state.compiled.layers.length - 1);
+      if (layer !== params.layer && params.layer < publishedLayerCount.current) {
+        localLayer.current = { layout: state.layout, layer };
+      }
+      if (layer !== state.layer) send({ type: 'selectLayer', layer });
+      if (layer !== params.layer && !localLayer.current) setParams({ layer });
+      return;
+    }
+    if (
+      params.layer !== state.layer &&
+      !pairedLayer.current &&
+      !(localLayer.current?.layout === state.layout && localLayer.current.layer === state.layer)
+    ) {
+      const requested = state.layer;
+      void setParams({ layer: requested }).then((accepted) => {
+        const current = editorState.current;
+        if (!accepted && current.layout === state.layout && current.layer === requested) {
+          send({
+            type: 'selectLayer',
+            layer: Math.min(urlLayer.current, current.compiled.layers.length - 1),
+          });
+        }
+      });
+    }
+  }, [params.layer, send, setParams, state.compiled.layers.length, state.layer, state.layout]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -429,6 +580,7 @@ export function Workbench({
       customLayouts.refresh,
       refreshProposals,
       storage,
+      send,
     ],
   );
 
@@ -492,7 +644,7 @@ export function Workbench({
       refreshProposals();
       return sent;
     },
-    [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals],
+    [choosing, session.save, state.layout, storage, customLayouts.refresh, refreshProposals, send],
   );
 
   // A layout that is none of the custom layouts here, bundled or carried in a link whose id names
@@ -578,7 +730,10 @@ export function Workbench({
    * not ask. A draft brought back from the link has no such state, and no Cancel.
    */
   const discard = () => {
-    send({ type: 'discard' });
+    const action = { type: 'discard' } as const;
+    const next = undoableEditReducer(state, action);
+    if (next === state || !session.restoreClean(next.layout, next.layer)) return;
+    send(action);
     toast.info('Discarded the changes — Undo brings them back');
   };
 
@@ -589,8 +744,99 @@ export function Workbench({
   };
 
   const compare = async () => {
-    const ref = await session.link();
-    navigate({ to: '/compare', search: toSearch(params, { layoutRef: ref }) as never });
+    const opening = session.opening;
+    const history = historyRevision.current;
+    const snapshot = await session.linkSnapshot(opening);
+    if (!snapshot || !session.isCurrentOpening(opening) || historyRevision.current !== history)
+      return;
+    const { ref, tooLarge } = snapshot;
+    const layer = editorState.current.layer;
+    const next = toSearch(params, { layoutRef: ref, layer });
+    const { layer: _layer, ...compareSearch } = next;
+    const destination = retainPortableState(rawSearch, {
+      ...compareSearch,
+      b: 'qwerty',
+      ...(layer > 0 && { layerA: String(layer) }),
+    });
+    if (tooLarge || portableSearchTooLong('compare', destination, window.location.origin)) {
+      const localRef =
+        !editorState.current.dirty && session.storedId !== null
+          ? customRef(session.storedId)
+          : null;
+      if (localRef === null) {
+        toast.error(
+          tooLarge
+            ? [
+                'This layout is too large to open in Compare (2 MB limit).',
+                'Shorten its description or remove content; Analyze is unchanged.',
+              ].join(' ')
+            : [
+                'This layout is too large to open in Compare. Shorten it or save a smaller',
+                'layout first; Analyze is unchanged.',
+              ].join(' '),
+        );
+        return;
+      }
+      const localOnly: RawSearch = { ...destination, layout: localRef };
+      delete localOnly.share;
+      if (portableSearchTooLong('compare', localOnly, window.location.origin)) {
+        toast.error(
+          [
+            'This comparison is too long to open, even with the saved layout reference.',
+            'Shorten the layout description or choose a smaller custom rule set; Analyze is unchanged.',
+          ].join(' '),
+        );
+        return;
+      }
+      toast.info(
+        tooLarge
+          ? [
+              'Compare is open on this device only. The layout snapshot exceeds the 2 MB limit;',
+              'shorten the layout to share it.',
+            ].join(' ')
+          : [
+              'Compare is open on this device only because the layout snapshot would make its',
+              'URL too long. Shorten the layout to share it.',
+            ].join(' '),
+      );
+      navigate({ to: '/compare', search: localOnly as never });
+      return;
+    }
+    navigate({
+      to: '/compare',
+      search: destination as never,
+    });
+  };
+
+  const shareLink = async () => {
+    const opening = session.opening;
+    const history = historyRevision.current;
+    if (!corporaLoaded)
+      throw new Error('Wait for the available texts to finish loading before sharing.');
+    const corpusError = portableCorpusError(params.corpus, params.corpus2, corpora);
+    if (corpusError) throw new Error(corpusError);
+    let rulesSnapshot: string | undefined;
+    if (customId(params.preset) !== null) {
+      if (settings.status !== 'read')
+        throw new Error(
+          settings.status === 'failed'
+            ? settings.error
+            : 'Wait for the custom rule set to finish loading before sharing.',
+        );
+      rulesSnapshot = encodeRuleSnapshot(settings.settings.rules);
+    }
+    const ref = await session.link(opening);
+    if (ref === null || historyRevision.current !== history) return null;
+    const layer = editorState.current.layer;
+    const baseHref = router.buildLocation({ to: '/analyze', search: {} as never }).publicHref;
+    const target = await buildPortableTarget({
+      baseHref,
+      origin: window.location.origin,
+      route: 'analyze',
+      search: toSearch(params, { layoutRef: ref, layer }),
+      ...(rulesSnapshot !== undefined && { rulesSnapshot }),
+    });
+    return session.isCurrentOpening(opening) && historyRevision.current === history ? target : null;
   };
 
   // ------------------------------------------------------------------ outlines and playback
@@ -721,18 +967,56 @@ export function Workbench({
   // While a word plays the board follows it from layer to layer, resting on the one it starts on.
   const playing = play !== null && frames.length > 0;
   const boardLayer = playing ? (frame ?? frames[0]).layer : state.layer;
+  const boardGesture = useRef(0);
+  const selectLocalLayer = (layer: number) => {
+    localLayer.current = { layout: state.layout, layer };
+    send({ type: 'selectLayer', layer });
+  };
 
   /** A gesture on the board while a word plays acts on the layer the board shows, then stops it. */
-  const stopPlaying = () => {
-    if (!playing) return;
-    if (boardLayer !== state.layer) send({ type: 'selectLayer', layer: boardLayer });
+  const stopPlaying = (gesture?: () => void) => {
+    const request = ++boardGesture.current;
     setPlay(null);
+    if (boardLayer === state.layer) {
+      gesture?.();
+      return;
+    }
+    if (pairedLayer.current) return;
+    if (boardLayer >= publishedLayerCount.current) {
+      selectLocalLayer(boardLayer);
+      gesture?.();
+      return;
+    }
+    const history = historyRevision.current;
+    void setParams({ layer: boardLayer }).then((accepted) => {
+      if (
+        !accepted ||
+        boardGesture.current !== request ||
+        historyRevision.current !== history ||
+        !session.isCurrentOpening(session.opening) ||
+        editorState.current.layout !== state.layout ||
+        parseParams(router.state.location.search as RawSearch).layer !== boardLayer
+      )
+        return;
+      send({ type: 'selectLayer', layer: boardLayer });
+      gesture?.();
+    });
   };
 
   /** Choosing a layer is looking at it: the word stops playing over it. */
-  const selectLayer = (layer: number) => {
+  const selectLayer = async (layer: number, after?: () => void) => {
+    ++boardGesture.current;
     setPlay(null);
-    send({ type: 'selectLayer', layer });
+    if (layer !== state.layer && pairedLayer.current) return;
+    if (layer >= publishedLayerCount.current) {
+      selectLocalLayer(layer);
+      after?.();
+      return;
+    }
+    if (layer === state.layer || (await setParams({ layer }))) {
+      if (!session.isCurrentOpening(session.opening)) return;
+      after?.();
+    }
   };
 
   const heat = useMemo(
@@ -802,7 +1086,13 @@ export function Workbench({
     send({ type: 'setPanel', panel: 'board' });
     // The board turns to the layer the item happens on, so its keys are the ones drawn.
     const layer = itemLayer(item.layers);
-    if (layer !== null && layer !== state.layer) send({ type: 'selectLayer', layer });
+    if (
+      layer !== null &&
+      layer !== state.layer &&
+      !pairedLayer.current &&
+      layer < publishedLayerCount.current
+    )
+      setParams({ layer });
     if (item.then?.length) setPressedFor({ rule: rule.label, item });
   };
 
@@ -887,7 +1177,14 @@ export function Workbench({
   };
 
   const undo = (redo: boolean) => {
-    send({ type: redo ? 'redo' : 'undo' });
+    const action = { type: redo ? ('redo' as const) : ('undo' as const) };
+    const next = undoableEditReducer(state, action);
+    if (
+      next === state ||
+      (state.dirty && !next.dirty && !session.restoreClean(next.layout, next.layer))
+    )
+      return;
+    send(action);
     setMessage(redo ? 'Redone' : 'Undone');
   };
 
@@ -912,39 +1209,44 @@ export function Workbench({
     if (e.altKey) {
       if (e.code === 'KeyS') {
         e.preventDefault();
-        stopPlaying();
-        // The key picked is the one to swap, not where an armed character goes.
-        if (state.placing !== null) send({ type: 'armChar', char: null });
-        send({ type: 'keyClick', keyId });
-        send({ type: 'startSwap' });
+        stopPlaying(() => {
+          // The key picked is the one to swap, not where an armed character goes.
+          if (state.placing !== null) send({ type: 'armChar', char: null });
+          send({ type: 'keyClick', keyId });
+          send({ type: 'startSwap' });
+        });
       }
       return;
     }
     if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
-      stopPlaying();
-      send({ type: 'typeOnKey', keyId, seed: null });
+      stopPlaying(() => send({ type: 'typeOnKey', keyId, seed: null }));
       return;
     }
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
-      stopPlaying();
       // On one of several selected keys, every one of them.
-      const keys = selectionOf(state);
+      const keys = boardLayer === state.layer ? selectionOf(state) : [];
       const cleared = keys.length > 1 && keys.includes(keyId) ? keys : [keyId];
-      send({
-        type: 'edit',
-        edit: { kind: 'bind', layer: shownLayer(state), keys: cleared, binding: { kind: 'none' } },
-        say: cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
-      });
+      stopPlaying(() =>
+        send({
+          type: 'edit',
+          edit: {
+            kind: 'bind',
+            layer: state.layout.layers[boardLayer].id,
+            keys: cleared,
+            binding: { kind: 'none' },
+          },
+          say: cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
+        }),
+      );
       return;
     }
     // Space keeps activating the key like the button it is; everything else typed on a key is
     // the start of its binding.
     if (e.key.length === 1 && e.key !== ' ') {
       e.preventDefault();
-      stopPlaying();
-      send({ type: 'typeOnKey', keyId, seed: e.key });
+      stopPlaying(() => send({ type: 'typeOnKey', keyId, seed: e.key }));
     }
   };
 
@@ -1129,10 +1431,16 @@ export function Workbench({
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
       {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
       {state.panel === 'combos' && (
-        <CombosPanel state={state} send={send} onShow={showOnBoard} onPick={revealBoard} />
+        <CombosPanel
+          state={state}
+          send={send}
+          onShow={showOnBoard}
+          onPick={revealBoard}
+          onLayer={selectLayer}
+        />
       )}
       {state.panel === 'behaviors' && (
-        <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
+        <BehaviorsPanel state={state} send={send} onShow={showOnBoard} onLayer={selectLayer} />
       )}
       {state.panel === 'paths' && <PathsPanel state={state} send={send} producers={producers} />}
       {state.panel === 'export' && <ExportPanel state={state} send={send} />}
@@ -1195,6 +1503,7 @@ export function Workbench({
         settings={settings}
         onParams={setParams}
         onCompare={compare}
+        onShareLink={shareLink}
         showCombos={hasTypingCombos ? { on: showCombos, onChange: setShowCombos } : undefined}
       />
 
@@ -1398,34 +1707,36 @@ export function Workbench({
                           onComboClick={(combo) => {
                             // While keys are being picked for a combo, they are all the board is doing.
                             if (state.comboPick) return;
-                            stopPlaying();
-                            send({ type: 'selectCombo', combo: placeOf(combo) });
+                            stopPlaying(() => send({ type: 'selectCombo', combo: placeOf(combo) }));
                           }}
                           arcs={playing ? [] : arcs}
                           draggable
-                          onDragStart={() => stopPlaying()}
+                          onDragStart={() => setPlay((p) => p && { ...p, playing: false })}
                           onKeyClick={(keyId, how) => {
                             if (state.comboPick) {
                               send({ type: 'comboPickToggle', keyId });
                               return;
                             }
-                            stopPlaying();
                             if (!state.swapFrom) clearOutline();
                             // A click, a tap and Space all select; the inspector is where editing
                             // happens, so a finger and a mouse reach it the same way. With Shift, or a
                             // finger rested on the key, the key joins the others selected or leaves.
-                            send(
-                              how?.add
-                                ? { type: 'toggleSelect', keyId }
-                                : { type: 'keyClick', keyId },
+                            stopPlaying(() =>
+                              send(
+                                how?.add
+                                  ? { type: 'toggleSelect', keyId }
+                                  : { type: 'keyClick', keyId },
+                              ),
                             );
                           }}
                           onDropKey={(drop) =>
-                            send({
-                              type: 'dropKey',
-                              ...drop,
-                              say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
-                            })
+                            stopPlaying(() =>
+                              send({
+                                type: 'dropKey',
+                                ...drop,
+                                say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
+                              }),
+                            )
                           }
                           onKeyShortcut={onKeyShortcut}
                           onEmptyClick={() => {
@@ -1440,7 +1751,7 @@ export function Workbench({
                           combos={boardCombos}
                           showApart={showCombos}
                           // The board would turn under the dialog as a word plays.
-                          onApartOpen={stopPlaying}
+                          onApartOpen={() => stopPlaying()}
                           onApartLostFocus={() =>
                             focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
                           }
@@ -1486,13 +1797,14 @@ export function Workbench({
                           }}
                           onDisarm={() => send({ type: 'armChar', char: null })}
                           onDrop={({ char, to }) => {
-                            stopPlaying();
-                            send({
-                              type: 'placeChar',
-                              keyId: to,
-                              char,
-                              say: `${spoken(char)} on ${to}`,
-                            });
+                            stopPlaying(() =>
+                              send({
+                                type: 'placeChar',
+                                keyId: to,
+                                char,
+                                say: `${spoken(char)} on ${to}`,
+                              }),
+                            );
                           }}
                           board={() => document.getElementById('kb-analyze')}
                         />

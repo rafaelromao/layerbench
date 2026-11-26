@@ -44,6 +44,7 @@ import { LayerChips, Segment, TextField } from './inspector/controls.js';
 import { type EditAction, type EditState, shownLayer } from './reducer.js';
 
 type Send = Dispatch<EditAction>;
+type ShowLayer = (layer: number, after: () => void) => void;
 
 interface PanelProps {
   state: EditState;
@@ -660,7 +661,9 @@ export function CombosPanel({
   send,
   onShow,
   onPick,
+  onLayer = (_, after) => after(),
 }: PanelProps & {
+  onLayer?: ShowLayer;
   /** Before a combo is shown on the board: a word playing there would hide it. */
   onShow?: () => void;
   /** When the keys of a new combo are about to be picked on the board. */
@@ -717,12 +720,12 @@ export function CombosPanel({
                 // The board turns to the first layer the combo works on, as its card is drawn, so
                 // the combo is there to be seen selected. Closing it leaves the board as it is.
                 onClick={() => {
-                  if (!open) onShow?.();
-                  send(
-                    open
-                      ? { type: 'selectCombo', combo: null }
-                      : { type: 'selectCombo', combo: i, layer: on },
-                  );
+                  if (open) send({ type: 'selectCombo', combo: null });
+                  else
+                    onLayer(on, () => {
+                      onShow?.();
+                      send({ type: 'selectCombo', combo: i, layer: on });
+                    });
                 }}
               >
                 <span className="lb-combo-slide-board">
@@ -840,6 +843,7 @@ function useFeatureSlides(
   send: Send,
   panel: RefObject<HTMLElement | null>,
   onShow?: () => void,
+  onLayer: ShowLayer = (_, after) => after(),
 ): ReactNode[] {
   const features = useMemo(() => specialFeatures(state.layout), [state.layout]);
   const { compiled } = state;
@@ -863,27 +867,34 @@ function useFeatureSlides(
     if (slide) revealInCarousel(slide);
   }, [panel, openAt, hasSlide]);
   const show = (f: SpecialFeature) => {
-    onShow?.();
-    // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
-    // armed swap would add its key to the one shown.
-    send({ type: 'comboPickCancel' });
-    send({ type: 'cancelSwap' });
+    const prepare = () => {
+      onShow?.();
+      // Whatever the board is doing gives way: a pick of a combo's keys would keep its clicks, and an
+      // armed swap would add its key to the one shown.
+      send({ type: 'comboPickCancel' });
+      send({ type: 'cancelSwap' });
+    };
     if (f.combo !== undefined) {
       const combo = f.comboIndex === undefined ? undefined : state.layout.combos?.[f.comboIndex];
       if (f.comboIndex === undefined || combo === undefined) return;
       // The board turns to the first layer the combo works on, as the Combos tab does.
       const first = combo.layers?.[0] ?? state.layout.layers[0]?.id;
-      send({
-        type: 'selectCombo',
-        combo: f.comboIndex,
-        layer: first === undefined ? 0 : (compiled.layerIndex.get(first) ?? 0),
+      const layer = first === undefined ? 0 : (compiled.layerIndex.get(first) ?? 0);
+      const index = f.comboIndex;
+      onLayer(layer, () => {
+        prepare();
+        send({ type: 'selectCombo', combo: index, layer });
       });
       return;
     }
     const layer = f.layer === undefined ? undefined : compiled.layerIndex.get(f.layer);
     if (layer === undefined || f.key === undefined) return;
-    send({ type: 'selectLayer', layer });
-    send({ type: 'keyClick', keyId: f.key });
+    const keyId = f.key;
+    onLayer(layer, () => {
+      prepare();
+      send({ type: 'selectLayer', layer });
+      send({ type: 'keyClick', keyId });
+    });
   };
   /**
    * What the feature types, as the board would draw it: its key, or its combo. A use inside one of
@@ -964,12 +975,14 @@ export function BehaviorsPanel({
   state,
   send,
   onShow,
+  onLayer,
 }: PanelProps & {
+  onLayer?: ShowLayer;
   /** Before a feature is shown on the board: a word playing there would hide it. */
   onShow?: () => void;
 }) {
   const panel = useRef<HTMLElement>(null);
-  const slides = useFeatureSlides(state, send, panel, onShow);
+  const slides = useFeatureSlides(state, send, panel, onShow, onLayer);
   return (
     <section ref={panel} className="space-y-2 min-w-0" aria-label="Special features">
       <Carousel label="Special behaviors" className="lb-carousel-short">

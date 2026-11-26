@@ -1,6 +1,7 @@
 import { getPreset, type RuleSet, type StorageAdapter, stableStringify } from '@layerbench/core';
 import { useEffect, useMemo, useState } from 'react';
 import { useSettled, useStorage } from '../storage/use-storage.js';
+import { decodeRuleSnapshot } from '../url/rule-snapshot.js';
 import { type CustomFailure, type CustomRead, customError, readCustom } from './read.js';
 import { customId } from './ref.js';
 
@@ -15,7 +16,11 @@ export type RuleSetState = {
 } & (
   | { status: 'reading' }
   | { status: 'read'; ruleSet: RuleSet }
-  | { status: 'failed'; failure: CustomFailure; error: string }
+  | {
+      status: 'failed';
+      failure: CustomFailure | { status: 'unreadable'; why: string };
+      error: string;
+    }
 );
 
 /**
@@ -27,10 +32,14 @@ export type RuleSetState = {
  * until it answers; unchanged, it is the same object as before, so nothing is analyzed again. One
  * left for another reference is forgotten, so coming back to it reads it again.
  */
-export function useRuleSet(ref: string): RuleSetState {
+export function useRuleSet(ref: string, snapshot?: string): RuleSetState {
   const storage = useStorage();
   const settled = useSettled();
   const id = customId(ref);
+  const embedded = useMemo(
+    () => (snapshot === undefined ? null : decodeRuleSnapshot(snapshot)),
+    [snapshot],
+  );
   const [read, setRead] = useState<{
     ref: string;
     storage: StorageAdapter;
@@ -40,7 +49,7 @@ export function useRuleSet(ref: string): RuleSetState {
   } | null>(null);
 
   useEffect(() => {
-    if (id === null) return;
+    if (id === null || snapshot !== undefined) return;
     let cancelled = false;
     void readCustom(storage, 'rulesets', id).then((r) => {
       if (cancelled) return;
@@ -60,7 +69,7 @@ export function useRuleSet(ref: string): RuleSetState {
     return () => {
       cancelled = true;
     };
-  }, [ref, id, storage, settled]);
+  }, [ref, id, storage, settled, snapshot]);
 
   // A set looked at before, and asked for again, may have been saved since: it is read afresh.
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new reference is the trigger
@@ -73,6 +82,36 @@ export function useRuleSet(ref: string): RuleSetState {
   }, [ref, id]);
 
   return useMemo<RuleSetState>(() => {
+    if (snapshot !== undefined) {
+      if (id === null)
+        return {
+          ref,
+          name: ref,
+          status: 'failed',
+          failure: {
+            status: 'unreadable',
+            why: 'A custom snapshot needs a custom rule reference.',
+          },
+          error: 'A custom rule-set snapshot cannot be used with a preset.',
+        };
+      if (!embedded?.ok)
+        return {
+          ref,
+          name: id,
+          status: 'failed',
+          failure: {
+            status: 'unreadable',
+            why: embedded?.error ?? 'The custom rule-set snapshot could not be read.',
+          },
+          error: embedded?.error ?? 'The custom rule-set snapshot could not be read.',
+        };
+      return {
+        ref,
+        name: embedded.ruleSet.name ?? id,
+        status: 'read',
+        ruleSet: embedded.ruleSet,
+      };
+    }
     if (preset) return preset;
     const known = id !== null && read?.ref === ref ? read : null;
     const name = id ?? ref;
@@ -86,5 +125,5 @@ export function useRuleSet(ref: string): RuleSetState {
     if (r.status === 'read')
       return { ref, name: r.doc.name ?? name, status: 'read', ruleSet: r.doc };
     return { ref, name, status: 'failed', failure: r, error: customError('rulesets', name, r) };
-  }, [preset, id, ref, read, storage, settled]);
+  }, [preset, id, ref, read, storage, settled, snapshot, embedded]);
 }
