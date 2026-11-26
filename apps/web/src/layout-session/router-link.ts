@@ -41,6 +41,39 @@ export class RouterLink implements LinkPort {
     return this.ref;
   }
 
+  restore(snapshot: { ref: string; tooLarge: boolean }, layer: number, localRef?: string): boolean {
+    let accepted = false;
+    this.navigate({
+      to: '/analyze',
+      search: ((previous: RawSearch) => {
+        const destination = (ref: string) => {
+          const next = retainPortableState(
+            previous,
+            toSearch(parseParams(previous), { layoutRef: ref, layer }),
+          );
+          if (!isPortableLayoutRef(ref)) delete next.share;
+          return next;
+        };
+        const inline = destination(snapshot.ref);
+        const needsFallback = snapshot.tooLarge || this.tooLong(inline);
+        const next = needsFallback && localRef ? destination(localRef) : inline;
+        if ((needsFallback && !localRef) || this.tooLong(next)) {
+          toast.error(
+            'Restoring this layout would make the URL too long. Choose a smaller custom rule set first.',
+          );
+          return previous;
+        }
+        accepted = true;
+        this.ref = parseParams(next).layoutRef;
+        if (needsFallback && localRef) this.localPortableFallback = { localRef };
+        return next;
+      }) as never,
+      replace: true,
+      resetScroll: false,
+    });
+    return accepted;
+  }
+
   revision(): number {
     return this.navigation;
   }

@@ -48,6 +48,7 @@ export interface LinkPort {
    * a compact saved-layout reference current while an oversized snapshot is local-only.
    */
   write(ref: string, how: 'edit' | 'open', localRef?: string, tooLarge?: boolean): void;
+  restore?(snapshot: { ref: string; tooLarge: boolean }, layer: number, localRef?: string): boolean;
   /** Hear every reference the link takes, whoever wrote it. */
   subscribe(listener: (ref: string) => void): () => void;
 }
@@ -97,6 +98,7 @@ export interface LayoutSession {
    * once; unsaved, a draft follows a moment after the last edit.
    */
   edited(layout: Layout, unsaved: boolean): void;
+  restoreClean(layout: Layout, layer: number): boolean;
   /**
    * Store the layout, under the id its name gives, in place of the one this is, if any. Saves run one
    * after another. Once it resolves, the editor marks the layout saved, and reports it so. Where
@@ -466,6 +468,20 @@ export function createLayoutSession(
 
   return {
     getState: () => state,
+
+    restoreClean(layout, layer) {
+      if (disposed || state.status !== 'open') return false;
+      if (!link.restore) return true;
+      const localRef = storedId === null ? undefined : customRef(storedId);
+      own.add(clean.ref);
+      if (localRef) own.add(localRef);
+      if (!link.restore(clean, layer, localRef)) return false;
+      editor = { layout, unsaved: false };
+      ++editorRevision;
+      cancelPending();
+      publish();
+      return true;
+    },
 
     subscribe(listener) {
       listeners.add(listener);

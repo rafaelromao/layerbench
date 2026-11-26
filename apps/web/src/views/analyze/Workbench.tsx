@@ -390,8 +390,19 @@ export function Workbench({
       if (layer !== params.layer) setParams({ layer });
       return;
     }
-    if (params.layer !== state.layer) setParams({ layer: state.layer });
-  }, [params.layer, setParams, state.compiled.layers.length, state.layer]);
+    if (params.layer !== state.layer) {
+      const requested = state.layer;
+      void setParams({ layer: requested }).then((accepted) => {
+        const current = editorState.current;
+        if (!accepted && current.layout === state.layout && current.layer === requested) {
+          send({
+            type: 'selectLayer',
+            layer: Math.min(urlLayer.current, current.compiled.layers.length - 1),
+          });
+        }
+      });
+    }
+  }, [params.layer, setParams, state.compiled.layers.length, state.layer, state.layout]);
 
   // An unsaved layout is easy to lose by closing the tab.
   useEffect(() => {
@@ -631,7 +642,10 @@ export function Workbench({
    * not ask. A draft brought back from the link has no such state, and no Cancel.
    */
   const discard = () => {
-    send({ type: 'discard' });
+    const action = { type: 'discard' } as const;
+    const next = undoableEditReducer(state, action);
+    if (next === state || !session.restoreClean(next.layout, next.layer)) return;
+    send(action);
     toast.info('Discarded the changes — Undo brings them back');
   };
 
@@ -1034,7 +1048,14 @@ export function Workbench({
   };
 
   const undo = (redo: boolean) => {
-    send({ type: redo ? 'redo' : 'undo' });
+    const action = { type: redo ? ('redo' as const) : ('undo' as const) };
+    const next = undoableEditReducer(state, action);
+    if (
+      next === state ||
+      (state.dirty && !next.dirty && !session.restoreClean(next.layout, next.layer))
+    )
+      return;
+    send(action);
     setMessage(redo ? 'Redone' : 'Undone');
   };
 

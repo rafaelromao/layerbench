@@ -24,6 +24,7 @@ export type LayoutSessionView = SessionState &
   Pick<
     LayoutSession,
     | 'edited'
+    | 'restoreClean'
     | 'save'
     | 'duplicate'
     | 'open'
@@ -93,6 +94,7 @@ export function useLayoutSession(): LayoutSessionView {
         ? {
             ...state,
             edited: session.edited,
+            restoreClean: session.restoreClean,
             save: session.save,
             duplicate: session.duplicate,
             open: session.open,
@@ -104,6 +106,7 @@ export function useLayoutSession(): LayoutSessionView {
         : {
             ...OPENING,
             edited: () => {},
+            restoreClean: () => false,
             save: async () => ({ ok: false, reason: 'failed', error: 'nothing open' }) as const,
             duplicate: async () =>
               ({ ok: false, reason: 'failed', error: 'nothing open' }) as const,

@@ -2,6 +2,7 @@ import { bundledLayout, getPreset, type Layout, toCanonicalJson } from '@layerbe
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useSelection } from '../state/selection.js';
 import { useToasts } from '../state/toasts.js';
 import { copyDialog, dragKey } from '../test/analyze-editing.js';
 import { showLayer, shownLayer } from '../test/layers.js';
@@ -856,6 +857,88 @@ describe('portable Analyze links', () => {
       expect.arrayContaining([expect.stringMatching(/choose a smaller custom rule set/i)]),
     );
   }, 60_000);
+
+  it('guards the Corpus Analyze destination that carries embedded rules', async () => {
+    const id = 'r'.repeat(7_880);
+    const snapshot = encodeRuleSnapshot({ ...getPreset('cyanophage'), id, rules: [] });
+    const source = renderRoute('/corpus?id=en-general', {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    useSelection.setState({ search: { rules: `custom:${id}`, rulesSnapshot: snapshot } });
+    const name = 'Analyze with this corpus';
+    expect(screen.queryByRole('link', { name })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name }));
+    expect(source.currentPath()).toBe('/corpus');
+    expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/choose a smaller custom rule set/i)]),
+    );
+  }, 60_000);
+
+  it.each(['add layer', 'undo'])(
+    'keeps a request-bound Analyze address in sync on %s',
+    async (action) => {
+      const layout =
+        action === 'undo'
+          ? 'colemak'
+          : `inline:${await encodeInline(bundledLayout('magic-romak')!)}`;
+      const target = (id: string) =>
+        buildPortableTarget({
+          baseHref: '/analyze',
+          origin: window.location.origin,
+          route: 'analyze',
+          search: { layout, rules: `custom:${id}`, corpus: 'en-general', sample: '10000' },
+          rulesSnapshot: encodeRuleSnapshot({ ...getPreset('cyanophage'), id, rules: [] }),
+        });
+      const base = new URL(await target('r'));
+      const url = new URL(
+        await target('r'.repeat(7_899 - base.pathname.length - base.search.length)),
+      );
+      const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
+        client: new RecordingClient(),
+        storage: new MemoryStorage(),
+      });
+      const search = () => new URLSearchParams(source.currentSearch());
+      await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+      if (action === 'add layer') {
+        fireEvent.click(screen.getByRole('tab', { name: 'Layers' }));
+        fireEvent.change(screen.getByLabelText('New layer name'), { target: { value: 'Nav' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Add layer' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Board' }));
+        await waitFor(async () => {
+          expect(await decodeInline(search().get('layout')!.slice('inline:'.length))).toMatchObject(
+            {
+              ok: true,
+              layout: {
+                layers: expect.arrayContaining([expect.objectContaining({ name: 'Nav' })]),
+              },
+            },
+          );
+          expect(shownLayer()).toBe('Alpha 1');
+        });
+        expect(search().has('layer')).toBe(false);
+        return;
+      }
+      const settings = await openSettings();
+      const description = within(settings).getByRole('textbox', { name: 'Description' });
+      fireEvent.change(description, { target: { value: 'Draft' } });
+      fireEvent.blur(description);
+      fireEvent.click(within(settings).getByRole('button', { name: 'Done' }));
+      await waitFor(() => expect(search().get('layout')).toMatch(/^inline:/));
+      fireEvent.change(screen.getByRole('combobox', { name: 'Heat' }), {
+        target: { value: 'effort' },
+      });
+      await waitFor(() => expect(search().get('heat')).toBe('effort'));
+      const before = source.currentSearch();
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+      expect(source.currentSearch()).toBe(before);
+      expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
+      expect(useToasts.getState().toasts.map(({ text }) => text)).toContainEqual(
+        expect.stringMatching(/restoring this layout would make the URL too long/i),
+      );
+    },
+    60_000,
+  );
 
   it('offers only the Compare Analyze destination that fits the request budget', async () => {
     const layout = `inline:${await encodeInline(bundledLayout('colemak')!)}`;
