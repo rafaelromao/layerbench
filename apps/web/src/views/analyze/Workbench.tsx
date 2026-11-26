@@ -145,7 +145,7 @@ export interface WorkbenchProps {
   session: OpenSession;
   params: Params;
   rawSearch: RawSearch;
-  setParams: (overrides: Partial<Params>) => void;
+  setParams: (overrides: Partial<Params>) => Promise<boolean>;
   /** What the layout is analyzed on, the rule set read. */
   /** What the numbers are made on, as far as their rule set is read. */
   settings: AnalysisSettingsState;
@@ -874,9 +874,12 @@ export function Workbench({
   };
 
   /** Choosing a layer is looking at it: the word stops playing over it. */
-  const selectLayer = (layer: number) => {
+  const selectLayer = async (layer: number, after?: () => void) => {
     setPlay(null);
-    setParams({ layer });
+    if (layer === state.layer || (await setParams({ layer }))) {
+      if (!session.isCurrentOpening(session.opening)) return;
+      after?.();
+    }
   };
 
   const heat = useMemo(
@@ -1273,10 +1276,16 @@ export function Workbench({
       {state.panel === 'layers' && <LayersPanel state={state} send={send} />}
       {state.panel === 'configuration' && <ConfigurationPanel state={state} send={send} />}
       {state.panel === 'combos' && (
-        <CombosPanel state={state} send={send} onShow={showOnBoard} onPick={revealBoard} />
+        <CombosPanel
+          state={state}
+          send={send}
+          onShow={showOnBoard}
+          onPick={revealBoard}
+          onLayer={selectLayer}
+        />
       )}
       {state.panel === 'behaviors' && (
-        <BehaviorsPanel state={state} send={send} onShow={showOnBoard} />
+        <BehaviorsPanel state={state} send={send} onShow={showOnBoard} onLayer={selectLayer} />
       )}
       {state.panel === 'paths' && <PathsPanel state={state} send={send} producers={producers} />}
       {state.panel === 'export' && <ExportPanel state={state} send={send} />}

@@ -857,6 +857,40 @@ describe('portable Analyze links', () => {
     );
   }, 60_000);
 
+  it('offers only the Compare Analyze destination that fits the request budget', async () => {
+    const layout = `inline:${await encodeInline(bundledLayout('colemak')!)}`;
+    const target = async (id: string) =>
+      buildPortableTarget({
+        baseHref: '/compare',
+        origin: window.location.origin,
+        route: 'compare',
+        search: {
+          layout,
+          b: 'qwerty',
+          rules: `custom:${id}`,
+          corpus: 'en-general',
+          sample: '10000',
+        },
+        rulesSnapshot: encodeRuleSnapshot({ ...getPreset('cyanophage'), id, rules: [] }),
+      });
+    const base = new URL(await target('r'));
+    const id = 'r'.repeat(7_899 - base.pathname.length - base.search.length);
+    const url = new URL(await target(id));
+    const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
+      client: new RecordingClient(),
+      storage: new MemoryStorage(),
+    });
+    const b = await screen.findByRole('button', { name: 'Analyze B' }, { timeout: 25_000 });
+    const a = screen.getByRole('link', { name: 'Analyze A' });
+    expect(new URL(a.getAttribute('href')!, url.origin).hash).toContain('rulesSnapshot=');
+    expect(screen.queryByRole('link', { name: 'Analyze B' })).toBeNull();
+    fireEvent.click(b);
+    expect(source.currentPath()).toBe('/compare');
+    expect(
+      useToasts.getState().toasts.some(({ text }) => /URL would be too long/i.test(text)),
+    ).toBe(true);
+  }, 60_000);
+
   it('keeps embedded custom rules when a Library analysis setting changes', async () => {
     const user = userEvent.setup();
     const sharedRules = {
@@ -1076,7 +1110,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it.each(['Heat', 'Layout', 'Saved layout', 'Layer', 'Draft'])(
+  it.each(['Heat', 'Layout', 'Saved layout', 'Layer', 'Combo', 'Draft'])(
     'keeps Analyze open when changing %s exceeds the URL limit',
     async (field) => {
       useToasts.setState({ toasts: [] });
@@ -1086,7 +1120,7 @@ describe('portable Analyze links', () => {
         origin: window.location.origin,
         route: 'analyze' as const,
         search: {
-          layout: field === 'Layer' ? 'magic-romak' : 'qwerty',
+          layout: field === 'Layer' || field === 'Combo' ? 'magic-romak' : 'qwerty',
           corpus: 'en-general',
           sample: '10000',
           rules: 'custom:strict',
@@ -1160,7 +1194,15 @@ describe('portable Analyze links', () => {
         field === 'Heat' ? 'effort' : field === 'Layout' ? 'magic-romak' : `custom:${id}`;
       if (field === 'Saved layout')
         await within(picker).findByRole('option', { name: 'Oversized saved Colemak' });
-      if (field === 'Layer')
+      if (field === 'Combo') {
+        await userEvent.click(screen.getByRole('tab', { name: 'Combos' }));
+        const combo = within(screen.getByRole('region', { name: 'Combos' }))
+          .getAllByRole('button', { name: 'Edit RHM+RHR' })
+          .find(
+            (button) => button.querySelector('.lb-combo-slide-layers')?.textContent === 'Alpha 2',
+          )!;
+        fireEvent.click(combo);
+      } else if (field === 'Layer')
         await userEvent.click(screen.getByRole('button', { name: 'Next layer' }));
       else await userEvent.selectOptions(picker, next);
       await waitFor(
@@ -1171,7 +1213,9 @@ describe('portable Analyze links', () => {
         { container: document.createElement('div') },
       );
       expect(source.currentSearch()).toBe(before);
-      if (field === 'Layer') {
+      if (field === 'Combo') {
+        expect(shownLayer()).toBe('Alpha 1');
+      } else if (field === 'Layer') {
         expect(shownLayer()).toBe('Alpha 1');
         const rules = await openSettings();
         fireEvent.change(within(rules).getByRole('combobox', { name: 'Rule set' }), {

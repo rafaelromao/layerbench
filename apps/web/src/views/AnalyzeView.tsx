@@ -111,6 +111,7 @@ function AnalyzeWorkbench({
       });
       if (accepted && Object.keys(overrides).some((key) => key !== 'layer'))
         await retryDraft(opening);
+      return accepted;
     },
     [corpora, corporaLoaded, navigate, opening, retryDraft],
   );

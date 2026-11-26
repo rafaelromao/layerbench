@@ -28,7 +28,7 @@ import {
   toCanonicalJson,
   typedLayout,
 } from '@layerbench/core';
-import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type LibraryTarget,
@@ -77,6 +77,7 @@ import {
   toSearch,
 } from '../url/params.js';
 import { portableSearchTooLong, retainPortableState } from '../url/share-target.js';
+import { AnalyzeDestination } from './AnalyzeDestination.js';
 import { ChangeDialog } from './library/ChangeDialog.js';
 import { HeatControls } from './library/HeatControls.js';
 import { useHoldPlace } from './library/hold-place.js';
@@ -604,21 +605,10 @@ export function LibraryView() {
   const analyzeCard = (ref: string, name: string) => {
     const destination = analyzeSearch(ref);
     const label = `Analyze ${name}`;
-    if (portableSearchTooLong('analyze', destination, window.location.origin))
-      return (
-        <button type="button" onClick={reportLongAddress} aria-label={label} className="btn btn-xs">
-          Analyze
-        </button>
-      );
     return (
-      <Link
-        to="/analyze"
-        search={destination as never}
-        aria-label={label}
-        className="btn btn-primary btn-xs"
-      >
+      <AnalyzeDestination search={destination} label={label} className="btn btn-primary btn-xs">
         Analyze
-      </Link>
+      </AnalyzeDestination>
     );
   };
   const sortBy = useSession((s) => s.librarySort);

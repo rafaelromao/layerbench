@@ -1,5 +1,5 @@
 import { type CorpusManifest, layoutLanguages, toCanonicalJson } from '@layerbench/core';
-import { Link, useNavigate, useRouter, useSearch } from '@tanstack/react-router';
+import { useNavigate, useRouter, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Collapsible } from '../components/Collapsible.js';
 import { ErrorAlert } from '../components/ErrorAlert.js';
@@ -45,6 +45,7 @@ import {
   retainPortableState,
 } from '../url/share-target.js';
 import { SampleSelect, SettingsFields } from './AnalysisSelects.js';
+import { AnalyzeDestination } from './AnalyzeDestination.js';
 import { compareRows } from './compare-rows.js';
 import { LayoutOptions } from './LayoutOptions.js';
 import { SettingsDialog, settingsSummary } from './SettingsDialog.js';
@@ -571,36 +572,30 @@ function ComparePage({
 
           {/* Each opens in Analyze on the text, rules and switches compared on. */}
           <div className="flex gap-2 max-sm:flex-1">
-            <Link
-              to="/analyze"
-              search={
-                retainPortableState(
-                  search,
-                  toSearch(params, {
-                    layoutRef: params.layoutRef,
-                    ...(search.share === '1' && { layer: layerA }),
-                  }),
-                ) as never
-              }
+            <AnalyzeDestination
+              search={retainPortableState(
+                search,
+                toSearch(params, {
+                  layoutRef: params.layoutRef,
+                  ...(search.share === '1' && { layer: layerA }),
+                }),
+              )}
               className="btn btn-sm btn-outline max-sm:flex-1"
             >
               Analyze A
-            </Link>
-            <Link
-              to="/analyze"
-              search={
-                retainPortableState(
-                  search,
-                  toSearch(params, {
-                    layoutRef: refB,
-                    ...(search.share === '1' && { layer: layerB }),
-                  }),
-                ) as never
-              }
+            </AnalyzeDestination>
+            <AnalyzeDestination
+              search={retainPortableState(
+                search,
+                toSearch(params, {
+                  layoutRef: refB,
+                  ...(search.share === '1' && { layer: layerB }),
+                }),
+              )}
               className="btn btn-sm btn-outline max-sm:flex-1"
             >
               Analyze B
-            </Link>
+            </AnalyzeDestination>
             <ShareLinkButton createTarget={shareLink} />
           </div>
         </div>
