@@ -33,6 +33,11 @@ export interface LinkPort {
   openSaved?(ref: string, snapshot: { ref: string; tooLarge: boolean }): boolean;
   /** Whether renaming can replace an address that still needs the old saved ID. */
   canRename?(from: string, to: string, snapshot: { ref: string; tooLarge: boolean }): boolean;
+  commitRename?(
+    from: string,
+    to: string,
+    snapshot: { ref: string; tooLarge: boolean },
+  ): Promise<boolean>;
   /** Changes when navigation supersedes a pending pick, even with the same layout reference. */
   revision?(): number;
   /** The layout reference the link holds now. */
@@ -147,7 +152,7 @@ async function store(
   opts: SaveOptions,
   /** The version of this layout the editor opened it at, which this save is an edit of. */
   basedOn: string | null,
-  checkRename: (from: string, to: string) => Promise<() => boolean>,
+  checkRename: (from: string, to: string) => Promise<() => Promise<boolean>>,
 ): Promise<{ id: string; leftBehind: boolean; sha: string | null }> {
   if (storedId === null) {
     const { id, sha } = await saveNewLayout(
@@ -185,8 +190,8 @@ async function store(
     // kept here (the account could not be reached, or held something at that id or name to ask
     // about) leaves the old copy where it is, in the account and here, until the user has dealt with it.
     if (
-      canRetire?.() === false ||
-      (storage instanceof CompositeStorage && storage.unsentToAccount('layouts', id))
+      (storage instanceof CompositeStorage && storage.unsentToAccount('layouts', id)) ||
+      (canRetire && !(await canRetire()))
     ) {
       leftBehind = true;
     } else {
@@ -518,16 +523,25 @@ export function createLayoutSession(
             opts,
             basedOn,
             async (fromId, toId) => {
-              if (!link.canRename) return () => true;
+              if (!link.canRename) return async () => true;
               const saved = await layoutSnapshot({ ...layout, id: toId });
-              const fits = () =>
-                link.canRename?.(customRef(fromId), customRef(toId), saved) !== false;
+              const from = customRef(fromId);
+              const to = customRef(toId);
+              const fits = () => link.canRename?.(from, to, saved) !== false;
               if (!fits()) {
                 throw new Error(
                   'The renamed layout would make the analysis URL too long. Use a shorter name or choose a smaller custom rule set, then retry.',
                 );
               }
-              return fits;
+              const revision = link.revision?.();
+              return async () => {
+                if (disposed || state.opening !== opening || revision !== link.revision?.())
+                  return false;
+                if (!link.commitRename) return fits();
+                own.add(saved.ref);
+                own.add(to);
+                return link.commitRename(from, to, saved);
+              };
             },
           );
           if (state.opening === opening) attempted = null;

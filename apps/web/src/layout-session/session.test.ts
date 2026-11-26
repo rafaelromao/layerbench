@@ -88,31 +88,74 @@ const ids = async (storage: MemoryStorage) =>
   (await storage.list('layouts')).map((e) => e.id).sort();
 
 describe('Opening a layout', () => {
-  it('keeps a compact saved layout readable when its renamed reference cannot fit', async () => {
-    const storage = new MemoryStorage();
-    await seed(storage, 'qwerty', 'mine', {
-      name: 'Mine',
-      description: 'x'.repeat(2_000_001),
-    });
-    const search = { layout: 'custom:mine', rulesSnapshot: 'x'.repeat(2_097_070) };
-    let address = search;
-    const link = new RouterLink('custom:mine', search, (opts) => {
-      const update = opts.search as unknown as (prev: typeof search) => typeof search;
-      address = update(address);
-      link.follow(address.layout, '/analyze', address);
-    });
-    const drafts = webDrafts(mapStore());
-    const s = createLayoutSession({ storage: () => storage, drafts, link });
-    const state = await opened(s);
-    expect(await s.save({ ...state.layout, name: `Renamed ${'x'.repeat(120)}` })).toMatchObject({
-      ok: false,
-      error: expect.stringMatching(/shorter name|smaller custom rule set/i),
-    });
-    expect(address).toEqual(search);
-    expect((await opened(session(address.layout, { storage }).s)).layout.name).toBe('Mine');
-    expect(await ids(storage)).toEqual(['mine']);
-    s.dispose();
-  });
+  it.each(['mine', 'custom:mine'])(
+    'keeps %s readable when the renamed reference cannot fit',
+    async (ref) => {
+      const storage = new MemoryStorage();
+      await seed(storage, 'qwerty', 'mine', {
+        name: 'Mine',
+        description: 'x'.repeat(2_000_001),
+      });
+      const prefix = `${window.location.origin}/analyze?layout=${encodeURIComponent(ref)}#rulesSnapshot=`;
+      const search = { layout: ref, rulesSnapshot: 'x'.repeat(2_097_147 - prefix.length) };
+      let address = search;
+      const link = new RouterLink(ref, search, (opts) => {
+        const update = opts.search as unknown as (prev: typeof search) => typeof search;
+        address = update(address);
+        link.follow(address.layout, '/analyze', address);
+      });
+      const drafts = webDrafts(mapStore());
+      const s = createLayoutSession({ storage: () => storage, drafts, link });
+      const state = await opened(s);
+      expect(await s.save({ ...state.layout, name: `Renamed ${'x'.repeat(120)}` })).toMatchObject({
+        ok: false,
+        error: expect.stringMatching(/shorter name|smaller custom rule set/i),
+      });
+      expect(address.rulesSnapshot).toBe(search.rulesSnapshot);
+      expect((await opened(session(address.layout, { storage }).s)).layout.name).toBe('Mine');
+      expect(await ids(storage)).toEqual(['mine']);
+      s.dispose();
+    },
+  );
+
+  it.each([false, true])(
+    'retires a saved ID only after a replacement lands (interrupted: %s)',
+    async (interrupted) => {
+      const storage = new MemoryStorage();
+      await seed(storage, 'qwerty', 'mine', { name: 'Mine', description: 'x'.repeat(2_000_001) });
+      let address = { layout: 'custom:mine', rulesSnapshot: 'embedded' };
+      const link = new RouterLink(address.layout, address, (opts) => {
+        const update = opts.search as unknown as (prev: typeof address) => typeof address;
+        address = update(address);
+        link.follow(address.layout, '/analyze', address, true);
+      });
+      const s = createLayoutSession({ storage: () => storage, drafts: webDrafts(null), link });
+      const state = await opened(s);
+      const put = storage.put.bind(storage);
+      vi.spyOn(storage, 'put').mockImplementation(async (...args) => {
+        if (interrupted) {
+          address = { ...address, rulesSnapshot: 'new-embedded' };
+          link.follow(address.layout, '/analyze', address, true);
+        }
+        return put(...args);
+      });
+      const remove = storage.delete.bind(storage);
+      const deleting = vi.spyOn(storage, 'delete').mockImplementation(async (...args) => {
+        expect(address.layout).toBe('custom:renamed');
+        return remove(...args);
+      });
+      expect(await s.save({ ...state.layout, name: 'Renamed' })).toMatchObject({
+        ok: true,
+        leftBehind: interrupted,
+      });
+      expect(deleting).toHaveBeenCalledTimes(interrupted ? 0 : 1);
+      expect(address.rulesSnapshot).toBe(interrupted ? 'new-embedded' : 'embedded');
+      const reload = session(address.layout, { storage }).s;
+      expect((await opened(reload)).layout.name).toBe(interrupted ? 'Mine' : 'Renamed');
+      reload.dispose();
+      s.dispose();
+    },
+  );
 
   it('opens a bundled layout as a layout of its own, and writes nothing', async () => {
     const { s, link } = session('qwerty');

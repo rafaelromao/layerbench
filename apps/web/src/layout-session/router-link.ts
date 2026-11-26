@@ -85,12 +85,48 @@ export class RouterLink implements LinkPort {
   }
 
   canRename(from: string, to: string, snapshot: { ref: string; tooLarge: boolean }): boolean {
-    if (customId(parseParams(this.search).layoutRef) !== customId(from)) return true;
-    const inline = { ...this.search, layout: snapshot.ref };
-    if (!snapshot.tooLarge && !this.tooLong(inline)) return true;
-    const compact: RawSearch = { ...this.search, layout: to };
+    const ref = parseParams(this.search).layoutRef;
+    if (ref !== from && ref !== customId(from)) return true;
+    return this.renameSearch(this.search, to, snapshot) !== null;
+  }
+
+  private renameSearch(
+    search: RawSearch,
+    to: string,
+    snapshot: { ref: string; tooLarge: boolean },
+  ): RawSearch | null {
+    const inline = { ...search, layout: snapshot.ref };
+    if (!snapshot.tooLarge && !this.tooLong(inline)) return inline;
+    const compact: RawSearch = { ...search, layout: to };
     delete compact.share;
-    return !this.tooLong(compact);
+    return this.tooLong(compact) ? null : compact;
+  }
+
+  async commitRename(
+    from: string,
+    to: string,
+    snapshot: { ref: string; tooLarge: boolean },
+  ): Promise<boolean> {
+    const revision = this.revision();
+    const current = parseParams(this.search).layoutRef;
+    if (current !== from && current !== customId(from)) return true;
+    let accepted: string | null = null;
+    await this.navigate({
+      to: '/analyze',
+      search: ((previous: RawSearch) => {
+        if (revision !== this.revision() || parseParams(previous).layoutRef !== current)
+          return previous;
+        const next = this.renameSearch(previous, to, snapshot);
+        if (!next) return previous;
+        accepted = parseParams(next).layoutRef;
+        this.ref = accepted;
+        this.localPortableFallback = { localRef: to };
+        return next;
+      }) as never,
+      replace: true,
+      resetScroll: false,
+    });
+    return accepted !== null && parseParams(this.search).layoutRef === accepted;
   }
 
   private openSearch(search: RawSearch, ref: string): RawSearch {
