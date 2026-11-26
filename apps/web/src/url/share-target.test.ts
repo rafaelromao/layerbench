@@ -2,7 +2,12 @@ import { bundledLayout, getPreset } from '@layerbench/core';
 import { describe, expect, it } from 'vitest';
 import { encodeInline, MAX_INLINE_BYTES } from './inline.js';
 import { encodeRuleSnapshot, MAX_RULE_SNAPSHOT_BYTES } from './rule-snapshot.js';
-import { buildPortableTarget, parsePortableSearch, parsePortableTarget } from './share-target.js';
+import {
+  buildPortableTarget,
+  parsePortableSearch,
+  parsePortableTarget,
+  portableSearchTooLong,
+} from './share-target.js';
 
 const ORIGIN = 'https://layerbench.example';
 
@@ -197,6 +202,9 @@ describe('portable share targets', () => {
     const initial = snapshot(Math.floor(((2_097_150 - baseline.length) * 3) / 4) + 1);
     const length = baseline.length - snapshot(1).length + initial.length;
     const origin = ORIGIN.replace('://', `://${'x'.repeat(2_097_151 - length)}`);
+    const search = { ...target.search, share: '1', rulesSnapshot: initial };
+    expect(portableSearchTooLong('analyze', search, origin)).toBe(true);
+    expect(portableSearchTooLong('analyze', search, origin.replace('://x', '://'))).toBe(false);
     await expect(
       buildPortableTarget({ ...target, origin, rulesSnapshot: initial }),
     ).rejects.toThrow(/too long for browsers to open/i);

@@ -17,6 +17,8 @@ const LOCAL_ONLY_TOO_LONG_MESSAGE =
   'This layout is open on this device only because the shared URL would be too long. Shorten the layout description or choose a smaller custom rule set, then share again.';
 const LAYOUT_TOO_LARGE_MESSAGE =
   'The layout snapshot exceeds the 2 MB limit. Shorten the layout description, then share again.';
+const DRAFT_TOO_LONG_MESSAGE =
+  'The draft URL would be too long. Your edit is still in the editor; shorten the layout description or choose a smaller custom rule set.';
 
 /**
  * The link port over the app's router, on Analyze. What the session writes replaces the reference
@@ -25,7 +27,7 @@ const LAYOUT_TOO_LARGE_MESSAGE =
  */
 export class RouterLink implements LinkPort {
   private readonly listeners = new Set<(ref: string) => void>();
-  private pendingPortableOpen: { localRef: string; rulesSnapshot?: string } | null = null;
+  private navigation = 0;
   private localPortableFallback: { localRef: string } | null = null;
   private observedHref: string | null = null;
 
@@ -39,19 +41,44 @@ export class RouterLink implements LinkPort {
     return this.ref;
   }
 
+  revision(): number {
+    return this.navigation;
+  }
+
+  openSaved(localRef: string, snapshot: { ref: string; tooLarge: boolean }): boolean {
+    const inline = this.openSearch(this.search, snapshot.ref);
+    const useLocal = snapshot.tooLarge || this.tooLong(inline);
+    const destination = useLocal ? this.openSearch(this.search, localRef) : inline;
+    if (useLocal && this.tooLong(destination)) {
+      this.reportRefusal();
+      return false;
+    }
+    this.localPortableFallback = { localRef };
+    this.ref = useLocal ? localRef : snapshot.ref;
+    if (useLocal)
+      toast.error(snapshot.tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : LOCAL_ONLY_TOO_LONG_MESSAGE);
+    this.navigate({
+      to: '/analyze',
+      search: destination as never,
+      replace: true,
+      resetScroll: false,
+    });
+    return true;
+  }
+
+  private tooLong(search: RawSearch): boolean {
+    return portableSearchTooLong('analyze', search, window.location.origin);
+  }
+
+  private reportRefusal(): void {
+    toast.error(
+      'This layout would make the analysis URL too long. Choose a smaller custom rule set or layout; Analyze is unchanged.',
+    );
+  }
+
   canOpen(ref: string): boolean {
-    if (customId(ref) !== null) return true;
-    const destination = this.openSearch(this.search, ref);
-    if (
-      (destination.share !== undefined || destination.rulesSnapshot !== undefined) &&
-      portableSearchTooLong('analyze', destination, window.location.origin)
-    ) {
-      toast.error(
-        [
-          'This layout would make the analysis URL too long.',
-          'Choose a smaller custom rule set or layout; Analyze is unchanged.',
-        ].join(' '),
-      );
+    if (this.tooLong(this.openSearch(this.search, ref))) {
+      this.reportRefusal();
       return false;
     }
     return true;
@@ -75,47 +102,11 @@ export class RouterLink implements LinkPort {
     if (this.localPortableFallback && (how === 'open' || customId(ref) !== null)) {
       this.localPortableFallback = customId(ref) !== null ? { localRef: ref } : null;
     }
-    if (how === 'open' && this.search.share === '1' && customId(ref) !== null) {
-      // Leave the portable URL untouched while a local layout is loading. Its eventual inline
-      // snapshot will be written only if no URL navigation supersedes this open.
-      this.pendingPortableOpen = {
-        localRef: ref,
-        ...(this.search.rulesSnapshot !== undefined && {
-          rulesSnapshot: this.search.rulesSnapshot,
-        }),
-      };
-      return;
-    }
     this.navigate({
       to: '/analyze',
       // Written onto whatever the link holds by then, so settings changed meanwhile stay. A layout
       // picked starts on its first layer.
       search: ((prev: RawSearch) => {
-        if (how === 'edit' && this.pendingPortableOpen && ref.startsWith('inline:')) {
-          const pending = this.pendingPortableOpen;
-          this.pendingPortableOpen = null;
-          const next = toSearch(parseParams(prev), {
-            layoutRef: ref,
-            layer: DEFAULT_PARAMS.layer,
-          });
-          const portableSearch = {
-            ...next,
-            share: '1',
-            ...(pending.rulesSnapshot !== undefined
-              ? { rulesSnapshot: pending.rulesSnapshot }
-              : {}),
-          };
-          if (
-            tooLarge ||
-            portableSearchTooLong('analyze', portableSearch, window.location.origin)
-          ) {
-            // Keep the selected local layout and embedded rules usable in this browser, but do not
-            // replace the working route with a portable URL the browser cannot open.
-            return this.keepLocalOnly(prev, portableSearch, pending.localRef, tooLarge);
-          }
-          this.localPortableFallback = { localRef: pending.localRef };
-          return portableSearch;
-        }
         if (how === 'edit' && ref.startsWith('inline:')) {
           const previousLayout = typeof prev.layout === 'string' ? prev.layout : null;
           const localRef =
@@ -123,31 +114,30 @@ export class RouterLink implements LinkPort {
             (previousLayout !== null && customId(previousLayout) !== null ? previousLayout : null);
           const candidate = { ...prev, layout: ref };
           const portableCandidate = { ...candidate, share: '1' };
-          const tooLong = portableSearchTooLong(
-            'analyze',
-            portableCandidate,
-            window.location.origin,
-          );
+          const tooLong = this.tooLong(candidate);
 
           if (tooLong || tooLarge) {
             const fallback = savedRef ?? localRef;
             if (fallback !== null) return this.keepLocalOnly(prev, candidate, fallback, tooLarge);
-            if (tooLarge || prev.share === '1') {
-              this.ref = parseParams(prev).layoutRef;
-              toast.error(tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : LOCAL_ONLY_TOO_LONG_MESSAGE);
-              return prev;
-            }
+            this.ref = parseParams(prev).layoutRef;
+            toast.error(tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : DRAFT_TOO_LONG_MESSAGE);
+            return prev;
           } else if (localRef !== null || prev.share === '1') {
             const portable = parsePortableSearch('analyze', portableCandidate);
-            if (portable?.ok) {
+            if (portable?.ok && !this.tooLong(portableCandidate)) {
               if (localRef !== null) this.localPortableFallback = { localRef };
               return portableCandidate;
             }
           }
           return candidate;
         }
-        if (how === 'edit') return { ...prev, layout: ref };
-        this.pendingPortableOpen = null;
+        if (how === 'edit') {
+          const candidate = { ...prev, layout: ref };
+          if (!this.tooLong(candidate)) return candidate;
+          this.ref = parseParams(prev).layoutRef;
+          toast.error(DRAFT_TOO_LONG_MESSAGE);
+          return prev;
+        }
         return this.openSearch(prev, ref);
       }) as never,
       replace: true,
@@ -163,7 +153,6 @@ export class RouterLink implements LinkPort {
   ): RawSearch {
     const localOnly: RawSearch = { ...search, layout: localRef };
     delete localOnly.share;
-    this.localPortableFallback = { localRef };
     if (portableSearchTooLong('analyze', localOnly, window.location.origin)) {
       this.ref = parseParams(previous).layoutRef;
       toast.error(
@@ -174,6 +163,7 @@ export class RouterLink implements LinkPort {
       );
       return previous;
     }
+    this.localPortableFallback = { localRef };
     this.ref = localRef;
     toast.error(tooLarge ? LAYOUT_TOO_LARGE_MESSAGE : LOCAL_ONLY_TOO_LONG_MESSAGE);
     return localOnly;
@@ -182,7 +172,7 @@ export class RouterLink implements LinkPort {
   /** The reference the link names now, as the router has it. */
   follow(ref: string, href: string, search: RawSearch, navigation = false): void {
     if (navigation || (this.observedHref !== null && this.observedHref !== href))
-      this.pendingPortableOpen = null;
+      this.navigation += 1;
     this.observedHref = href;
     this.search = search;
     if (ref === this.ref) return;

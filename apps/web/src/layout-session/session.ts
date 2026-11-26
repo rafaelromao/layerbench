@@ -10,7 +10,7 @@ import {
   sameName,
   toCanonicalJson,
 } from '@layerbench/core';
-import { customRef } from '../custom/ref.js';
+import { customId, customRef } from '../custom/ref.js';
 import {
   retryingSaver,
   type SaveOptions,
@@ -29,6 +29,10 @@ import { carriedLayout, type LayoutSource, layoutSnapshot, openLayout } from './
 export interface LinkPort {
   /** Refuse a layout pick before the session leaves the current opening. */
   canOpen?(ref: string): boolean;
+  /** Commit a resolved saved pick, or leave the current address unchanged. */
+  openSaved?(ref: string, snapshot: { ref: string; tooLarge: boolean }): boolean;
+  /** Changes when navigation supersedes a pending pick, even with the same layout reference. */
+  revision?(): number;
   /** The layout reference the link holds now. */
   current(): string;
   /**
@@ -289,18 +293,24 @@ export function createLayoutSession(
     return { ref, tooLarge };
   };
 
-  const start = async (ref: string) => {
+  const start = async (
+    ref: string,
+    prepared?: {
+      result: Awaited<ReturnType<typeof openLayout>>;
+      carried: { ref: string; tooLarge: boolean };
+    },
+  ) => {
     cancelPending();
     const opening = state.opening + 1;
     state = { status: 'opening', opening };
-    own = new Set([ref]);
+    own = new Set([ref, ...(prepared ? [link.current()] : [])]);
     editor = null;
     editorRevision += 1;
     opened = null;
     publish();
 
     const origin = drafts.originOf(ref);
-    const result = await openLayout(ref, ports.storage());
+    const result = prepared?.result ?? (await openLayout(ref, ports.storage()));
     if (state.opening !== opening || disposed) return;
     if (!result.ok) {
       state = { status: 'failed', opening, error: result.error };
@@ -326,7 +336,7 @@ export function createLayoutSession(
     // A custom layout opened by its id gets the link that carries it whole, which opens anywhere.
     const carried = startsUnsaved
       ? { ref, tooLarge: false }
-      : await carriedLayout(ref, { layout: result.layout, storedId });
+      : (prepared?.carried ?? (await carriedLayout(ref, { layout: result.layout, storedId })));
     if (state.opening !== opening || disposed) return;
     clean = carried;
     opened = { layout: result.layout, startsUnsaved };
@@ -342,7 +352,7 @@ export function createLayoutSession(
       pickedRef: '',
       saving,
     };
-    if (!startsUnsaved) write(clean.ref, 'edit', undefined, clean.tooLarge);
+    if (!startsUnsaved && !prepared) write(clean.ref, 'edit', undefined, clean.tooLarge);
     state = { ...state, pickedRef: pickedRef() };
     publish();
   };
@@ -354,7 +364,32 @@ export function createLayoutSession(
   void start(link.current());
 
   /** A layout picked: written to the link as one, and opened. */
+  let pick = 0;
   const openRef = async (ref: string) => {
+    const sequence = ++pick;
+    if (link.openSaved && customId(ref) !== null) {
+      const opening = state.opening;
+      const revision = link.revision?.();
+      const current = () =>
+        !disposed &&
+        sequence === pick &&
+        opening === state.opening &&
+        revision === link.revision?.();
+      const result = await openLayout(ref, ports.storage());
+      if (!current()) return;
+      if (result.ok) {
+        const carried = await carriedLayout(ref, result);
+        if (!current()) return;
+        const previous = own;
+        own = new Set([...previous, ref, carried.ref]);
+        if (!link.openSaved(ref, carried)) {
+          own = previous;
+          return;
+        }
+        await start(ref, { result, carried });
+        return;
+      }
+    }
     if (link.canOpen?.(ref) === false) return;
     own = new Set([ref]);
     write(ref, 'open');

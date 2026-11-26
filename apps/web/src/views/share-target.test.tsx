@@ -1019,7 +1019,7 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it.each(['Heat', 'Layout'])(
+  it.each(['Heat', 'Layout', 'Saved layout'])(
     'keeps Analyze open when changing %s exceeds the URL limit',
     async (field) => {
       useToasts.setState({ toasts: [] });
@@ -1044,14 +1044,27 @@ describe('portable Analyze links', () => {
       expect(href.length).toBeGreaterThanOrEqual(2_097_149);
       expect(href.length).toBeLessThan(2_097_152);
       const url = new URL(href);
+      const storage = new MemoryStorage();
+      const id = 'oversized-saved-colemak';
+      if (field === 'Saved layout')
+        await storage.put('layouts', id, {
+          ...toCanonicalJson(bundledLayout('colemak')!),
+          id,
+          name: 'Oversized saved Colemak',
+          description: 'x'.repeat(2_000_001),
+        });
       const source = renderRoute(`${url.pathname}${url.search}${url.hash}`, {
         client: new RecordingClient(),
-        storage: new MemoryStorage(),
+        storage,
       });
       await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
-      const picker = screen.getByRole('combobox', { name: field });
+      const picker = screen.getByRole('combobox', { name: field === 'Heat' ? 'Heat' : 'Layout' });
       const before = source.currentSearch();
-      await userEvent.selectOptions(picker, field === 'Heat' ? 'effort' : 'magic-romak');
+      const next =
+        field === 'Heat' ? 'effort' : field === 'Layout' ? 'magic-romak' : `custom:${id}`;
+      if (field === 'Saved layout')
+        await within(picker).findByRole('option', { name: 'Oversized saved Colemak' });
+      await userEvent.selectOptions(picker, next);
       await waitFor(
         () =>
           expect(useToasts.getState().toasts.map(({ text }) => text)).toEqual(
@@ -1540,110 +1553,148 @@ describe('portable Analyze links', () => {
     ).toHaveLength(0);
   }, 60_000);
 
-  it('keeps shared Analyze rules after a local corpus switch and layout change', async () => {
-    const user = userEvent.setup();
-    const engine = testClient();
-    const privateCorpus = await engine.buildCustomCorpus(
-      'private notes stay local for analysis',
-      'Private notes',
-      'en',
-    );
-    const snapshot = encodeRuleSnapshot({
-      ...getPreset('cyanophage'),
-      id: 'strict',
-      name: 'Shared Strict',
-    });
-    const href = await buildPortableTarget({
-      baseHref: '/analyze',
-      origin: window.location.origin,
-      route: 'analyze',
-      search: {
-        layout: 'qwerty',
-        corpus: 'en-general',
-        sample: '10000',
-        rules: 'custom:strict',
-      },
-      rulesSnapshot: snapshot,
-    });
-    const storage = new MemoryStorage();
-    await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
-    await storage.put('rulesets', 'strict', {
-      ...getPreset('layouts_doc'),
-      id: 'strict',
-      name: 'Different Local Strict',
-    });
-    const get = vi.spyOn(storage, 'get');
-    const client = new RecordingClient(engine);
-    const target = new URL(href);
-    const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
-      client,
-      storage,
-    });
-    await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
+  it.each(['layout change', 'oversized draft'])(
+    'keeps shared Analyze rules after switching to private text: %s',
+    async (action) => {
+      const user = userEvent.setup();
+      const engine = testClient();
+      const privateCorpus = await engine.buildCustomCorpus(
+        'private notes stay local for analysis',
+        'Private notes',
+        'en',
+      );
+      const rule = {
+        ...getPreset('cyanophage'),
+        id: 'strict',
+        name: 'Shared Strict',
+        description: '',
+      };
+      const input = {
+        baseHref: '/analyze',
+        origin: window.location.origin,
+        route: 'analyze' as const,
+        search: {
+          layout: 'qwerty',
+          corpus: 'en-general',
+          sample: '10000',
+          rules: 'custom:strict',
+        },
+      };
+      const baseline = await buildPortableTarget({
+        ...input,
+        rulesSnapshot: encodeRuleSnapshot(rule),
+      });
+      const snapshot = encodeRuleSnapshot({
+        ...rule,
+        description:
+          action === 'oversized draft'
+            ? 'x'.repeat(Math.floor(((2_097_020 - baseline.length) * 3) / 4))
+            : '',
+      });
+      const href = await buildPortableTarget({ ...input, rulesSnapshot: snapshot });
+      const storage = new MemoryStorage();
+      await storage.put('corpora', 'private-notes', await engine.corpusDocument(privateCorpus.id));
+      await storage.put('rulesets', 'strict', {
+        ...getPreset('layouts_doc'),
+        id: 'strict',
+        name: 'Different Local Strict',
+      });
+      const get = vi.spyOn(storage, 'get');
+      const client = new RecordingClient(engine);
+      const target = new URL(href);
+      const source = renderRoute(`${target.pathname}${target.search}${target.hash}`, {
+        client,
+        storage,
+      });
+      await screen.findByRole('region', { name: 'Layout' }, { timeout: 25_000 });
 
-    const settings = await openSettings();
-    await user.selectOptions(
-      within(settings).getByRole('combobox', { name: 'Corpus' }),
-      'custom:private-notes',
-    );
-    await user.click(within(settings).getByRole('button', { name: 'Done' }));
+      const settings = await openSettings();
+      await user.selectOptions(
+        within(settings).getByRole('combobox', { name: 'Corpus' }),
+        'custom:private-notes',
+      );
+      await user.click(within(settings).getByRole('button', { name: 'Done' }));
 
-    expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
-    await waitFor(() =>
+      expect(new URLSearchParams(source.currentSearch()).has('share')).toBe(false);
+      await waitFor(() =>
+        expect(
+          client.analyses.some(
+            (analysis) =>
+              analysis.settings.corpus.startsWith('custom:private-notes@') &&
+              analysis.settings.rules.name === 'Shared Strict',
+          ),
+        ).toBe(true),
+      );
+
+      if (action === 'oversized draft') {
+        useToasts.setState({ toasts: [] });
+        const before = source.currentSearch();
+        const edit = await openSettings();
+        const description = within(edit).getByRole('textbox', { name: 'Description' });
+        const original = (description as HTMLTextAreaElement).value;
+        await user.type(description, 'Private draft');
+        await user.click(within(edit).getByRole('button', { name: 'Done' }));
+        await waitFor(
+          () =>
+            expect(
+              useToasts.getState().toasts.some(({ text }) => /URL would be too long/i.test(text)),
+            ).toBe(true),
+          { container: document.createElement('div') },
+        );
+        expect(
+          within(await openSettings()).getByRole('textbox', { name: 'Description' }),
+        ).toHaveValue(`${original}Private draft`);
+        expect(source.currentSearch()).toBe(before);
+        expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+        return;
+      }
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'colemak');
+      await waitFor(() => expect(client.analyses.at(-1)?.layout.name).toBe('Colemak'));
+      await waitFor(() => {
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.has('share')).toBe(false);
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
       expect(
-        client.analyses.some(
-          (analysis) =>
-            analysis.settings.corpus.startsWith('custom:private-notes@') &&
-            analysis.settings.rules.name === 'Shared Strict',
-        ),
-      ).toBe(true),
-    );
+        get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+      ).toHaveLength(0);
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout' }), 'colemak');
-    await waitFor(() => expect(client.analyses.at(-1)?.layout.name).toBe('Colemak'));
-    await waitFor(() => {
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.has('share')).toBe(false);
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
-    expect(
-      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
-    ).toHaveLength(0);
+      await user.click(screen.getByRole('button', { name: 'Share link' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /custom corpus text stays on this device/i,
+      );
 
-    await user.click(screen.getByRole('button', { name: 'Share link' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      /custom corpus text stays on this device/i,
-    );
+      const nav = screen.getByRole('navigation', { name: 'Main' });
+      await user.click(within(nav).getByRole('link', { name: 'Compare' }));
+      await screen.findByRole('group', { name: 'Layers of A' });
+      await screen.findByRole('group', { name: 'Layers of B' });
+      await waitFor(() => {
+        expect(source.currentPath()).toBe('/compare');
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.has('share')).toBe(false);
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+      expect(
+        get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+      ).toHaveLength(0);
 
-    const nav = screen.getByRole('navigation', { name: 'Main' });
-    await user.click(within(nav).getByRole('link', { name: 'Compare' }));
-    await screen.findByRole('group', { name: 'Layers of A' });
-    await screen.findByRole('group', { name: 'Layers of B' });
-    await waitFor(() => {
-      expect(source.currentPath()).toBe('/compare');
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.has('share')).toBe(false);
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
-    expect(
-      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
-    ).toHaveLength(0);
-
-    await user.click(within(nav).getByRole('link', { name: 'Analyze' }));
-    await screen.findByRole('region', { name: 'Layout' });
-    await waitFor(() => {
-      expect(source.currentPath()).toBe('/analyze');
-      const search = new URLSearchParams(source.currentSearch());
-      expect(search.has('share')).toBe(false);
-      expect(search.get('rulesSnapshot')).toBe(snapshot);
-    });
-    expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
-    expect(
-      get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
-    ).toHaveLength(0);
-  }, 60_000);
+      await user.click(within(nav).getByRole('link', { name: 'Analyze' }));
+      await screen.findByRole('region', { name: 'Layout' });
+      await waitFor(() => {
+        expect(source.currentPath()).toBe('/analyze');
+        const search = new URLSearchParams(source.currentSearch());
+        expect(search.has('share')).toBe(false);
+        expect(search.get('rulesSnapshot')).toBe(snapshot);
+      });
+      expect(client.analyses.at(-1)?.settings.rules.name).toBe('Shared Strict');
+      expect(
+        get.mock.calls.filter(([collection, id]) => collection === 'rulesets' && id === 'strict'),
+      ).toHaveLength(0);
+    },
+    60_000,
+  );
 
   it.each(['fits', 'overflows'])(
     'keeps Compare rules when a private corpus %s',

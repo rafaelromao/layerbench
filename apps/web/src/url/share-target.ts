@@ -271,7 +271,7 @@ function targetError(
     };
   }
 
-  if (url.href.length >= MAX_URL_CHARS)
+  if (exceedsBrowserBudget(url))
     return {
       ok: false,
       error: [
@@ -321,9 +321,7 @@ export async function buildPortableTarget(input: BuildPortableTarget): Promise<s
   const hash = canonicalParams(Object.entries(fragment));
   const suffix = `${query ? `?${query}` : ''}${hash ? `#${hash}` : ''}`;
   const href = `${base.origin}${base.pathname}${suffix}`;
-  // GitHub Pages can append a slash when serving the route's directory index.
-  const directory = base.pathname.endsWith('/') ? href : `${base.origin}${base.pathname}/${suffix}`;
-  const validated = parsePortableTarget(directory, expectedOrigin);
+  const validated = parsePortableTarget(href, expectedOrigin);
   if (!validated.ok) throw new Error(validated.error);
   return href;
 }
@@ -369,7 +367,12 @@ export function portableSearchTooLong(
   input: RawSearch,
   origin = 'https://portable.layerbench.invalid',
 ): boolean {
-  return portableSearchAddress(route, input, origin).url.href.length >= MAX_URL_CHARS;
+  return exceedsBrowserBudget(portableSearchAddress(route, input, origin).url);
+}
+
+function exceedsBrowserBudget(url: URL): boolean {
+  // GitHub Pages can append a slash when serving the route's directory index.
+  return url.href.length + (url.pathname.endsWith('/') ? 0 : 1) >= MAX_URL_CHARS;
 }
 
 function portableSearchAddress(

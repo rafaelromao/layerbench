@@ -90,10 +90,7 @@ function AnalyzeWorkbench({
             prev.rulesSnapshot && rulesUnchanged && customId(next.rules ?? '') !== null;
           if (prev.share === '1' && canStayPortable && rulesUnchanged) next.share = '1';
           if (keepSnapshot) next.rulesSnapshot = prev.rulesSnapshot;
-          if (
-            (next.share === '1' || keepSnapshot) &&
-            portableSearchTooLong('analyze', next, window.location.origin)
-          ) {
+          if (portableSearchTooLong('analyze', next, window.location.origin)) {
             toast.error(
               [
                 'This change would make the analysis URL too long. Shorten the layout description',
