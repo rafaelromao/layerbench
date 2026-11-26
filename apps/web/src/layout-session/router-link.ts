@@ -214,7 +214,8 @@ export class RouterLink implements LinkPort {
                 'This layer change would make the URL too long. Choose a smaller rule set.',
               );
             }
-            queueMicrotask(() => selection.settled(acceptedLayer));
+            const published = !tooLarge && !this.tooLong(candidate);
+            queueMicrotask(() => selection.settled(acceptedLayer, published));
             if (
               acceptedLayer !== selection.layer &&
               (tooLarge || previousLayer >= selection.count || this.tooLong(candidate))
@@ -226,6 +227,10 @@ export class RouterLink implements LinkPort {
           }
           const portableCandidate = { ...candidate, share: '1' };
           const tooLong = this.tooLong(candidate);
+          if (selection && !selection.current() && !tooLong && !tooLarge) {
+            const layer = parseParams(candidate).layer;
+            queueMicrotask(() => selection.settled(layer, true));
+          }
 
           if (tooLong || tooLarge) {
             const fallback = savedRef ?? localRef;

@@ -364,27 +364,41 @@ export function Workbench({
   const { edited } = session;
   const editedLayout = useRef(state.layout);
   const pairedLayer = useRef<{ layout: Layout; layer: number } | null>(null);
+  const localLayer = useRef<{ layout: Layout; layer: number } | null>(null);
+  const publishedLayerCount = useRef(session.layout.layers.length);
   useEffect(() => {
     const changed = editedLayout.current !== state.layout;
     editedLayout.current = state.layout;
-    if (!state.dirty) pairedLayer.current = null;
-    if (state.dirty && changed && (pairedLayer.current || params.layer !== state.layer)) {
+    if (!state.dirty) {
+      pairedLayer.current = null;
+      localLayer.current = null;
+      publishedLayerCount.current = state.compiled.layers.length;
+    }
+    if (
+      state.dirty &&
+      changed &&
+      (pairedLayer.current ||
+        params.layer !== state.layer ||
+        publishedLayerCount.current !== state.compiled.layers.length)
+    ) {
       const pair = { layout: state.layout, layer: state.layer };
       pairedLayer.current = pair;
       edited(state.layout, true, {
         layer: state.layer,
         count: state.compiled.layers.length,
         current: () => pairedLayer.current === pair,
-        settled(layer) {
+        settled(layer, published) {
+          const current = editorState.current;
+          if (published && current.layout === pair.layout)
+            publishedLayerCount.current = state.compiled.layers.length;
           if (pairedLayer.current !== pair) return;
           pairedLayer.current = null;
-          const current = editorState.current;
           if (current.layout !== pair.layout || current.layer !== pair.layer) return;
-          if (layer !== pair.layer)
-            send({
-              type: 'selectLayer',
-              layer: Math.min(layer, current.compiled.layers.length - 1),
-            });
+          if (layer !== pair.layer) {
+            const visible = Math.min(layer, current.compiled.layers.length - 1);
+            if (visible !== layer) localLayer.current = { layout: current.layout, layer: visible };
+            send({ type: 'selectLayer', layer: visible });
+          }
         },
       });
     } else if (
@@ -450,12 +464,17 @@ export function Workbench({
     if (urlLayer.current !== params.layer) {
       urlLayer.current = params.layer;
       pairedLayer.current = null;
+      localLayer.current = null;
       const layer = Math.min(params.layer, state.compiled.layers.length - 1);
       if (layer !== state.layer) send({ type: 'selectLayer', layer });
       if (layer !== params.layer) setParams({ layer });
       return;
     }
-    if (params.layer !== state.layer && !pairedLayer.current) {
+    if (
+      params.layer !== state.layer &&
+      !pairedLayer.current &&
+      !(localLayer.current?.layout === state.layout && localLayer.current.layer === state.layer)
+    ) {
       const requested = state.layer;
       void setParams({ layer: requested }).then((accepted) => {
         const current = editorState.current;
@@ -946,6 +965,10 @@ export function Workbench({
   const playing = play !== null && frames.length > 0;
   const boardLayer = playing ? (frame ?? frames[0]).layer : state.layer;
   const boardGesture = useRef(0);
+  const selectLocalLayer = (layer: number) => {
+    localLayer.current = { layout: state.layout, layer };
+    send({ type: 'selectLayer', layer });
+  };
 
   /** A gesture on the board while a word plays acts on the layer the board shows, then stops it. */
   const stopPlaying = (gesture?: () => void) => {
@@ -956,6 +979,11 @@ export function Workbench({
       return;
     }
     if (pairedLayer.current) return;
+    if (boardLayer >= publishedLayerCount.current) {
+      selectLocalLayer(boardLayer);
+      gesture?.();
+      return;
+    }
     const history = historyRevision.current;
     void setParams({ layer: boardLayer }).then((accepted) => {
       if (
@@ -976,7 +1004,12 @@ export function Workbench({
   const selectLayer = async (layer: number, after?: () => void) => {
     ++boardGesture.current;
     setPlay(null);
-    if (pairedLayer.current && layer !== state.layer) return;
+    if (layer !== state.layer && pairedLayer.current) return;
+    if (layer >= publishedLayerCount.current) {
+      selectLocalLayer(layer);
+      after?.();
+      return;
+    }
     if (layer === state.layer || (await setParams({ layer }))) {
       if (!session.isCurrentOpening(session.opening)) return;
       after?.();
@@ -1050,7 +1083,13 @@ export function Workbench({
     send({ type: 'setPanel', panel: 'board' });
     // The board turns to the layer the item happens on, so its keys are the ones drawn.
     const layer = itemLayer(item.layers);
-    if (layer !== null && layer !== state.layer && !pairedLayer.current) setParams({ layer });
+    if (
+      layer !== null &&
+      layer !== state.layer &&
+      !pairedLayer.current &&
+      layer < publishedLayerCount.current
+    )
+      setParams({ layer });
     if (item.then?.length) setPressedFor({ rule: rule.label, item });
   };
 
@@ -1184,7 +1223,7 @@ export function Workbench({
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
       // On one of several selected keys, every one of them.
-      const keys = selectionOf(state);
+      const keys = boardLayer === state.layer ? selectionOf(state) : [];
       const cleared = keys.length > 1 && keys.includes(keyId) ? keys : [keyId];
       stopPlaying(() =>
         send({

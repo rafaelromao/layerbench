@@ -877,11 +877,13 @@ describe('portable Analyze links', () => {
 
   it('swaps with the key shown during playback, not the same position on the base', async () => {
     const user = userEvent.setup();
-    const source = renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000');
+    const source = renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000', {
+      client: new RecordingClient(),
+    });
     const original = bundledLayout('magic-romak')!;
     await user.click(await screen.findByRole('button', { name: /^Key LHM:/ }));
     await user.click(await screen.findByRole('button', { name: 'Swap with…' }));
-    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+    fireEvent.change(screen.getByLabelText('How is this typed?'), { target: { value: 'ação' } });
     const presses = await screen.findByRole('list', { name: 'Presses' });
     await user.click(within(presses).getByRole('button', { name: /LBM/ }));
     await user.click(screen.getByRole('button', { name: /^Key LBM:/ }));
@@ -934,6 +936,11 @@ describe('portable Analyze links', () => {
     expect(search.has('layer')).toBe(false);
     fireEvent.click(screen.getByRole('tab', { name: 'Board' }));
     expect(shownLayer()).toBe('Alpha 1');
+    await showLayer(userEvent.setup(), 'Nav');
+    expect(shownLayer()).toBe('Nav');
+    expect(new URLSearchParams(source.currentSearch()).get('layer')).toBe(
+      String(original.layers.length - 1),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled());
     expect(new URLSearchParams(source.currentSearch()).has('layer')).toBe(false);

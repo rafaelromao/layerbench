@@ -27,7 +27,7 @@ export interface DraftLayer {
   layer: number;
   count: number;
   current(): boolean;
-  settled(layer: number): void;
+  settled(layer: number, published: boolean): void;
 }
 
 /**
