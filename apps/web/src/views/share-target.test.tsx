@@ -875,6 +875,35 @@ describe('portable Analyze links', () => {
     );
   }, 60_000);
 
+  it('swaps with the key shown during playback, not the same position on the base', async () => {
+    const user = userEvent.setup();
+    const source = renderRoute('/analyze?layout=magic-romak&corpus=pt-br-general&sample=10000');
+    const original = bundledLayout('magic-romak')!;
+    await user.click(await screen.findByRole('button', { name: /^Key LHM:/ }));
+    await user.click(await screen.findByRole('button', { name: 'Swap with…' }));
+    await user.type(screen.getByLabelText('How is this typed?'), 'ação');
+    const presses = await screen.findByRole('list', { name: 'Presses' });
+    await user.click(within(presses).getByRole('button', { name: /LBM/ }));
+    await user.click(screen.getByRole('button', { name: /^Key LBM:/ }));
+    const draft = async () => {
+      const ref = new URLSearchParams(source.currentSearch()).get('layout')!;
+      expect(ref).toMatch(/^inline:/);
+      return decodeInline(ref.slice('inline:'.length));
+    };
+    await waitFor(async () => {
+      expect(await draft()).toMatchObject({
+        ok: true,
+        layout: {
+          layers: [
+            { bindings: { LBM: original.layers[0].bindings.LBM } },
+            { bindings: { LBM: original.layers[0].bindings.LHM } },
+            ...original.layers.slice(2),
+          ],
+        },
+      });
+    });
+  });
+
   it.each(['add layer', 'undo'])(
     'keeps a request-bound Analyze address in sync on %s',
     async (action) => {

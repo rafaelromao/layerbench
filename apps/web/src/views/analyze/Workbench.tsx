@@ -912,10 +912,25 @@ export function Workbench({
   const boardLayer = playing ? (frame ?? frames[0]).layer : state.layer;
 
   /** A gesture on the board while a word plays acts on the layer the board shows, then stops it. */
-  const stopPlaying = () => {
-    if (!playing) return;
-    if (boardLayer !== state.layer) setParams({ layer: boardLayer });
+  const stopPlaying = (gesture?: () => void) => {
     setPlay(null);
+    if (boardLayer === state.layer) {
+      gesture?.();
+      return;
+    }
+    const history = historyRevision.current;
+    void setParams({ layer: boardLayer }).then((accepted) => {
+      if (
+        !accepted ||
+        historyRevision.current !== history ||
+        !session.isCurrentOpening(session.opening) ||
+        editorState.current.layout !== state.layout ||
+        parseParams(router.state.location.search as RawSearch).layer !== boardLayer
+      )
+        return;
+      send({ type: 'selectLayer', layer: boardLayer });
+      gesture?.();
+    });
   };
 
   /** Choosing a layer is looking at it: the word stops playing over it. */
@@ -1111,39 +1126,44 @@ export function Workbench({
     if (e.altKey) {
       if (e.code === 'KeyS') {
         e.preventDefault();
-        stopPlaying();
-        // The key picked is the one to swap, not where an armed character goes.
-        if (state.placing !== null) send({ type: 'armChar', char: null });
-        send({ type: 'keyClick', keyId });
-        send({ type: 'startSwap' });
+        stopPlaying(() => {
+          // The key picked is the one to swap, not where an armed character goes.
+          if (state.placing !== null) send({ type: 'armChar', char: null });
+          send({ type: 'keyClick', keyId });
+          send({ type: 'startSwap' });
+        });
       }
       return;
     }
     if (e.key === 'Enter' || e.key === 'F2') {
       e.preventDefault();
-      stopPlaying();
-      send({ type: 'typeOnKey', keyId, seed: null });
+      stopPlaying(() => send({ type: 'typeOnKey', keyId, seed: null }));
       return;
     }
     if (e.key === 'Backspace' || e.key === 'Delete') {
       e.preventDefault();
-      stopPlaying();
       // On one of several selected keys, every one of them.
       const keys = selectionOf(state);
       const cleared = keys.length > 1 && keys.includes(keyId) ? keys : [keyId];
-      send({
-        type: 'edit',
-        edit: { kind: 'bind', layer: shownLayer(state), keys: cleared, binding: { kind: 'none' } },
-        say: cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
-      });
+      stopPlaying(() =>
+        send({
+          type: 'edit',
+          edit: {
+            kind: 'bind',
+            layer: state.layout.layers[boardLayer].id,
+            keys: cleared,
+            binding: { kind: 'none' },
+          },
+          say: cleared.length > 1 ? `${cleared.length} keys do nothing` : `${keyId} does nothing`,
+        }),
+      );
       return;
     }
     // Space keeps activating the key like the button it is; everything else typed on a key is
     // the start of its binding.
     if (e.key.length === 1 && e.key !== ' ') {
       e.preventDefault();
-      stopPlaying();
-      send({ type: 'typeOnKey', keyId, seed: e.key });
+      stopPlaying(() => send({ type: 'typeOnKey', keyId, seed: e.key }));
     }
   };
 
@@ -1604,34 +1624,36 @@ export function Workbench({
                           onComboClick={(combo) => {
                             // While keys are being picked for a combo, they are all the board is doing.
                             if (state.comboPick) return;
-                            stopPlaying();
-                            send({ type: 'selectCombo', combo: placeOf(combo) });
+                            stopPlaying(() => send({ type: 'selectCombo', combo: placeOf(combo) }));
                           }}
                           arcs={playing ? [] : arcs}
                           draggable
-                          onDragStart={() => stopPlaying()}
+                          onDragStart={() => setPlay((p) => p && { ...p, playing: false })}
                           onKeyClick={(keyId, how) => {
                             if (state.comboPick) {
                               send({ type: 'comboPickToggle', keyId });
                               return;
                             }
-                            stopPlaying();
                             if (!state.swapFrom) clearOutline();
                             // A click, a tap and Space all select; the inspector is where editing
                             // happens, so a finger and a mouse reach it the same way. With Shift, or a
                             // finger rested on the key, the key joins the others selected or leaves.
-                            send(
-                              how?.add
-                                ? { type: 'toggleSelect', keyId }
-                                : { type: 'keyClick', keyId },
+                            stopPlaying(() =>
+                              send(
+                                how?.add
+                                  ? { type: 'toggleSelect', keyId }
+                                  : { type: 'keyClick', keyId },
+                              ),
                             );
                           }}
                           onDropKey={(drop) =>
-                            send({
-                              type: 'dropKey',
-                              ...drop,
-                              say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
-                            })
+                            stopPlaying(() =>
+                              send({
+                                type: 'dropKey',
+                                ...drop,
+                                say: `${drop.from} ${drop.mode === 'copy' ? 'copied to' : 'swapped with'} ${drop.to}`,
+                              }),
+                            )
                           }
                           onKeyShortcut={onKeyShortcut}
                           onEmptyClick={() => {
@@ -1646,7 +1668,7 @@ export function Workbench({
                           combos={boardCombos}
                           showApart={showCombos}
                           // The board would turn under the dialog as a word plays.
-                          onApartOpen={stopPlaying}
+                          onApartOpen={() => stopPlaying()}
                           onApartLostFocus={() =>
                             focusKey(state.selected ?? state.compiled.keys[0]?.id ?? '')
                           }
@@ -1692,13 +1714,14 @@ export function Workbench({
                           }}
                           onDisarm={() => send({ type: 'armChar', char: null })}
                           onDrop={({ char, to }) => {
-                            stopPlaying();
-                            send({
-                              type: 'placeChar',
-                              keyId: to,
-                              char,
-                              say: `${spoken(char)} on ${to}`,
-                            });
+                            stopPlaying(() =>
+                              send({
+                                type: 'placeChar',
+                                keyId: to,
+                                char,
+                                say: `${spoken(char)} on ${to}`,
+                              }),
+                            );
                           }}
                           board={() => document.getElementById('kb-analyze')}
                         />
