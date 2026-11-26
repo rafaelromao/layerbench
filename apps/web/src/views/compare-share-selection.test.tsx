@@ -70,6 +70,18 @@ async function beginBlockedCustomPick() {
 }
 
 describe('asynchronous custom Compare layout picks', () => {
+  it('keeps the latest pick across both sides when the older read finishes first', async () => {
+    const { user, source, releaseRead } = await beginBlockedCustomPick();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Layout B' }), 'custom:mine');
+    releaseRead();
+
+    await waitFor(() => {
+      expect(new URLSearchParams(source.currentSearch()).get('b')).toMatch(/^inline:/);
+    });
+    expect(new URLSearchParams(source.currentSearch()).get('layout')).toBe('qwerty');
+  }, 60_000);
+
   it('does not apply a pending pick after navigating to Analyze', async () => {
     const { user, source, client, releaseRead, compressionStarted } =
       await beginBlockedCustomPick();

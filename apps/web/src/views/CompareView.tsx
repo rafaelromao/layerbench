@@ -198,19 +198,18 @@ function ComparePage({
 
   const custom = useCollection('layouts');
   const storage = useStorage();
-  const layoutSelection = useRef({ layout: 0, b: 0 });
+  // The latest picker intent wins, regardless of which side finishes reading first.
+  const layoutSelection = useRef(0);
   useEffect(
     () =>
       router.history.subscribe(() => {
-        layoutSelection.current.layout += 1;
-        layoutSelection.current.b += 1;
+        layoutSelection.current += 1;
       }),
     [router],
   );
   useEffect(
     () => () => {
-      layoutSelection.current.layout += 1;
-      layoutSelection.current.b += 1;
+      layoutSelection.current += 1;
     },
     [],
   );
@@ -325,7 +324,7 @@ function ComparePage({
 
   const chooseLayout = useCallback(
     async (key: 'layout' | 'b', ref: string) => {
-      const sequence = ++layoutSelection.current[key];
+      const sequence = ++layoutSelection.current;
       const startedWith = {
         pathname: router.state.location.pathname,
         search: router.state.location.searchStr,
@@ -334,7 +333,7 @@ function ComparePage({
       const isCurrentSelection = () => {
         const location = router.state.location;
         return (
-          sequence === layoutSelection.current[key] &&
+          sequence === layoutSelection.current &&
           location.pathname === startedWith.pathname &&
           location.pathname === '/compare' &&
           location.searchStr === startedWith.search &&
